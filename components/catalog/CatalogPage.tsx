@@ -47,16 +47,13 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
   const [bedKey, setBedKey] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<SortOrder>('none')
 
-  // Filter by line
   const byLine = lineKey === 'all'
     ? houses
     : houses.filter(h => h.linea === lineKey)
 
-  // Filter by bedrooms
   const activeBed = BED_FILTERS.find(b => b.key === bedKey) ?? BED_FILTERS[0]
   const byBed = byLine.filter(activeBed.match)
 
-  // Sort by price
   const sorted = [...byBed].sort((a, b) => {
     if (sortOrder === 'none') return 0
     const pa = a.public_price_usd ?? Infinity
@@ -64,7 +61,6 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
     return sortOrder === 'asc' ? pa - pb : pb - pa
   })
 
-  // When changing line, reset sub-filters
   function selectLine(key: string) {
     setLineKey(key)
     setBedKey('all')
@@ -99,7 +95,6 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
         </a>
 
         <div className="cf-nav-area">
-          {/* Line filter */}
           <nav className="cf-nav">
             {LINES.map(l => (
               <button
@@ -112,9 +107,7 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
             ))}
           </nav>
 
-          {/* Sub-filters: bedrooms + price sort */}
           <div className="cf-subbar">
-            {/* Bedroom sub-filter — only when a line is selected */}
             {lineKey !== 'all' && (
               <div className="cf-bed-filters">
                 {BED_FILTERS.map(b => (
@@ -129,23 +122,16 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
               </div>
             )}
 
-            {/* Price sort */}
             <div className="cf-sort">
               <span className="cf-sort-label">Precio</span>
               <button
                 className={'cf-sort-btn' + (sortOrder === 'asc' ? ' cf-active' : '')}
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'none' : 'asc')}
-                title="Menor a mayor"
-              >
-                ↑ Menor
-              </button>
+              >↑ Menor</button>
               <button
                 className={'cf-sort-btn' + (sortOrder === 'desc' ? ' cf-active' : '')}
                 onClick={() => setSortOrder(sortOrder === 'desc' ? 'none' : 'desc')}
-                title="Mayor a menor"
-              >
-                ↓ Mayor
-              </button>
+              >↓ Mayor</button>
             </div>
           </div>
         </div>
@@ -180,6 +166,7 @@ function Row({
 }) {
   const [slideIdx, setSlideIdx] = useState(0)
   const [thumbLoaded, setThumbLoaded] = useState(false)
+  const mainRef = useRef<HTMLDivElement>(null)
 
   const slides: { storage_url: string; alt?: string | null }[] = (
     house.gallery_images && house.gallery_images.length
@@ -218,8 +205,19 @@ function Row({
     }
   }, [expanded])
 
+  // ── Mouse scrub: mouse X position over main image → slide index ──────────────
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!expanded || total <= 1) return
+    const el = mainRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const ratio = Math.max(0, Math.min(1, x / rect.width))
+    const newIdx = Math.min(total - 1, Math.floor(ratio * total))
+    if (newIdx !== slideIdx) setSlideIdx(newIdx)
+  }
+
   const curImg = slides[slideIdx]
-  const prevImg = total > 1 ? slides[(slideIdx - 1 + total) % total] : slides[0]
 
   const locLine = [
     house.area_m2 ? `${house.area_m2} m²` : null,
@@ -239,6 +237,7 @@ function Row({
       className={'cf-row' + (expanded ? ' cf-expanded' : '')}
       onClick={() => !expanded && onOpen()}
     >
+      {/* Collapsed state: meta column + thumb */}
       <div className="cf-meta-col">
         <div className="cf-meta-name">{house.name}</div>
         <div className="cf-meta-loc">{locLine}</div>
@@ -246,6 +245,7 @@ function Row({
       </div>
 
       <div className="cf-gallery-col">
+        {/* Thumbnail (collapsed view) */}
         <div className={'cf-thumb-wrap' + (thumbLoaded ? ' cf-loaded' : '')}>
           <div className="cf-thumb-lqip" style={{ background: house.lqip_color }} />
           {house.cover_image && (
@@ -260,77 +260,103 @@ function Row({
           )}
         </div>
 
-        <div className="cf-slider-wrap">
-          <div
-            className="cf-sl-prev"
-            onClick={e => { e.stopPropagation(); if (total > 1) setSlideIdx(i => Math.max(0, i - 1)) }}
-          >
-            {prevImg && <img src={prevImg.storage_url} alt="" />}
-          </div>
+        {/* Expanded view: 3-column big.dk layout */}
+        <div className="cf-expanded-wrap" onClick={e => e.stopPropagation()}>
+          {/* Left column: info aligned right */}
+          <div className="cf-info-col">
+            <button className="cf-close-btn" onClick={onClose} aria-label="Cerrar">×</button>
 
-          <div className="cf-sl-center" onClick={e => e.stopPropagation()}>
-            <button className="cf-sl-close" onClick={onClose} aria-label="Cerrar">×</button>
-            <div className="cf-sl-name">{house.name}</div>
-            <div className="cf-sl-loc">{locLine}</div>
-            {house.recommended_use && <div className="cf-sl-desc">{house.recommended_use}</div>}
-            <div className="cf-sl-counter">
-              <strong>{String(slideIdx + 1).padStart(2, '0')}</strong> / {String(Math.max(1, total)).padStart(2, '0')}
-            </div>
-            {total > 1 && (
-              <div className="cf-sl-arrows">
-                <button className="cf-sl-arr" disabled={slideIdx === 0}
-                  onClick={e => { e.stopPropagation(); setSlideIdx(i => Math.max(0, i - 1)) }} aria-label="Anterior">
-                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2}><path d="M10 3L5 8l5 5" /></svg>
-                </button>
-                <button className="cf-sl-arr" disabled={slideIdx === total - 1}
-                  onClick={e => { e.stopPropagation(); setSlideIdx(i => Math.min(total - 1, i + 1)) }} aria-label="Siguiente">
-                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 3l5 5-5 5" /></svg>
-                </button>
-              </div>
-            )}
-            <div className="cf-sl-footer">
-              {house.public_price_usd && (
-                <div className="cf-sl-price">
-                  <div className="cf-sl-price-label">Precio llave en mano</div>
-                  <div className="cf-sl-price-value">USD {Math.round(house.public_price_usd).toLocaleString('es-AR')}</div>
-                  {discountedPrice && discountedPrice !== house.public_price_usd && (
-                    <div className="cf-sl-price-pozo">En pozo: USD {Math.round(discountedPrice).toLocaleString('es-AR')}</div>
-                  )}
+            <div className="cf-info-name">{house.name}</div>
+
+            <div className="cf-info-meta">
+              {house.linea && (
+                <div className="cf-info-row">
+                  <div className="cf-info-label">Línea</div>
+                  <div className="cf-info-value">{house.linea}</div>
                 </div>
               )}
-              {house.brochure_url && (
-                <a href={house.brochure_url} target="_blank" rel="noopener noreferrer"
-                  className="cf-sl-brochure" onClick={e => e.stopPropagation()}>
-                  Ver brochure →
-                </a>
+              {house.area_m2 && (
+                <div className="cf-info-row">
+                  <div className="cf-info-label">Superficie</div>
+                  <div className="cf-info-value">{house.area_m2} m²</div>
+                </div>
+              )}
+              {house.beds && (
+                <div className="cf-info-row">
+                  <div className="cf-info-label">Dormitorios</div>
+                  <div className="cf-info-value">{house.beds}</div>
+                </div>
+              )}
+              {house.construction_system && (
+                <div className="cf-info-row">
+                  <div className="cf-info-label">Sistema</div>
+                  <div className="cf-info-value">{house.construction_system}</div>
+                </div>
+              )}
+              {house.floors && (
+                <div className="cf-info-row">
+                  <div className="cf-info-label">Plantas</div>
+                  <div className="cf-info-value">{house.floors}</div>
+                </div>
               )}
             </div>
+
+            {house.public_price_usd && (
+              <div className="cf-info-price">
+                <div className="cf-info-label">Precio llave en mano</div>
+                <div className="cf-info-price-value">USD {Math.round(house.public_price_usd).toLocaleString('es-AR')}</div>
+                {discountedPrice && discountedPrice !== house.public_price_usd && (
+                  <div className="cf-info-price-pozo">En pozo: USD {Math.round(discountedPrice).toLocaleString('es-AR')}</div>
+                )}
+              </div>
+            )}
+
+            {house.brochure_url && (
+              <a
+                href={house.brochure_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cf-info-brochure"
+                onClick={e => e.stopPropagation()}
+              >
+                Ver brochure →
+              </a>
+            )}
           </div>
 
+          {/* Center: large image with mouse scrub */}
           <div
-            className="cf-sl-main"
-            onClick={e => { e.stopPropagation(); if (total > 1) setSlideIdx(i => Math.min(total - 1, i + 1)) }}
+            ref={mainRef}
+            className="cf-main-col"
+            onMouseMove={handleMouseMove}
+            onClick={e => { e.stopPropagation(); if (total > 1) setSlideIdx(i => (i + 1) % total) }}
           >
-            {curImg && <img src={curImg.storage_url} alt={curImg.alt || house.name} />}
+            {curImg && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={curImg.storage_url} alt={curImg.alt || house.name} />
+            )}
+            {total > 1 && (
+              <div className="cf-main-counter">
+                <strong>{String(slideIdx + 1).padStart(2, '0')}</strong>
+                <span className="cf-main-counter-sep"> / </span>
+                {String(total).padStart(2, '0')}
+              </div>
+            )}
+            {total > 1 && (
+              <div className="cf-scrub-hint">Mueve el cursor para navegar</div>
+            )}
+          </div>
+
+          {/* Right: description */}
+          <div className="cf-desc-col">
+            {house.recommended_use && (
+              <p className="cf-desc-text">{house.recommended_use}</p>
+            )}
           </div>
         </div>
       </div>
     </div>
   )
-}
-
-function iconSvg(id: string): string {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
-  const s = [
-    `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 6L42 20v22H6V20z" fill="none" stroke="#0a0a0a" stroke-width="2.5"/></svg>`,
-    `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="36" height="36" fill="#0a0a0a"/><rect x="15" y="15" width="18" height="18" fill="#fff"/></svg>`,
-    `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="18" fill="none" stroke="#0a0a0a" stroke-width="2.5"/><circle cx="24" cy="24" r="7" fill="#0a0a0a"/></svg>`,
-    `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="36" height="15" fill="#0a0a0a"/><rect x="6" y="27" width="36" height="15" fill="none" stroke="#0a0a0a" stroke-width="2.5"/></svg>`,
-    `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M6 42L24 8l18 34z" fill="none" stroke="#0a0a0a" stroke-width="2.5"/><line x1="24" y1="8" x2="24" y2="42" stroke="#0a0a0a" stroke-width="2.5"/></svg>`,
-    `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="36" height="36" fill="none" stroke="#0a0a0a" stroke-width="2.5"/><path d="M6 24h36M24 6v36" stroke="#0a0a0a" stroke-width="2.5"/></svg>`,
-  ]
-  return s[h % s.length]
 }
 
 const CSS = `
@@ -353,26 +379,11 @@ body:has(.cf-list) {
   color: #0a0a0a;
   min-height: 140px;
   flex-wrap: wrap;
-  gap: 0;
 }
-.cf-brand {
-  display: flex; align-items: center;
-  margin-right: 48px; flex-shrink: 0;
-  text-decoration: none;
-}
+.cf-brand { display: flex; align-items: center; margin-right: 48px; flex-shrink: 0; text-decoration: none; }
 .cf-brand-logo { height: 85px; width: auto; display: block; }
 
-/* nav area: stacks line nav + subbar vertically */
-.cf-nav-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0;
-  height: 140px;
-}
-
-/* Line nav */
+.cf-nav-area { flex: 1; display: flex; flex-direction: column; justify-content: center; height: 140px; }
 .cf-nav { display: flex; align-items: center; height: 52px; }
 .cf-nav-btn {
   display: flex; align-items: center; padding: 0 18px; height: 100%;
@@ -386,15 +397,7 @@ body:has(.cf-list) {
   height: 2px; background: #0a0a0a;
 }
 
-/* Subbar: bedroom filters + price sort */
-.cf-subbar {
-  display: flex; align-items: center;
-  height: 40px;
-  border-top: 1px solid #f0f0f0;
-  gap: 24px;
-}
-
-/* Bedroom filter buttons */
+.cf-subbar { display: flex; align-items: center; height: 40px; border-top: 1px solid #f0f0f0; gap: 24px; }
 .cf-bed-filters { display: flex; align-items: center; gap: 4px; }
 .cf-bed-btn {
   padding: 4px 14px;
@@ -407,14 +410,9 @@ body:has(.cf-list) {
 .cf-bed-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
 .cf-bed-btn.cf-active { color: #0a0a0a; border-color: #0a0a0a; }
 
-/* Price sort */
-.cf-sort {
-  display: flex; align-items: center; gap: 6px;
-  margin-left: auto;
-}
+.cf-sort { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .cf-sort-label {
-  font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-  color: #ccc;
+  font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #ccc;
 }
 .cf-sort-btn {
   padding: 4px 12px;
@@ -442,7 +440,7 @@ body:has(.cf-list) {
 }
 .cf-empty { padding: 80px 0; text-align: center; color: #999; font-size: 14px; }
 
-/* ─── ROW ──────────────────────────────────────── */
+/* ─── ROW (collapsed) ──────────────────────────── */
 .cf-row {
   display: flex; align-items: stretch; min-height: 440px;
   border-bottom: 1px solid #e8e8e8;
@@ -475,7 +473,7 @@ body:has(.cf-list) {
 .cf-row.cf-expanded .cf-thumb-wrap { opacity: 0; pointer-events: none; }
 .cf-thumb-lqip {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  filter: blur(22px); transform: scale(1.1); transition: opacity .8s ease; z-index: 1;
+  filter: blur(22px); transform: scale(1.1); transition: opacity .8s ease; z-index: 2;
 }
 .cf-thumb-wrap.cf-loaded .cf-thumb-lqip { opacity: 0; }
 .cf-thumb-real {
@@ -484,76 +482,106 @@ body:has(.cf-list) {
   transition: transform .85s cubic-bezier(.2,.8,.2,1);
 }
 
-.cf-slider-wrap {
+/* ─── EXPANDED (big.dk style) ──────────────────── */
+.cf-expanded-wrap {
   position: absolute; inset: 0; display: flex;
   opacity: 0; pointer-events: none;
-  transition: opacity .4s ease .1s; z-index: 2; user-select: none;
+  transition: opacity .4s ease .1s; z-index: 2;
+  background: #fff;
+  user-select: none;
 }
-.cf-row.cf-expanded .cf-slider-wrap { opacity: 1; pointer-events: auto; }
+.cf-row.cf-expanded .cf-expanded-wrap { opacity: 1; pointer-events: auto; }
 
-.cf-sl-prev {
-  width: 9%; flex-shrink: 0; overflow: hidden; position: relative; cursor: pointer;
+/* Left: info column, right-aligned */
+.cf-info-col {
+  width: 22%; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  align-items: flex-end; text-align: right;
+  padding: 48px 32px;
+  position: relative;
+  overflow-y: auto;
 }
-.cf-sl-prev::after {
-  content: ''; position: absolute; inset: 0;
-  background: rgba(255,255,255,.55); transition: background .3s ease; z-index: 1; pointer-events: none;
-}
-.cf-sl-prev:hover::after { background: rgba(255,255,255,.35); }
-.cf-sl-prev img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-  transition: transform .7s cubic-bezier(.2,.8,.2,1); pointer-events: none; -webkit-user-drag: none;
-}
-.cf-sl-prev:hover img { transform: scale(1.03); }
-
-.cf-sl-center {
-  width: 28%; flex-shrink: 0;
-  display: flex; flex-direction: column; justify-content: center; align-items: center;
-  text-align: center; padding: 48px 28px 28px; background: #fff;
-  border-left: 1px solid #e8e8e8; border-right: 1px solid #e8e8e8;
-  position: relative; overflow-y: auto;
-}
-.cf-sl-close {
-  position: absolute; top: 18px; right: 18px;
+.cf-close-btn {
+  position: absolute; top: 18px; left: 18px;
   width: 28px; height: 28px; border-radius: 50%;
   border: 1px solid #e0e0e0; background: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: #999; transition: border-color .2s, color .2s; font-family: inherit;
+  font-size: 16px; color: #999; transition: border-color .2s, color .2s;
+  font-family: inherit;
 }
-.cf-sl-close:hover { border-color: #0a0a0a; color: #0a0a0a; }
-.cf-sl-name { font-size: 30px; font-weight: 400; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 8px; }
-.cf-sl-loc { font-size: 10.5px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: #aaa; margin-bottom: 22px; }
-.cf-sl-desc { font-size: 12px; line-height: 1.7; color: #555; font-style: italic; margin-bottom: 22px; }
-.cf-sl-counter { font-size: 11px; letter-spacing: .04em; color: #ccc; margin-bottom: 14px; }
-.cf-sl-counter strong { color: #0a0a0a; font-weight: 500; }
-.cf-sl-arrows { display: flex; gap: 8px; margin-bottom: 22px; }
-.cf-sl-arr {
-  width: 36px; height: 36px; border-radius: 50%;
-  border: 1px solid #e0e0e0; background: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; color: #0a0a0a;
-  transition: border-color .2s, background .2s, color .2s;
-}
-.cf-sl-arr:hover:not(:disabled) { border-color: #0a0a0a; background: #0a0a0a; color: #fff; }
-.cf-sl-arr:disabled { opacity: .3; cursor: not-allowed; }
-.cf-sl-footer {
-  margin-top: 12px; padding-top: 22px; border-top: 1px solid #f0f0f0;
-  display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;
-}
-.cf-sl-price { text-align: center; }
-.cf-sl-price-label { font-size: 9.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #aaa; margin-bottom: 4px; }
-.cf-sl-price-value { font-size: 16px; font-weight: 500; letter-spacing: -.01em; }
-.cf-sl-price-pozo { font-size: 11px; color: #888; margin-top: 4px; }
-.cf-sl-brochure {
-  font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
-  color: #0a0a0a; text-decoration: none; border-bottom: 1px solid #0a0a0a; padding-bottom: 2px; transition: opacity .2s;
-}
-.cf-sl-brochure:hover { opacity: .6; }
+.cf-close-btn:hover { border-color: #0a0a0a; color: #0a0a0a; }
 
-.cf-sl-main { flex: 1; overflow: hidden; position: relative; cursor: pointer; min-width: 0; }
-.cf-sl-main img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-  transition: transform .85s cubic-bezier(.2,.8,.2,1); pointer-events: none; -webkit-user-drag: none;
+.cf-info-name {
+  font-size: 34px; font-weight: 400; letter-spacing: -.02em;
+  line-height: 1.15; margin-bottom: 32px;
 }
-.cf-sl-main:hover img { transform: scale(1.03); }
+
+.cf-info-meta { display: flex; flex-direction: column; gap: 18px; margin-bottom: 32px; width: 100%; }
+.cf-info-row { display: flex; flex-direction: column; align-items: flex-end; }
+.cf-info-label {
+  font-size: 9.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+  color: #aaa; margin-bottom: 4px;
+}
+.cf-info-value {
+  font-size: 13px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a;
+}
+
+.cf-info-price { width: 100%; margin-bottom: 22px; display: flex; flex-direction: column; align-items: flex-end; }
+.cf-info-price-value { font-size: 18px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a; }
+.cf-info-price-pozo { font-size: 11px; color: #888; margin-top: 4px; }
+
+.cf-info-brochure {
+  font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
+  color: #0a0a0a; text-decoration: none;
+  border-bottom: 1px solid #0a0a0a; padding-bottom: 2px;
+  transition: opacity .2s;
+}
+.cf-info-brochure:hover { opacity: .6; }
+
+/* Center: main image with mouse scrub */
+.cf-main-col {
+  flex: 1; min-width: 0;
+  position: relative; overflow: hidden;
+  cursor: ew-resize;
+  background: #f0f0ee;
+}
+.cf-main-col img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  pointer-events: none; -webkit-user-drag: none;
+  transition: opacity .25s ease;
+}
+.cf-main-counter {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(255,255,255,.9); backdrop-filter: blur(6px);
+  padding: 6px 14px; border-radius: 100px;
+  font-size: 11px; letter-spacing: .08em; color: #999;
+  pointer-events: none;
+}
+.cf-main-counter strong { color: #0a0a0a; font-weight: 500; }
+.cf-main-counter-sep { opacity: .5; }
+
+.cf-scrub-hint {
+  position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.5); color: #fff;
+  padding: 5px 12px; border-radius: 100px;
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0; transition: opacity .25s ease;
+}
+.cf-main-col:hover .cf-scrub-hint { opacity: 1; }
+
+/* Right: description */
+.cf-desc-col {
+  width: 23%; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: flex-start;
+  padding: 48px 32px;
+  overflow-y: auto;
+}
+.cf-desc-text {
+  font-size: 14px; line-height: 1.7; color: #333;
+  margin: 0;
+}
 
 /* ─── RESPONSIVE ────────────────────────────────── */
 @media (max-width: 900px) {
@@ -563,7 +591,7 @@ body:has(.cf-list) {
   .cf-nav { height: 40px; }
   .cf-subbar { flex-wrap: wrap; height: auto; padding: 6px 0; gap: 10px; }
   .cf-row { flex-direction: column; min-height: auto; }
-  .cf-row.cf-expanded { min-height: 80vh; }
+  .cf-row.cf-expanded { min-height: auto; }
   .cf-meta-col {
     width: 100%; border-right: none; border-bottom: 1px solid #e8e8e8;
     flex-direction: row; align-items: center; justify-content: flex-start;
@@ -573,8 +601,12 @@ body:has(.cf-list) {
   .cf-meta-tag { margin-top: 0; margin-left: auto; }
   .cf-gallery-col { height: 280px; }
   .cf-row.cf-expanded .cf-gallery-col { height: auto; flex: 1; }
-  .cf-sl-prev { display: none; }
-  .cf-sl-center { width: 50%; padding: 24px 18px; }
+  .cf-expanded-wrap { flex-direction: column; }
+  .cf-info-col { width: 100%; padding: 24px 20px; align-items: flex-start; text-align: left; }
+  .cf-info-row { align-items: flex-start; }
+  .cf-info-price { align-items: flex-start; }
+  .cf-main-col { height: 60vh; }
+  .cf-desc-col { width: 100%; padding: 24px 20px; }
 }
 @media (max-width: 580px) {
   .cf-nav-btn { padding: 0 10px; font-size: 10px; }
