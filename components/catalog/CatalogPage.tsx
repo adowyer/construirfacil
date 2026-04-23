@@ -21,22 +21,55 @@ export type House = {
   lqip_color: string
   tags?: (string | null)[]
   status?: string
+  linea?: string | null
   gallery_images?: { storage_url: string; alt_text?: string | null }[]
 }
 
-const CATEGORIES: { key: string; label: string; match: (h: House) => boolean }[] = [
-  { key: 'all', label: 'Todos los modelos', match: () => true },
-  { key: '1', label: '1 Dorm.', match: h => (h.min_bedrooms ?? 0) === 1 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) <= 1 },
-  { key: '2-3', label: '2–3 Dorm.', match: h => (h.min_bedrooms ?? 0) >= 1 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 2 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) <= 3 },
-  { key: '4+', label: '4+ Dorm.', match: h => (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 4 },
+const LINES = [
+  { key: 'all', label: 'Todos' },
+  { key: 'BOSQUE', label: 'Bosque' },
+  { key: 'ATLAS', label: 'Atlas' },
+  { key: 'TERRA', label: 'Terra' },
 ]
+
+const BED_FILTERS = [
+  { key: 'all', label: 'Todos', match: (_h: House) => true },
+  { key: '1', label: '1 Dorm.', match: (h: House) => (h.min_bedrooms ?? 0) <= 1 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) <= 1 },
+  { key: '2-3', label: '2–3 Dorm.', match: (h: House) => (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 2 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) <= 3 },
+  { key: '4+', label: '4+ Dorm.', match: (h: House) => (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 4 },
+]
+
+type SortOrder = 'none' | 'asc' | 'desc'
 
 export default function CatalogPage({ houses = [] }: { houses: House[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [filterKey, setFilterKey] = useState<string>('all')
+  const [lineKey, setLineKey] = useState<string>('all')
+  const [bedKey, setBedKey] = useState<string>('all')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('none')
 
-  const activeFilter = CATEGORIES.find(c => c.key === filterKey) ?? CATEGORIES[0]
-  const filtered = houses.filter(activeFilter.match)
+  // Filter by line
+  const byLine = lineKey === 'all'
+    ? houses
+    : houses.filter(h => h.linea === lineKey)
+
+  // Filter by bedrooms
+  const activeBed = BED_FILTERS.find(b => b.key === bedKey) ?? BED_FILTERS[0]
+  const byBed = byLine.filter(activeBed.match)
+
+  // Sort by price
+  const sorted = [...byBed].sort((a, b) => {
+    if (sortOrder === 'none') return 0
+    const pa = a.public_price_usd ?? Infinity
+    const pb = b.public_price_usd ?? Infinity
+    return sortOrder === 'asc' ? pa - pb : pb - pa
+  })
+
+  // When changing line, reset sub-filters
+  function selectLine(key: string) {
+    setLineKey(key)
+    setBedKey('all')
+    setExpandedId(null)
+  }
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -64,24 +97,66 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/cf_logo_gris.png" alt="ConstruirFácil" className="cf-brand-logo" />
         </a>
-        <nav className="cf-nav">
-          {CATEGORIES.map(c => (
-            <button
-              key={c.key}
-              className={'cf-nav-btn' + (filterKey === c.key ? ' cf-active' : '')}
-              onClick={() => { setFilterKey(c.key); setExpandedId(null) }}
-            >
-              {c.label}
-            </button>
-          ))}
-        </nav>
+
+        <div className="cf-nav-area">
+          {/* Line filter */}
+          <nav className="cf-nav">
+            {LINES.map(l => (
+              <button
+                key={l.key}
+                className={'cf-nav-btn' + (lineKey === l.key ? ' cf-active' : '')}
+                onClick={() => selectLine(l.key)}
+              >
+                {l.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Sub-filters: bedrooms + price sort */}
+          <div className="cf-subbar">
+            {/* Bedroom sub-filter — only when a line is selected */}
+            {lineKey !== 'all' && (
+              <div className="cf-bed-filters">
+                {BED_FILTERS.map(b => (
+                  <button
+                    key={b.key}
+                    className={'cf-bed-btn' + (bedKey === b.key ? ' cf-active' : '')}
+                    onClick={() => { setBedKey(b.key); setExpandedId(null) }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Price sort */}
+            <div className="cf-sort">
+              <span className="cf-sort-label">Precio</span>
+              <button
+                className={'cf-sort-btn' + (sortOrder === 'asc' ? ' cf-active' : '')}
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'none' : 'asc')}
+                title="Menor a mayor"
+              >
+                ↑ Menor
+              </button>
+              <button
+                className={'cf-sort-btn' + (sortOrder === 'desc' ? ' cf-active' : '')}
+                onClick={() => setSortOrder(sortOrder === 'desc' ? 'none' : 'desc')}
+                title="Mayor a menor"
+              >
+                ↓ Mayor
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="cf-nav-right">
           <a href="#" className="cf-constructoras-link">Constructoras</a>
         </div>
       </header>
 
       <main className="cf-list" style={{ width: '100%' }}>
-        {filtered.map(h => (
+        {sorted.map(h => (
           <Row
             key={h.variant_code}
             house={h}
@@ -90,7 +165,7 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
             onClose={() => setExpandedId(null)}
           />
         ))}
-        {filtered.length === 0 && (
+        {sorted.length === 0 && (
           <div className="cf-empty">No hay modelos que coincidan con este filtro.</div>
         )}
       </main>
@@ -165,7 +240,6 @@ function Row({
       onClick={() => !expanded && onOpen()}
     >
       <div className="cf-meta-col">
-        <div className="cf-meta-icon" dangerouslySetInnerHTML={{ __html: iconSvg(house.variant_code) }} />
         <div className="cf-meta-name">{house.name}</div>
         <div className="cf-meta-loc">{locLine}</div>
         <div className="cf-meta-tag">{statusTag}</div>
@@ -196,7 +270,6 @@ function Row({
 
           <div className="cf-sl-center" onClick={e => e.stopPropagation()}>
             <button className="cf-sl-close" onClick={onClose} aria-label="Cerrar">×</button>
-            <div className="cf-sl-icon" dangerouslySetInnerHTML={{ __html: iconSvg(house.variant_code) }} />
             <div className="cf-sl-name">{house.name}</div>
             <div className="cf-sl-loc">{locLine}</div>
             {house.recommended_use && <div className="cf-sl-desc">{house.recommended_use}</div>}
@@ -268,9 +341,9 @@ body:has(.cf-list) {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── TOP NAV ─────────────────────────────────── */
 .cf-topnav {
   position: sticky; top: 0; z-index: 100;
-  height: 140px; 
   display: flex; align-items: center;
   background: rgba(255,255,255,.97);
   backdrop-filter: blur(10px);
@@ -278,18 +351,29 @@ body:has(.cf-list) {
   padding: 0 48px;
   font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
   color: #0a0a0a;
+  min-height: 140px;
+  flex-wrap: wrap;
+  gap: 0;
 }
 .cf-brand {
   display: flex; align-items: center;
   margin-right: 48px; flex-shrink: 0;
   text-decoration: none;
 }
-.cf-brand-logo {
-  height: 85px; 
-  width: auto;
-  display: block;
+.cf-brand-logo { height: 85px; width: auto; display: block; }
+
+/* nav area: stacks line nav + subbar vertically */
+.cf-nav-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  height: 140px;
 }
-.cf-nav { flex: 1; display: flex; align-items: stretch; height: 100%; }
+
+/* Line nav */
+.cf-nav { display: flex; align-items: center; height: 52px; }
 .cf-nav-btn {
   display: flex; align-items: center; padding: 0 18px; height: 100%;
   font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
@@ -298,16 +382,59 @@ body:has(.cf-list) {
 }
 .cf-nav-btn:hover, .cf-nav-btn.cf-active { color: #0a0a0a; }
 .cf-nav-btn.cf-active::after {
-  content: ''; position: absolute; bottom: -1px; left: 18px; right: 18px;
+  content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
   height: 2px; background: #0a0a0a;
 }
-.cf-nav-right { flex-shrink: 0; display: flex; align-items: center; }
+
+/* Subbar: bedroom filters + price sort */
+.cf-subbar {
+  display: flex; align-items: center;
+  height: 40px;
+  border-top: 1px solid #f0f0f0;
+  gap: 24px;
+}
+
+/* Bedroom filter buttons */
+.cf-bed-filters { display: flex; align-items: center; gap: 4px; }
+.cf-bed-btn {
+  padding: 4px 14px;
+  font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  color: #aaa; background: none;
+  border: 1px solid transparent; border-radius: 100px;
+  cursor: pointer; transition: color .2s, border-color .2s;
+  font-family: inherit;
+}
+.cf-bed-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
+.cf-bed-btn.cf-active { color: #0a0a0a; border-color: #0a0a0a; }
+
+/* Price sort */
+.cf-sort {
+  display: flex; align-items: center; gap: 6px;
+  margin-left: auto;
+}
+.cf-sort-label {
+  font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  color: #ccc;
+}
+.cf-sort-btn {
+  padding: 4px 12px;
+  font-size: 11px; font-weight: 500; letter-spacing: .04em;
+  color: #aaa; background: none;
+  border: 1px solid transparent; border-radius: 100px;
+  cursor: pointer; transition: color .2s, border-color .2s, background .2s;
+  font-family: inherit;
+}
+.cf-sort-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
+.cf-sort-btn.cf-active { color: #fff; background: #0a0a0a; border-color: #0a0a0a; }
+
+.cf-nav-right { flex-shrink: 0; display: flex; align-items: center; margin-left: 24px; }
 .cf-constructoras-link {
   font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
   color: #aaa; text-decoration: none; transition: color .2s;
 }
 .cf-constructoras-link:hover { color: #0a0a0a; }
 
+/* ─── LIST ─────────────────────────────────────── */
 .cf-list {
   width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 48px;
   font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
@@ -315,6 +442,7 @@ body:has(.cf-list) {
 }
 .cf-empty { padding: 80px 0; text-align: center; color: #999; font-size: 14px; }
 
+/* ─── ROW ──────────────────────────────────────── */
 .cf-row {
   display: flex; align-items: stretch; min-height: 440px;
   border-bottom: 1px solid #e8e8e8;
@@ -332,8 +460,6 @@ body:has(.cf-list) {
   transition: width .6s cubic-bezier(.4,0,.2,1), opacity .3s ease, padding .6s cubic-bezier(.4,0,.2,1);
 }
 .cf-row.cf-expanded .cf-meta-col { width: 0; opacity: 0; padding: 0; border-right: none; }
-.cf-meta-icon { width: 52px; height: 52px; margin-bottom: 20px; flex-shrink: 0; }
-.cf-meta-icon svg { width: 100%; height: 100%; }
 .cf-meta-name { font-size: 40px; font-weight: 700; letter-spacing: -.025em; line-height: 1.15; margin-bottom: 9px; }
 .cf-meta-loc { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: #999; }
 .cf-meta-tag {
@@ -349,8 +475,7 @@ body:has(.cf-list) {
 .cf-row.cf-expanded .cf-thumb-wrap { opacity: 0; pointer-events: none; }
 .cf-thumb-lqip {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  filter: blur(22px); transform: scale(1.1);
-  transition: opacity .8s ease; z-index: 1;
+  filter: blur(22px); transform: scale(1.1); transition: opacity .8s ease; z-index: 1;
 }
 .cf-thumb-wrap.cf-loaded .cf-thumb-lqip { opacity: 0; }
 .cf-thumb-real {
@@ -358,7 +483,6 @@ body:has(.cf-list) {
   object-fit: cover; display: block; opacity: 1; z-index: 1;
   transition: transform .85s cubic-bezier(.2,.8,.2,1);
 }
-.cf-thumb-wrap.cf-loaded .cf-thumb-real { opacity: 1; }
 
 .cf-slider-wrap {
   position: absolute; inset: 0; display: flex;
@@ -368,8 +492,7 @@ body:has(.cf-list) {
 .cf-row.cf-expanded .cf-slider-wrap { opacity: 1; pointer-events: auto; }
 
 .cf-sl-prev {
-  width: 9%; flex-shrink: 0;
-  overflow: hidden; position: relative; cursor: pointer;
+  width: 9%; flex-shrink: 0; overflow: hidden; position: relative; cursor: pointer;
 }
 .cf-sl-prev::after {
   content: ''; position: absolute; inset: 0;
@@ -397,9 +520,7 @@ body:has(.cf-list) {
   font-size: 16px; color: #999; transition: border-color .2s, color .2s; font-family: inherit;
 }
 .cf-sl-close:hover { border-color: #0a0a0a; color: #0a0a0a; }
-.cf-sl-icon { width: 56px; height: 56px; margin-bottom: 18px; flex-shrink: 0; }
-.cf-sl-icon svg { width: 100%; height: 100%; }
-.cf-sl-name { font-size: 30px; font-weight: 7400; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 8px; }
+.cf-sl-name { font-size: 30px; font-weight: 400; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 8px; }
 .cf-sl-loc { font-size: 10.5px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: #aaa; margin-bottom: 22px; }
 .cf-sl-desc { font-size: 12px; line-height: 1.7; color: #555; font-style: italic; margin-bottom: 22px; }
 .cf-sl-counter { font-size: 11px; letter-spacing: .04em; color: #ccc; margin-bottom: 14px; }
@@ -434,9 +555,13 @@ body:has(.cf-list) {
 }
 .cf-sl-main:hover img { transform: scale(1.03); }
 
+/* ─── RESPONSIVE ────────────────────────────────── */
 @media (max-width: 900px) {
   .cf-list { padding: 0 20px; }
-  .cf-topnav { padding: 0 20px; }
+  .cf-topnav { padding: 0 20px; min-height: auto; }
+  .cf-nav-area { height: auto; padding: 8px 0; }
+  .cf-nav { height: 40px; }
+  .cf-subbar { flex-wrap: wrap; height: auto; padding: 6px 0; gap: 10px; }
   .cf-row { flex-direction: column; min-height: auto; }
   .cf-row.cf-expanded { min-height: 80vh; }
   .cf-meta-col {
@@ -445,7 +570,6 @@ body:has(.cf-list) {
     text-align: left; padding: 20px; gap: 16px;
   }
   .cf-row.cf-expanded .cf-meta-col { display: none; }
-  .cf-meta-icon { margin-bottom: 0; }
   .cf-meta-tag { margin-top: 0; margin-left: auto; }
   .cf-gallery-col { height: 280px; }
   .cf-row.cf-expanded .cf-gallery-col { height: auto; flex: 1; }
