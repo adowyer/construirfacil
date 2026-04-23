@@ -285,7 +285,7 @@ body:has(.cf-list) {
   text-decoration: none;
 }
 .cf-brand-logo {
-  height: 80px; 
+  height: 85px; 
   width: auto;
   display: block;
 }
