@@ -462,9 +462,10 @@ body:has(.cf-list) {
   padding-right: 20px;
 }
 .cf-meta-name {
-  font-size: 28px; font-weight: 400;
+  font-size: 20px; font-weight: 400;
   letter-spacing: -.02em; line-height: 1.15;
   margin-bottom: 10px;
+  text-transform: uppercase;
 }
 .cf-meta-loc {
   font-size: 11px; font-weight: 500;
@@ -532,8 +533,8 @@ body:has(.cf-list) {
 .cf-close-btn:hover { border-color: #0a0a0a; color: #0a0a0a; }
 
 .cf-info-name {
-  font-size: 34px; font-weight: 400; letter-spacing: -.02em;
-  line-height: 1.15; margin-bottom: 32px;
+  font-size: 24px; font-weight: 400; letter-spacing: -.02em;
+  line-height: 1.15; margin-bottom: 32px; text-transform: uppercase;
 }
 
 .cf-info-meta { display: flex; flex-direction: column; gap: 18px; margin-bottom: 32px; width: 100%; }
