@@ -7,7 +7,7 @@ import { getPublishedModels } from '@/lib/supabase/queries/models'
 import {
   getHouseImagesByVariantCodes,
   buildStorageUrl,
-} from '@/lib/supabase/queries/house-images'
+} from '@/lib/supabase/queries/house_images'
 import CatalogPage from '@/components/catalog/CatalogPage'
 import { MOCK_HOUSES } from '@/lib/supabase/mock-data'
 
@@ -21,24 +21,24 @@ export const revalidate = 60
 // Legacy cover map — kept as fallback while you migrate photos to Supabase Storage
 const B = 'https://posadasalrio.construirfacil.com/wp-content/uploads/2025/11/'
 const COVER_IMAGE_MAP: Record<string, string> = {
-  HPR02_1_I:  B + 'living-t2.png',
-  HPR01_2_I:  B + 'Estilo-2-6.png',
-  HPR03_1_I:  B + 'casa3_opc1_2_posadas_PBjpg.jpg',
-  HPR01_3_I:  B + 'Image-from-Google-Drive-1-1-2.png',
+  HPR02_1_I: B + 'living-t2.png',
+  HPR01_2_I: B + 'Estilo-2-6.png',
+  HPR03_1_I: B + 'casa3_opc1_2_posadas_PBjpg.jpg',
+  HPR01_3_I: B + 'Image-from-Google-Drive-1-1-2.png',
   HPR01_1_II: B + 'Interiores-Typologia-1-IMG2-2-e1764112587890.png',
   HPR02_3_II: B + 'R-2-PLANTAS-D3.1.jpg',
-  HPR03_3_I:  B + '3opc2_PB_posadas.png',
+  HPR03_3_I: B + '3opc2_PB_posadas.png',
   HPR02_2_II: B + 'R-2-PLANTAS-D-2.4.jpg',
   HPR02_1_II: B + 'R-2-PLANTAS-D1.2-1.jpg',
   HPR01_3_II: B + 'Image-from-Google-Drive-2-2.png',
-  HPR02_3_I:  B + 'R-1-PLANTA-D3.1.jpg',
-  HPR01_1_I:  B + 'Image-from-Google-Drive-4.png',
+  HPR02_3_I: B + 'R-1-PLANTA-D3.1.jpg',
+  HPR01_1_I: B + 'Image-from-Google-Drive-4.png',
   HPR03_3_II: B + 'casa_opc3_1_posadas-2.jpg',
   HPR03_2_II: B + '3OPC2_2_posadas-2.png',
   HPR01_2_II: B + 'Image-from-Google-Drive-1-3.png',
   HPR03_1_II: B + 'casa3_opc1_2_posadas-2-1.jpg',
-  HPR02_2_I:  B + 'living-t2.png',
-  HPR03_2_I:  B + '3opc2_PB_posadas.png',
+  HPR02_2_I: B + 'living-t2.png',
+  HPR03_2_I: B + '3opc2_PB_posadas.png',
 }
 
 export default async function HomePage() {
@@ -104,8 +104,8 @@ export default async function HomePage() {
 
 const GRADIENT_KEYS = [
   'ph-timbo2', 'ph-cedro1', 'ph-cedro2', 'ph-roble3',
-  'ph-alamo1', 'ph-pino4',  'ph-sauce1', 'ph-nogal2',
-  'ph-eucalip3','ph-jacar1', 'ph-quebr2', 'ph-lapach1',
+  'ph-alamo1', 'ph-pino4', 'ph-sauce1', 'ph-nogal2',
+  'ph-eucalip3', 'ph-jacar1', 'ph-quebr2', 'ph-lapach1',
 ]
 
 const LQIP_PALETTE = [
