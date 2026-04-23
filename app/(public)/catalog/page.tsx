@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // app/page.tsx  
 // ─────────────────────────────────────────────────────────────────────────────
+export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getPublishedModels } from '@/lib/supabase/queries/models'

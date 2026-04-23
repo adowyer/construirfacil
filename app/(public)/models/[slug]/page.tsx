@@ -6,6 +6,7 @@
  *
  * Fetch order: Supabase by variant_code → mock by slug → 404
  */
+'use client'
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -20,24 +21,24 @@ import ModelPlaceholder from '@/components/catalog/ModelPlaceholder'
 // ── Cover images keyed by variant_code ───────────────────────────────────────
 const _B = 'https://posadasalrio.construirfacil.com/wp-content/uploads/2025/11/'
 const COVER_IMAGE_MAP: Record<string, string> = {
-  HPR02_1_I:  _B + 'living-t2.png',
-  HPR01_2_I:  _B + 'Estilo-2-6.png',
-  HPR03_1_I:  _B + 'casa3_opc1_2_posadas_PBjpg.jpg',
-  HPR01_3_I:  _B + 'Image-from-Google-Drive-1-1-2.png',
+  HPR02_1_I: _B + 'living-t2.png',
+  HPR01_2_I: _B + 'Estilo-2-6.png',
+  HPR03_1_I: _B + 'casa3_opc1_2_posadas_PBjpg.jpg',
+  HPR01_3_I: _B + 'Image-from-Google-Drive-1-1-2.png',
   HPR01_1_II: _B + 'Interiores-Typologia-1-IMG2-2-e1764112587890.png',
   HPR02_3_II: _B + 'R-2-PLANTAS-D3.1.jpg',
-  HPR03_3_I:  _B + '3opc2_PB_posadas.png',
+  HPR03_3_I: _B + '3opc2_PB_posadas.png',
   HPR02_2_II: _B + 'R-2-PLANTAS-D-2.4.jpg',
   HPR02_1_II: _B + 'R-2-PLANTAS-D1.2-1.jpg',
   HPR01_3_II: _B + 'Image-from-Google-Drive-2-2.png',
-  HPR02_3_I:  _B + 'R-1-PLANTA-D3.1.jpg',
-  HPR01_1_I:  _B + 'Image-from-Google-Drive-4.png',
+  HPR02_3_I: _B + 'R-1-PLANTA-D3.1.jpg',
+  HPR01_1_I: _B + 'Image-from-Google-Drive-4.png',
   HPR03_3_II: _B + 'casa_opc3_1_posadas-2.jpg',
   HPR03_2_II: _B + '3OPC2_2_posadas-2.png',
   HPR01_2_II: _B + 'Image-from-Google-Drive-1-3.png',
   HPR03_1_II: _B + 'casa3_opc1_2_posadas-2-1.jpg',
-  HPR02_2_I:  _B + 'living-t2.png',
-  HPR03_2_I:  _B + '3opc2_PB_posadas.png',
+  HPR02_2_I: _B + 'living-t2.png',
+  HPR03_2_I: _B + '3opc2_PB_posadas.png',
 }
 
 // ── Gallery images keyed by variant_code ─────────────────────────────────────
@@ -167,11 +168,11 @@ export default async function ModelDetailPage({
   const house = await getHouseForSlug(slug)
   if (!house) notFound()
 
-  const isWood    = (house.construction_system?.slug ?? '').includes('wood')
-  const discount  = pctOff(house.price_lista_usd, house.price_pozo_usd)
+  const isWood = (house.construction_system?.slug ?? '').includes('wood')
+  const discount = pctOff(house.price_lista_usd, house.price_pozo_usd)
 
   const whatsappNumber = '5491155551234'
-  const whatsappText   = encodeURIComponent(
+  const whatsappText = encodeURIComponent(
     `Hola, me interesa el modelo ${house.name} (${house.total_area_m2} m²). ¿Podría obtener más información?`,
   )
 
