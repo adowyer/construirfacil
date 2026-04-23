@@ -6,20 +6,6 @@ import {
   buildStorageUrl,
 } from '@/lib/supabase/queries/house_images'
 import CatalogPage from '@/components/catalog/CatalogPage'
-import { MOCK_HOUSES } from '@/lib/supabase/mock-data'
-
-const mappedMockHouses = MOCK_HOUSES.map((m: any) => ({
-  ...m,
-  variant_code: m.slug,
-  area_m2: m.total_area_m2,
-  min_bedrooms: m.bedrooms,
-  max_bedrooms: m.bedrooms,
-  beds: String(m.bedrooms),
-  recommended_use: m.description,
-  construction_system: m.construction_system?.name ?? null,
-  public_price_usd: m.price_lista_usd ?? m.price_from_usd,
-  brochure_url: null,
-})) as any
 
 export const dynamic = 'force-dynamic'
 
@@ -55,10 +41,6 @@ export default async function HomePage() {
   try {
     const supabase = await createClient()
     const houses = await getPublishedModels(supabase)
-
-    if (!houses.length) {
-      return <CatalogPage houses={mappedMockHouses} />
-    }
 
     // 1. Fetch all images for these models in one query
     const variantCodes = houses.map((h: { variant_code: string }) => h.variant_code).filter(Boolean)
@@ -108,7 +90,7 @@ export default async function HomePage() {
     return <CatalogPage houses={normalized} />
   } catch (err) {
     console.error('[HomePage]', err)
-    return <CatalogPage houses={mappedMockHouses} />
+    return <CatalogPage houses={[]} />
   }
 }
 
