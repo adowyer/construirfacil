@@ -6,7 +6,6 @@
  *
  * Fetch order: Supabase by variant_code → mock by slug → 404
  */
-'use client'
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -195,21 +194,18 @@ export default async function ModelDetailPage({
           borderBottom: '1px solid #e8e8e8',
         }}
       >
-        <Link
+        <a
           href="/"
+          className="detail-back-link"
           style={{
             fontFamily: 'var(--font-geist), sans-serif',
             fontSize: '13px',
             fontWeight: 500,
-            color: '#999',
-            textDecoration: 'none',
             letterSpacing: '0.02em',
           }}
-          onMouseEnter={e => ((e.target as HTMLElement).style.color = '#0a0a0a')}
-          onMouseLeave={e => ((e.target as HTMLElement).style.color = '#999')}
         >
           ← Catálogo
-        </Link>
+        </a>
 
         <span style={{
           fontFamily: 'var(--font-geist), sans-serif',

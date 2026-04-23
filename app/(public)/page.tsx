@@ -4,12 +4,12 @@ import { getPublishedModels } from '@/lib/supabase/queries/models'
 import CatalogPage from '@/components/catalog/CatalogPage'
 import { MOCK_HOUSES } from '@/lib/supabase/mock-data'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Catálogo de modelos — ConstruirFácil',
   description: 'Explorá modelos de casas en Steel Frame y Wood Frame de constructoras verificadas en Argentina.',
 }
-
-export const revalidate = 60
 
 // ── Scraped cover images keyed by variant_code ────────────────────────────────
 const B = 'https://posadasalrio.construirfacil.com/wp-content/uploads/2025/11/'

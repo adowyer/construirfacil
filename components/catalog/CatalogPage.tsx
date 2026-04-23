@@ -31,7 +31,7 @@ const CATEGORIES: { key: string; label: string; match: (h: House) => boolean }[]
   { key: '4+', label: '4+ Dorm.', match: h => (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 4 },
 ]
 
-export default function CatalogPage({ houses }: { houses: House[] }) {
+export default function CatalogPage({ houses = [] }: { houses: House[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterKey, setFilterKey] = useState<string>('all')
 
