@@ -38,11 +38,13 @@ const COVER_IMAGE_MAP: Record<string, string> = {
 }
 
 export default async function HomePage() {
+  console.log('[DEBUG] HomePage start')
   try {
+    console.log('[DEBUG] creating client')
     const supabase = await createClient()
+    console.log('[DEBUG] client created')
     const houses = await getPublishedModels(supabase)
-
-    console.log('[DEBUG] houses count:', houses.length, houses[0])
+    console.log('[DEBUG] houses count:', houses.length)
 
     // 1. Fetch all images for these models in one query
     const variantCodes = houses.map((h: { variant_code: string }) => h.variant_code).filter(Boolean)
