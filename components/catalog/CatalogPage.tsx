@@ -154,7 +154,7 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
         {sorted.length === 0 && (
           <div className="cf-empty">No hay modelos que coincidan con este filtro.</div>
         )}
-      </main>
+    </main>
     </>
   )
 }
@@ -164,9 +164,8 @@ function Row({
 }: {
   house: House; expanded: boolean; onOpen: () => void; onClose: () => void
 }) {
-  const [slideIdx, setSlideIdx] = useState(0)
-  const [thumbLoaded, setThumbLoaded] = useState(false)
-  const mainRef = useRef<HTMLDivElement>(null)
+  const rowRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const slides: { storage_url: string; alt?: string | null }[] = (
     house.gallery_images && house.gallery_images.length
@@ -176,21 +175,98 @@ function Row({
         : []
   ).map(s => ({ storage_url: s.storage_url, alt: (s as any).alt_text ?? (s as any).alt ?? house.name }))
 
-  const total = slides.length
-
-  useEffect(() => { if (expanded) setSlideIdx(0) }, [expanded])
-
+  // --- 1. Pure Zoom-Out Intercept (BIG.dk standard) ---
   useEffect(() => {
-    if (!expanded || total <= 1) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') setSlideIdx(i => Math.min(total - 1, i + 1))
-      if (e.key === 'ArrowLeft') setSlideIdx(i => Math.max(0, i - 1))
+    if (!expanded) {
+      document.body.style.overflowY = 'auto'
+      if (rowRef.current) rowRef.current.style.removeProperty('--expand-progress')
+      return
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [expanded, total])
 
-  const rowRef = useRef<HTMLDivElement>(null)
+    let rafId: number
+    let isLooping = true
+    let virtualScroll = 0
+
+    // Spring physics states
+    const targetProgress = { current: 1.0 }
+    const currentProgress = { current: 0.45 } // Starts zoomed out to actively bounce open!
+    const velocity = { current: 0.0 }
+
+    const loop = () => {
+      if (!isLooping) return
+      
+      const stiffness = 0.08  
+      const damping = 0.70    
+      
+      const pull = (targetProgress.current - currentProgress.current) * stiffness
+      velocity.current += pull
+      velocity.current *= damping
+      currentProgress.current += velocity.current
+
+      // Lock bounds & Close execution
+      if (targetProgress.current <= 0 && currentProgress.current <= 0.02 && Math.abs(velocity.current) < 0.005) {
+        document.body.style.overflowY = 'auto'
+        onClose()
+        isLooping = false
+        return
+      }
+
+      if (rowRef.current) {
+        rowRef.current.style.setProperty('--expand-progress', Math.max(0, currentProgress.current).toFixed(4))
+      }
+
+      rafId = requestAnimationFrame(loop)
+    }
+
+    // Start loop immediately so it bounces open right away without jump!
+    rafId = requestAnimationFrame(loop)
+
+    const handleWheel = (e: WheelEvent) => {
+      // If primarily vertical, capture it as "zoom out"
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) + 5) {
+        e.preventDefault() 
+        virtualScroll += e.deltaY
+        if (virtualScroll < 0) virtualScroll = 0 // Don't allow scrolling 'up' into negative
+        targetProgress.current = Math.max(0, 1.0 - (virtualScroll / 180))
+      }
+    }
+
+    // Wait 850ms for the auto-smooth scroll to finish, THEN lock body and listen
+    const timer = setTimeout(() => {
+      document.body.style.overflowY = 'hidden'
+      window.addEventListener('wheel', handleWheel, { passive: false })
+    }, 850)
+
+    return () => {
+      isLooping = false
+      document.body.style.overflowY = 'auto'
+      clearTimeout(timer)
+      window.removeEventListener('wheel', handleWheel)
+      cancelAnimationFrame(rafId)
+    }
+  }, [expanded, onClose])
+
+  // --- 2. Click and Drag to Pan Horizontal (like BIG.dk) ---
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [startD, setStartD] = useState(0)
+
+  const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!expanded) return
+    setIsDragging(true)
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    setStartX(clientX)
+    setStartD(window.scrollX)
+  }
+  const onDragEnd = () => setIsDragging(false)
+  const onDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDragging || !expanded) return
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const walk = (clientX - startX) * 1.5 // Panning speed weight
+    window.scrollTo({ left: startD - walk, top: window.scrollY, behavior: 'instant' })
+  }
+
+  // Center row horizontally aligned with the nav organically
   useEffect(() => {
     if (expanded && rowRef.current) {
       setTimeout(() => {
@@ -198,26 +274,11 @@ function Row({
         const rowEl = rowRef.current
         if (!rowEl) return
         const rowRect = rowEl.getBoundingClientRect()
-        const rowCenter = rowRect.top + window.scrollY + rowRect.height / 2
-        const targetY = rowCenter - window.innerHeight / 2 - navHeight / 2
+        const targetY = rowRect.top + window.scrollY - navHeight
         window.scrollTo({ top: targetY, behavior: 'smooth' })
       }, 150)
     }
   }, [expanded])
-
-  // Mouse scrub over main image → slide index
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!expanded || total <= 1) return
-    const el = mainRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const ratio = Math.max(0, Math.min(1, x / rect.width))
-    const newIdx = Math.min(total - 1, Math.floor(ratio * total))
-    if (newIdx !== slideIdx) setSlideIdx(newIdx)
-  }
-
-  const curImg = slides[slideIdx]
 
   const locLine = [
     house.area_m2 ? `${house.area_m2} m²` : null,
@@ -234,19 +295,26 @@ function Row({
   return (
     <div
       ref={rowRef}
-      className={'cf-row' + (expanded ? ' cf-expanded' : '')}
+      className={'cf-row' + (expanded ? ' cf-expanded' : '') + (isDragging ? ' cf-dragging' : '')}
       onClick={() => !expanded && onOpen()}
+      onMouseDown={onDragStart}
+      onMouseUp={onDragEnd}
+      onMouseLeave={onDragEnd}
+      onMouseMove={onDragMove}
+      onTouchStart={onDragStart}
+      onTouchEnd={onDragEnd}
+      onTouchMove={onDragMove}
     >
-      <div className="cf-row-grid">
-
-        {/* Col 1: collapsed meta (fades out) + expanded info (fades in) */}
-        <div className="cf-col-left">
+      {/* ── COL 1: Meta (Left) ── */}
+      <div className="cf-col-left">
+        {!expanded ? (
           <div className="cf-meta-col">
             <div className="cf-meta-name">{house.name}</div>
             <div className="cf-meta-loc">{locLine}</div>
             <div className="cf-meta-tag">{statusTag}</div>
           </div>
-          <div className="cf-info-col" onClick={e => expanded && e.stopPropagation()}>
+        ) : (
+          <div className="cf-info-col" onClick={e => e.stopPropagation()}>
             <button
               className="cf-close-btn"
               onClick={e => { e.stopPropagation(); onClose() }}
@@ -306,58 +374,28 @@ function Row({
               Ver más →
             </a>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Col 2: image (always visible, grows on expand) */}
-        <div
-          ref={mainRef}
-          className="cf-col-center"
-          onMouseMove={handleMouseMove}
-          onClick={e => {
-            if (expanded) {
-              e.stopPropagation()
-              if (total > 1) setSlideIdx(i => (i + 1) % total)
-            }
-          }}
-        >
-          <div className={'cf-img-stage' + (thumbLoaded ? ' cf-loaded' : '')}>
-            <div className="cf-img-lqip" style={{ background: house.lqip_color }} />
-            {!expanded && house.cover_image && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="cf-img-real"
-                src={house.cover_image.storage_url}
-                alt={house.cover_image.alt_text || house.name}
-                loading="lazy"
-                onLoad={() => setThumbLoaded(true)}
-              />
-            )}
-            {expanded && curImg && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="cf-img-real"
-                src={curImg.storage_url}
-                alt={curImg.alt || house.name}
-              />
-            )}
-          </div>
-          {expanded && total > 1 && (
-            <div className="cf-main-counter">
-              <strong>{String(slideIdx + 1).padStart(2, '0')}</strong>
-              <span className="cf-main-counter-sep"> / </span>
-              {String(total).padStart(2, '0')}
-            </div>
-          )}
-        </div>
+      {/* ── COL 2: Gallery (Center Horizontal Scroll) ── */}
+      <div className="cf-col-center cf-gallery" ref={scrollRef}>
+        {slides.length > 0 && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={slides[0].storage_url} alt={slides[0].alt || house.name} className="cf-img-item" />
+        )}
+        {expanded && slides.slice(1).map((img, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} src={img.storage_url} alt={img.alt || house.name} className="cf-img-item" />
+        ))}
+      </div>
 
-        {/* Col 3: whitespace (collapsed) / description (expanded) */}
-        <div className="cf-col-right" onClick={e => expanded && e.stopPropagation()}>
+      {/* ── COL 3: Description (Right) ── */}
+      <div className="cf-col-right" onClick={e => expanded && e.stopPropagation()}>
+        {expanded && house.recommended_use && (
           <div className="cf-desc-col">
-            {house.recommended_use && (
-              <p className="cf-desc-text">{house.recommended_use}</p>
-            )}
+            <p className="cf-desc-text">{house.recommended_use}</p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
@@ -369,26 +407,24 @@ const CSS = `
 body:has(.cf-list) {
   font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: auto !important; /* ALLOW HORIZONTAL SCROLL FOR EXPANDED ITEM */
 }
 
-/* smooth easing shared by all transitions */
+/* smooth easing shared by clean elements */
 .cf-row,
-.cf-row-grid,
 .cf-col-left,
 .cf-col-center,
 .cf-col-right,
-.cf-meta-col,
 .cf-info-col,
 .cf-desc-col,
-.cf-img-stage,
-.cf-img-real,
-.cf-main-counter {
-  transition-timing-function: cubic-bezier(.22, 1, .36, 1);
+.cf-img-item {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ─── TOP NAV ─────────────────────────────────── */
 .cf-topnav {
-  position: sticky; top: 0; z-index: 100;
+  position: sticky; top: 0; left: 0; z-index: 100;
+  width: 100vw !important; /* Ensure it stays viewport width when body stretches horizontally */
   display: flex; align-items: center;
   background: rgba(255,255,255,.97);
   backdrop-filter: blur(10px);
@@ -419,31 +455,21 @@ body:has(.cf-list) {
 .cf-subbar { display: flex; align-items: center; height: 40px; border-top: 1px solid #f0f0f0; gap: 24px; }
 .cf-bed-filters { display: flex; align-items: center; gap: 4px; }
 .cf-bed-btn {
-  padding: 4px 14px;
-  font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
-  color: #aaa; background: none;
-  border: 1px solid transparent; border-radius: 100px;
-  cursor: pointer; transition: color .2s, border-color .2s;
-  font-family: inherit;
+  padding: 4px 14px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  color: #aaa; background: none; border: 1px solid transparent; border-radius: 100px;
+  cursor: pointer; transition: color .2s, border-color .2s; font-family: inherit;
 }
 .cf-bed-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
 .cf-bed-btn.cf-active { color: #0a0a0a; border-color: #0a0a0a; }
 
-.cf-sort { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.cf-sort-label {
-  font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #ccc;
-}
+.cf-sort { display: flex; align-items: center; gap: 6px; margin-left: auto; padding-right: 24px; }
+.cf-sort-label { font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #ccc; }
 .cf-sort-btn {
-  padding: 4px 12px;
-  font-size: 11px; font-weight: 500; letter-spacing: .04em;
-  color: #aaa; background: none;
-  border: 1px solid transparent; border-radius: 100px;
-  cursor: pointer; transition: color .2s, border-color .2s, background .2s;
-  font-family: inherit;
+  padding: 4px 12px; font-size: 11px; font-weight: 500; letter-spacing: .04em; color: #aaa; background: none;
+  border: 1px solid transparent; border-radius: 100px; cursor: pointer; transition: color .2s, border-color .2s, background .2s; font-family: inherit;
 }
 .cf-sort-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
 .cf-sort-btn.cf-active { color: #fff; background: #0a0a0a; border-color: #0a0a0a; }
-
 .cf-nav-right { flex-shrink: 0; display: flex; align-items: center; margin-left: 24px; }
 .cf-constructoras-link {
   font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
@@ -453,110 +479,78 @@ body:has(.cf-list) {
 
 /* ─── LIST ─────────────────────────────────────── */
 .cf-list {
-  width: 100%; max-width: 1400px; margin: 0 auto; padding: 40px 48px 80px;
+  width: 100%; margin: 0; padding: 40px 0 80px;
+  /* Removed max-width here so expanded rows can stretch infinitely horizontally */
   font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
   color: #0a0a0a; font-size: 13px; line-height: 1.5; letter-spacing: -.01em;
 }
 .cf-empty { padding: 80px 0; text-align: center; color: #999; font-size: 14px; }
 
-/* ─── ROW ──────────────────────────────────────── */
+/* ─── ROW LAYOUT (BIG PATTERN) ──────────────────── */
 .cf-row {
-  position: relative;
-  margin-bottom: 80px;
+  display: flex;
+  max-width: 1540px; /* Constrain collapsed rows */
+  margin: 0 auto;
+  padding: 0 48px;
+  height: 440px;
+  border-bottom: 1px solid #e8e8e8;
   cursor: pointer;
-  transition-property: margin;
-  transition-duration: .9s;
+  overflow: hidden;
+  /* Extreme cinematic 2.5s transitions for opening / closing */
+  transition: height 2.5s cubic-bezier(0.16, 1, 0.3, 1), 
+              max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1), 
+              padding 2.5s cubic-bezier(0.16, 1, 0.3, 1), 
+              background 2.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.cf-row:last-child { margin-bottom: 0; }
 .cf-row.cf-expanded {
-  cursor: default;
-  margin-top: 56px;
-  margin-bottom: 56px;
+  height: 85vh;
+  max-width: none;
+  width: max-content; /* This creates the huge horizontal canvas */
+  margin: 0;
+  /* Retain left padding dynamically proportional to the container so it aligns */
+  padding-left: max(48px, calc(50vw - 770px));
+  padding-right: 48px;
+  cursor: grab;
+  background: #fdfdfd;
+  /* Mapped directly to scroll via JS Physics Loop (60fps Spring) */
+  transform-origin: center center;
+  transform: scale(calc(0.75 + 0.25 * var(--expand-progress, 1)));
+}
+.cf-row.cf-dragging {
+  cursor: grabbing;
 }
 
-/* Unified grid: never changes its column count.
-   Column widths animate between collapsed (1fr 2fr 1fr) and expanded (22% 1fr 22%). */
-.cf-row-grid {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  align-items: center;
-  gap: 24px;
-  transition-property: grid-template-columns, gap, min-height;
-  transition-duration: .9s;
-  min-height: 400px;
-}
-.cf-row.cf-expanded .cf-row-grid {
-  grid-template-columns: 22% 1fr 22%;
-  gap: 0;
-  min-height: 82vh;
-}
-
-/* ─── COL LEFT: meta (collapsed) + info (expanded) ─────── */
+/* ─── LEFT: Meta ─── */
 .cf-col-left {
   position: relative;
-  height: 100%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: flex-end;
+  padding: 48px 48px 48px 0;
+  width: 380px;       /* Fixed left column */
+  flex-shrink: 0;
+  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-/* Meta (collapsed state) */
+.cf-row.cf-expanded .cf-col-left {
+  width: 350px;
+}
 .cf-meta-col {
-  display: flex; flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
-  text-align: right;
-  padding-right: 20px;
-  width: 100%;
-  opacity: 1;
-  transition-property: opacity;
-  transition-duration: .35s;
+  display: flex; flex-direction: column; align-items: flex-end; text-align: right;
+  animation: cfFadeIn 0.5s ease forwards;
 }
-.cf-row.cf-expanded .cf-meta-col {
-  opacity: 0;
-  pointer-events: none;
-  transition-duration: .25s;
-}
+.cf-meta-name { font-size: 22px; font-weight: 400; letter-spacing: -.02em; margin-bottom: 8px; color: #0a0a0a; }
+.cf-meta-loc { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: #888; }
+.cf-meta-tag { margin-top: 16px; font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #bbb; }
 
-/* Info (expanded state) — overlays col-left */
 .cf-info-col {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; justify-content: center;
   align-items: flex-end; text-align: right;
-  padding: 48px 32px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(8px);
-  transition-property: opacity, transform;
-  transition-duration: .55s;
-  transition-delay: 0s;
+  padding: 48px 48px 48px 0;
+  animation: cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.cf-row.cf-expanded .cf-info-col {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  transition-delay: .35s;
-}
-
-.cf-meta-name {
-  font-size: 28px; font-weight: 400;
-  letter-spacing: -.02em; line-height: 1.15;
-  margin-bottom: 10px;
-}
-.cf-meta-loc {
-  font-size: 11px; font-weight: 500;
-  letter-spacing: .09em; text-transform: uppercase;
-  color: #888;
-}
-.cf-meta-tag {
-  margin-top: 20px;
-  font-size: 10px; font-weight: 500;
-  letter-spacing: .07em; text-transform: uppercase;
-  color: #bbb;
-}
-
 .cf-close-btn {
-  position: absolute; top: 18px; left: 18px;
+  position: absolute; top: 32px; left: 0px;
   width: 28px; height: 28px; border-radius: 50%;
   border: 1px solid #e0e0e0; background: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -567,19 +561,13 @@ body:has(.cf-list) {
 .cf-close-btn:hover { border-color: #0a0a0a; color: #0a0a0a; }
 
 .cf-info-name {
-  font-size: 34px; font-weight: 400; letter-spacing: -.02em;
-  line-height: 1.15; margin-bottom: 32px;
+  font-size: 30px; font-weight: 400; letter-spacing: -.02em;
+  line-height: 1.15; margin-bottom: 32px; color: #0a0a0a;
 }
-
 .cf-info-meta { display: flex; flex-direction: column; gap: 18px; margin-bottom: 32px; width: 100%; }
 .cf-info-row { display: flex; flex-direction: column; align-items: flex-end; }
-.cf-info-label {
-  font-size: 9.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
-  color: #aaa; margin-bottom: 4px;
-}
-.cf-info-value {
-  font-size: 13px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a;
-}
+.cf-info-label { font-size: 9.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #aaa; margin-bottom: 4px; }
+.cf-info-value { font-size: 13px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a; }
 
 .cf-info-price { width: 100%; margin-bottom: 22px; display: flex; flex-direction: column; align-items: flex-end; }
 .cf-info-price-value { font-size: 18px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a; }
@@ -593,126 +581,141 @@ body:has(.cf-list) {
 }
 .cf-info-more:hover { opacity: .6; }
 
-/* ─── COL CENTER: image ─── */
+/* ─── CENTER: Horizontal Gallery ─── */
 .cf-col-center {
   position: relative;
-  overflow: hidden;
-  background: #f0f0ee;
-  aspect-ratio: 16/10;
-  transition-property: aspect-ratio, height;
-  transition-duration: .9s;
-}
-.cf-row.cf-expanded .cf-col-center {
-  aspect-ratio: auto;
-  height: 82vh;
-  cursor: ew-resize;
-}
-
-.cf-img-stage {
-  position: absolute; inset: 0;
-}
-.cf-img-lqip {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  filter: blur(22px); transform: scale(1.1);
-  transition-property: opacity;
-  transition-duration: .8s;
-  z-index: 2;
-}
-.cf-img-stage.cf-loaded .cf-img-lqip { opacity: 0; }
-.cf-img-real {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; display: block; opacity: 1; z-index: 1;
-  transition-property: transform;
-  transition-duration: 1s;
-  pointer-events: none;
-  -webkit-user-drag: none;
-}
-.cf-row:not(.cf-expanded):hover .cf-img-real { transform: scale(1.04); }
-
-.cf-main-counter {
-  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: rgba(255,255,255,.9); backdrop-filter: blur(6px);
-  padding: 6px 14px; border-radius: 100px;
-  font-size: 11px; letter-spacing: .08em; color: #999;
-  pointer-events: none;
-  opacity: 0;
-  transition-property: opacity;
-  transition-duration: .4s;
-  transition-delay: 0s;
-}
-.cf-row.cf-expanded .cf-main-counter {
-  opacity: 1;
-  transition-delay: .5s;
-}
-.cf-main-counter strong { color: #0a0a0a; font-weight: 500; }
-.cf-main-counter-sep { opacity: .5; }
-
-/* ─── COL RIGHT: whitespace (collapsed) / description (expanded) ─── */
-.cf-col-right {
-  position: relative;
-  height: 100%;
   display: flex;
   align-items: center;
+  justify-content: center; /* Always keeps the image optically centered to avoid layout jumps */
+  flex: 1; /* Stretch to fill space when collapsed */
+  gap: 16px;
+  padding: 40px 0;
+}
+.cf-row.cf-expanded .cf-col-center {
+  flex: 0 0 auto;
+  width: max-content; /* Expands to natural bounds of all photos */
+  padding: 0;
+}
+
+.cf-img-item {
+  height: auto;
+  max-height: 100%;
+  width: 100%; 
+  max-width: 650px; /* Constrains image when collapsed, creating whitespace */
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  flex-shrink: 0;
+  pointer-events: none; /* Prevents dragging the img element natively */
+  /* Intense 2.5s cinematic transformation */
+  transition: transform 2.5s cubic-bezier(0.16, 1, 0.3, 1), max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cf-row:not(.cf-expanded):hover .cf-img-item {
+  transform: scale(1.025);
+}
+.cf-row.cf-expanded .cf-img-item {
+  height: auto;
+  max-height: 65vh; /* Massive cinematic top/bottom padding to center perfectly */
+  width: auto;
+  max-width: none; 
+  aspect-ratio: auto;
+}
+
+/* ─── RIGHT: Description ─── */
+.cf-col-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 48px 0 48px 64px;
+  width: 0;           /* Hidden when collapsed */
+  opacity: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cf-row.cf-expanded .cf-col-right {
+  width: 450px;
+  opacity: 1;
 }
 .cf-desc-col {
-  display: flex; flex-direction: column; justify-content: flex-start;
-  padding: 48px 32px;
-  width: 100%;
-  opacity: 0;
-  transform: translateY(8px);
-  pointer-events: none;
-  transition-property: opacity, transform;
-  transition-duration: .55s;
-  transition-delay: 0s;
-}
-.cf-row.cf-expanded .cf-desc-col {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-  transition-delay: .35s;
+  animation: cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .cf-desc-text {
-  font-size: 14px; line-height: 1.7; color: #333;
-  margin: 0;
+  font-size: 13px; line-height: 1.75; color: #555; margin: 0;
+}
+
+/* ─── UTILS ─── */
+@keyframes cfSlideFade {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes cfFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ─── RESPONSIVE ────────────────────────────────── */
 @media (max-width: 900px) {
-  .cf-list { padding: 24px 20px 60px; }
+  .cf-list { padding: 24px 0 60px; }
   .cf-topnav { padding: 0 20px; min-height: auto; }
   .cf-nav-area { height: auto; padding: 8px 0; }
   .cf-nav { height: 40px; }
   .cf-subbar { flex-wrap: wrap; height: auto; padding: 6px 0; gap: 10px; }
 
-  .cf-row { margin-bottom: 48px; }
-  .cf-row.cf-expanded { margin-top: 32px; margin-bottom: 32px; }
-
-  .cf-row-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    min-height: auto;
+  .cf-row { 
+    flex-direction: column;
+    height: auto;
+    min-height: 480px;
+    padding: 0 20px;
+    margin-bottom: 56px;
+    border-bottom: none;
   }
-  .cf-row.cf-expanded .cf-row-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    min-height: auto;
+  .cf-row.cf-expanded { 
+    flex-direction: column;
+    height: auto;
+    min-height: 80vh;
+    padding: 0 20px;
+    width: 100vw; /* limit for mobile */
   }
-  .cf-meta-col { align-items: flex-start; text-align: left; padding-right: 0; }
-  .cf-meta-tag { margin-top: 12px; }
+  
+  .cf-col-left {
+    width: 100%;
+    padding: 0 0 24px 0;
+    align-items: flex-start;
+  }
+  .cf-row.cf-expanded .cf-col-left {
+    width: 100%;
+  }
+  .cf-meta-col, .cf-info-col {
+    align-items: flex-start; text-align: left; padding: 0; position: static;
+  }
+  .cf-info-col { margin-top: 16px; }
+  .cf-info-row, .cf-info-price { align-items: flex-start; }
+  .cf-close-btn { position: absolute; right: 0; left: auto; top: -8px; }
 
-  .cf-info-col { position: static; opacity: 1; transform: none; pointer-events: auto;
-    align-items: flex-start; text-align: left; padding: 24px 20px; }
-  .cf-info-row { align-items: flex-start; }
-  .cf-info-price { align-items: flex-start; }
-
-  .cf-col-center { aspect-ratio: 16/10; }
-  .cf-row.cf-expanded .cf-col-center { aspect-ratio: auto; height: 60vh; }
-
-  .cf-desc-col { opacity: 1; transform: none; pointer-events: auto; padding: 24px 20px; }
+  .cf-col-center {
+    width: 100%;
+    padding: 0;
+  }
+  .cf-img-item {
+    max-width: none;
+    aspect-ratio: 16/10;
+  }
+  .cf-row.cf-expanded .cf-img-item {
+    width: 100%;
+    height: auto;
+  }
+  
+  .cf-col-right {
+    width: 100%;
+    padding: 24px 0;
+  }
+  .cf-row.cf-expanded .cf-col-right {
+    width: 100%;
+  }
 }
 @media (max-width: 580px) {
   .cf-nav-btn { padding: 0 10px; font-size: 10px; }
   .cf-constructoras-link { display: none; }
   .cf-meta-name { font-size: 22px; }
-}
-`
+}`
+
