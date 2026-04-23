@@ -41,7 +41,7 @@ export default async function HomePage() {
     const houses = await getPublishedModels(supabase)
 
     if (!houses.length) {
-      return <CatalogPage houses={MOCK_HOUSES} />
+      return <CatalogPage houses={MOCK_HOUSES as any} />
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
