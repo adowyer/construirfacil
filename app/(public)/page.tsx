@@ -66,7 +66,7 @@ export default async function HomePage() {
     return <CatalogPage houses={normalized} />
   } catch (err) {
     console.error('[HomePage]', err)
-    return <CatalogPage houses={MOCK_HOUSES} />
+    return <CatalogPage houses={MOCK_HOUSES as any} />
   }
 }
 
