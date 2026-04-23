@@ -141,7 +141,7 @@ export default function CatalogPage({ houses = [] }: { houses: House[] }) {
         </div>
       </header>
 
-      <main className="cf-list" style={{ width: '100%' }}>
+      <main className="cf-list">
         {sorted.map(h => (
           <Row
             key={h.variant_code}
@@ -194,7 +194,7 @@ function Row({
   useEffect(() => {
     if (expanded && rowRef.current) {
       setTimeout(() => {
-        const navHeight = 72
+        const navHeight = 140
         const rowEl = rowRef.current
         if (!rowEl) return
         const rowRect = rowEl.getBoundingClientRect()
@@ -205,7 +205,7 @@ function Row({
     }
   }, [expanded])
 
-  // ── Mouse scrub: mouse X position over main image → slide index ──────────────
+  // Mouse scrub over main image → slide index
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!expanded || total <= 1) return
     const el = mainRef.current
@@ -237,32 +237,36 @@ function Row({
       className={'cf-row' + (expanded ? ' cf-expanded' : '')}
       onClick={() => !expanded && onOpen()}
     >
-      {/* Collapsed state: meta column + thumb */}
-      <div className="cf-meta-col">
-        <div className="cf-meta-name">{house.name}</div>
-        <div className="cf-meta-loc">{locLine}</div>
-        <div className="cf-meta-tag">{statusTag}</div>
-      </div>
-
-      <div className="cf-gallery-col">
-        {/* Thumbnail (collapsed view) */}
-        <div className={'cf-thumb-wrap' + (thumbLoaded ? ' cf-loaded' : '')}>
-          <div className="cf-thumb-lqip" style={{ background: house.lqip_color }} />
-          {house.cover_image && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="cf-thumb-real"
-              src={house.cover_image.storage_url}
-              alt={house.cover_image.alt_text || house.name}
-              loading="lazy"
-              onLoad={() => setThumbLoaded(true)}
-            />
-          )}
+      {/* ─── Collapsed layout ─── */}
+      {!expanded && (
+        <div className="cf-row-collapsed">
+          <div className="cf-meta-col">
+            <div className="cf-meta-name">{house.name}</div>
+            <div className="cf-meta-loc">{locLine}</div>
+            <div className="cf-meta-tag">{statusTag}</div>
+          </div>
+          <div className="cf-thumb-col">
+            <div className={'cf-thumb-wrap' + (thumbLoaded ? ' cf-loaded' : '')}>
+              <div className="cf-thumb-lqip" style={{ background: house.lqip_color }} />
+              {house.cover_image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="cf-thumb-real"
+                  src={house.cover_image.storage_url}
+                  alt={house.cover_image.alt_text || house.name}
+                  loading="lazy"
+                  onLoad={() => setThumbLoaded(true)}
+                />
+              )}
+            </div>
+          </div>
+          <div className="cf-spacer-col" />
         </div>
+      )}
 
-        {/* Expanded view: 3-column big.dk layout */}
+      {/* ─── Expanded layout (big.dk style) ─── */}
+      {expanded && (
         <div className="cf-expanded-wrap" onClick={e => e.stopPropagation()}>
-          {/* Left column: info aligned right */}
           <div className="cf-info-col">
             <button className="cf-close-btn" onClick={onClose} aria-label="Cerrar">×</button>
 
@@ -311,20 +315,15 @@ function Row({
               </div>
             )}
 
-            {house.brochure_url && (
-              <a
-                href={house.brochure_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cf-info-brochure"
-                onClick={e => e.stopPropagation()}
-              >
-                Ver brochure →
-              </a>
-            )}
+            <a
+              href={`/models/${house.variant_code}`}
+              className="cf-info-more"
+              onClick={e => e.stopPropagation()}
+            >
+              Ver más →
+            </a>
           </div>
 
-          {/* Center: large image with mouse scrub */}
           <div
             ref={mainRef}
             className="cf-main-col"
@@ -342,19 +341,15 @@ function Row({
                 {String(total).padStart(2, '0')}
               </div>
             )}
-            {total > 1 && (
-              <div className="cf-scrub-hint">Mueve el cursor para navegar</div>
-            )}
           </div>
 
-          {/* Right: description */}
           <div className="cf-desc-col">
             {house.recommended_use && (
               <p className="cf-desc-text">{house.recommended_use}</p>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -434,46 +429,69 @@ body:has(.cf-list) {
 
 /* ─── LIST ─────────────────────────────────────── */
 .cf-list {
-  width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 48px;
+  width: 100%; max-width: 1400px; margin: 0 auto; padding: 40px 48px 80px;
   font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
   color: #0a0a0a; font-size: 13px; line-height: 1.5; letter-spacing: -.01em;
 }
 .cf-empty { padding: 80px 0; text-align: center; color: #999; font-size: 14px; }
 
-/* ─── ROW (collapsed) ──────────────────────────── */
+/* ─── ROW ──────────────────────────────────────── */
 .cf-row {
-  display: flex; align-items: stretch; min-height: 440px;
-  border-bottom: 1px solid #e8e8e8;
-  position: relative; overflow: hidden; cursor: pointer; width: 100%;
-  transition: min-height .7s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  margin-bottom: 80px;
+  cursor: pointer;
+  transition: margin .5s cubic-bezier(.4,0,.2,1);
 }
-.cf-row.cf-expanded { min-height: 88vh; cursor: default; z-index: 2; }
+.cf-row:last-child { margin-bottom: 0; }
+.cf-row.cf-expanded { cursor: default; margin-bottom: 40px; margin-top: 40px; }
+
+/* ─── COLLAPSED LAYOUT (big.dk style) ──────────── */
+.cf-row-collapsed {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  gap: 24px;
+  min-height: 400px;
+}
 
 .cf-meta-col {
-  width: 37%; flex-shrink: 0;
   display: flex; flex-direction: column;
-  justify-content: center; align-items: center;
-  text-align: center; padding: 48px 40px;
-  border-right: 1px solid #e8e8e8; background: #fff; overflow: hidden;
-  transition: width .6s cubic-bezier(.4,0,.2,1), opacity .3s ease, padding .6s cubic-bezier(.4,0,.2,1);
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+  padding-right: 20px;
 }
-.cf-row.cf-expanded .cf-meta-col { width: 0; opacity: 0; padding: 0; border-right: none; }
-.cf-meta-name { font-size: 40px; font-weight: 700; letter-spacing: -.025em; line-height: 1.15; margin-bottom: 9px; }
-.cf-meta-loc { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: #999; }
+.cf-meta-name {
+  font-size: 28px; font-weight: 400;
+  letter-spacing: -.02em; line-height: 1.15;
+  margin-bottom: 10px;
+}
+.cf-meta-loc {
+  font-size: 11px; font-weight: 500;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: #888;
+}
 .cf-meta-tag {
-  margin-top: 22px; font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
-  color: #c8c8c8; border: 1px solid #e8e8e8; padding: 4px 12px; border-radius: 100px;
+  margin-top: 20px;
+  font-size: 10px; font-weight: 500;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: #bbb;
 }
 
-.cf-row:not(.cf-expanded):hover .cf-thumb-real { transform: scale(1.04); }
+.cf-thumb-col {
+  position: relative;
+  aspect-ratio: 16/10;
+  overflow: hidden;
+  background: #f0f0ee;
+}
 
-.cf-gallery-col { flex: 1; position: relative; overflow: hidden; background: #f0f0ee; min-width: 0; }
+.cf-spacer-col { /* right whitespace */ }
 
-.cf-thumb-wrap { position: absolute; inset: 0; transition: opacity .35s ease; z-index: 1; }
-.cf-row.cf-expanded .cf-thumb-wrap { opacity: 0; pointer-events: none; }
+.cf-thumb-wrap { position: absolute; inset: 0; }
 .cf-thumb-lqip {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  filter: blur(22px); transform: scale(1.1); transition: opacity .8s ease; z-index: 2;
+  filter: blur(22px); transform: scale(1.1);
+  transition: opacity .8s ease; z-index: 2;
 }
 .cf-thumb-wrap.cf-loaded .cf-thumb-lqip { opacity: 0; }
 .cf-thumb-real {
@@ -481,25 +499,27 @@ body:has(.cf-list) {
   object-fit: cover; display: block; opacity: 1; z-index: 1;
   transition: transform .85s cubic-bezier(.2,.8,.2,1);
 }
+.cf-row:not(.cf-expanded):hover .cf-thumb-real { transform: scale(1.04); }
 
-/* ─── EXPANDED (big.dk style) ──────────────────── */
+/* ─── EXPANDED LAYOUT (big.dk style) ───────────── */
 .cf-expanded-wrap {
-  position: absolute; inset: 0; display: flex;
-  opacity: 0; pointer-events: none;
-  transition: opacity .4s ease .1s; z-index: 2;
-  background: #fff;
+  display: grid;
+  grid-template-columns: 22% 1fr 22%;
+  min-height: 78vh;
+  position: relative;
   user-select: none;
+  animation: cfFadeIn .4s ease;
 }
-.cf-row.cf-expanded .cf-expanded-wrap { opacity: 1; pointer-events: auto; }
+@keyframes cfFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
-/* Left: info column, right-aligned */
 .cf-info-col {
-  width: 22%; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: center;
   align-items: flex-end; text-align: right;
   padding: 48px 32px;
   position: relative;
-  overflow-y: auto;
 }
 .cf-close-btn {
   position: absolute; top: 18px; left: 18px;
@@ -530,17 +550,15 @@ body:has(.cf-list) {
 .cf-info-price-value { font-size: 18px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a; }
 .cf-info-price-pozo { font-size: 11px; color: #888; margin-top: 4px; }
 
-.cf-info-brochure {
+.cf-info-more {
   font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
   color: #0a0a0a; text-decoration: none;
   border-bottom: 1px solid #0a0a0a; padding-bottom: 2px;
   transition: opacity .2s;
 }
-.cf-info-brochure:hover { opacity: .6; }
+.cf-info-more:hover { opacity: .6; }
 
-/* Center: main image with mouse scrub */
 .cf-main-col {
-  flex: 1; min-width: 0;
   position: relative; overflow: hidden;
   cursor: ew-resize;
   background: #f0f0ee;
@@ -549,7 +567,6 @@ body:has(.cf-list) {
   width: 100%; height: 100%;
   object-fit: cover; display: block;
   pointer-events: none; -webkit-user-drag: none;
-  transition: opacity .25s ease;
 }
 .cf-main-counter {
   position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -561,22 +578,9 @@ body:has(.cf-list) {
 .cf-main-counter strong { color: #0a0a0a; font-weight: 500; }
 .cf-main-counter-sep { opacity: .5; }
 
-.cf-scrub-hint {
-  position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,.5); color: #fff;
-  padding: 5px 12px; border-radius: 100px;
-  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
-  pointer-events: none;
-  opacity: 0; transition: opacity .25s ease;
-}
-.cf-main-col:hover .cf-scrub-hint { opacity: 1; }
-
-/* Right: description */
 .cf-desc-col {
-  width: 23%; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: flex-start;
   padding: 48px 32px;
-  overflow-y: auto;
 }
 .cf-desc-text {
   font-size: 14px; line-height: 1.7; color: #333;
@@ -585,31 +589,33 @@ body:has(.cf-list) {
 
 /* ─── RESPONSIVE ────────────────────────────────── */
 @media (max-width: 900px) {
-  .cf-list { padding: 0 20px; }
+  .cf-list { padding: 24px 20px 60px; }
   .cf-topnav { padding: 0 20px; min-height: auto; }
   .cf-nav-area { height: auto; padding: 8px 0; }
   .cf-nav { height: 40px; }
   .cf-subbar { flex-wrap: wrap; height: auto; padding: 6px 0; gap: 10px; }
-  .cf-row { flex-direction: column; min-height: auto; }
-  .cf-row.cf-expanded { min-height: auto; }
-  .cf-meta-col {
-    width: 100%; border-right: none; border-bottom: 1px solid #e8e8e8;
-    flex-direction: row; align-items: center; justify-content: flex-start;
-    text-align: left; padding: 20px; gap: 16px;
+
+  .cf-row { margin-bottom: 48px; }
+
+  .cf-row-collapsed {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    min-height: auto;
   }
-  .cf-row.cf-expanded .cf-meta-col { display: none; }
-  .cf-meta-tag { margin-top: 0; margin-left: auto; }
-  .cf-gallery-col { height: 280px; }
-  .cf-row.cf-expanded .cf-gallery-col { height: auto; flex: 1; }
-  .cf-expanded-wrap { flex-direction: column; }
-  .cf-info-col { width: 100%; padding: 24px 20px; align-items: flex-start; text-align: left; }
+  .cf-meta-col { align-items: flex-start; text-align: left; padding-right: 0; }
+  .cf-meta-tag { margin-top: 12px; }
+  .cf-spacer-col { display: none; }
+
+  .cf-expanded-wrap { grid-template-columns: 1fr; min-height: auto; }
+  .cf-info-col { align-items: flex-start; text-align: left; padding: 24px 20px; }
   .cf-info-row { align-items: flex-start; }
   .cf-info-price { align-items: flex-start; }
   .cf-main-col { height: 60vh; }
-  .cf-desc-col { width: 100%; padding: 24px 20px; }
+  .cf-desc-col { padding: 24px 20px; }
 }
 @media (max-width: 580px) {
   .cf-nav-btn { padding: 0 10px; font-size: 10px; }
   .cf-constructoras-link { display: none; }
+  .cf-meta-name { font-size: 22px; }
 }
 `
