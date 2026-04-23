@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// app/page.tsx  (or wherever your HomePage lives)
+// app/page.tsx  
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'

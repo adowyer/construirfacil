@@ -62,7 +62,7 @@ export default function CatalogPage({ houses }: { houses: House[] }) {
       <header className="cf-topnav">
         <a href="#" className="cf-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/cf_logo.png" alt="ConstruirFácil" className="cf-brand-logo" />
+          <img src="/cf_logo_gris.png" alt="ConstruirFácil" className="cf-brand-logo" />
         </a>
         <nav className="cf-nav">
           {CATEGORIES.map(c => (
