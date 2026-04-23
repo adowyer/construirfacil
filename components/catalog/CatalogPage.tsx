@@ -201,7 +201,7 @@ function Row({
         const rowCenter = rowRect.top + window.scrollY + rowRect.height / 2
         const targetY = rowCenter - window.innerHeight / 2 - navHeight / 2
         window.scrollTo({ top: targetY, behavior: 'smooth' })
-      }, 80)
+      }, 150)
     }
   }, [expanded])
 
@@ -237,38 +237,21 @@ function Row({
       className={'cf-row' + (expanded ? ' cf-expanded' : '')}
       onClick={() => !expanded && onOpen()}
     >
-      {/* ─── Collapsed layout ─── */}
-      {!expanded && (
-        <div className="cf-row-collapsed">
+      <div className="cf-row-grid">
+
+        {/* Col 1: collapsed meta (fades out) + expanded info (fades in) */}
+        <div className="cf-col-left">
           <div className="cf-meta-col">
             <div className="cf-meta-name">{house.name}</div>
             <div className="cf-meta-loc">{locLine}</div>
             <div className="cf-meta-tag">{statusTag}</div>
           </div>
-          <div className="cf-thumb-col">
-            <div className={'cf-thumb-wrap' + (thumbLoaded ? ' cf-loaded' : '')}>
-              <div className="cf-thumb-lqip" style={{ background: house.lqip_color }} />
-              {house.cover_image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className="cf-thumb-real"
-                  src={house.cover_image.storage_url}
-                  alt={house.cover_image.alt_text || house.name}
-                  loading="lazy"
-                  onLoad={() => setThumbLoaded(true)}
-                />
-              )}
-            </div>
-          </div>
-          <div className="cf-spacer-col" />
-        </div>
-      )}
-
-      {/* ─── Expanded layout (big.dk style) ─── */}
-      {expanded && (
-        <div className="cf-expanded-wrap" onClick={e => e.stopPropagation()}>
-          <div className="cf-info-col">
-            <button className="cf-close-btn" onClick={onClose} aria-label="Cerrar">×</button>
+          <div className="cf-info-col" onClick={e => expanded && e.stopPropagation()}>
+            <button
+              className="cf-close-btn"
+              onClick={e => { e.stopPropagation(); onClose() }}
+              aria-label="Cerrar"
+            >×</button>
 
             <div className="cf-info-name">{house.name}</div>
 
@@ -323,33 +306,59 @@ function Row({
               Ver más →
             </a>
           </div>
+        </div>
 
-          <div
-            ref={mainRef}
-            className="cf-main-col"
-            onMouseMove={handleMouseMove}
-            onClick={e => { e.stopPropagation(); if (total > 1) setSlideIdx(i => (i + 1) % total) }}
-          >
-            {curImg && (
+        {/* Col 2: image (always visible, grows on expand) */}
+        <div
+          ref={mainRef}
+          className="cf-col-center"
+          onMouseMove={handleMouseMove}
+          onClick={e => {
+            if (expanded) {
+              e.stopPropagation()
+              if (total > 1) setSlideIdx(i => (i + 1) % total)
+            }
+          }}
+        >
+          <div className={'cf-img-stage' + (thumbLoaded ? ' cf-loaded' : '')}>
+            <div className="cf-img-lqip" style={{ background: house.lqip_color }} />
+            {!expanded && house.cover_image && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={curImg.storage_url} alt={curImg.alt || house.name} />
+              <img
+                className="cf-img-real"
+                src={house.cover_image.storage_url}
+                alt={house.cover_image.alt_text || house.name}
+                loading="lazy"
+                onLoad={() => setThumbLoaded(true)}
+              />
             )}
-            {total > 1 && (
-              <div className="cf-main-counter">
-                <strong>{String(slideIdx + 1).padStart(2, '0')}</strong>
-                <span className="cf-main-counter-sep"> / </span>
-                {String(total).padStart(2, '0')}
-              </div>
+            {expanded && curImg && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="cf-img-real"
+                src={curImg.storage_url}
+                alt={curImg.alt || house.name}
+              />
             )}
           </div>
+          {expanded && total > 1 && (
+            <div className="cf-main-counter">
+              <strong>{String(slideIdx + 1).padStart(2, '0')}</strong>
+              <span className="cf-main-counter-sep"> / </span>
+              {String(total).padStart(2, '0')}
+            </div>
+          )}
+        </div>
 
+        {/* Col 3: whitespace (collapsed) / description (expanded) */}
+        <div className="cf-col-right" onClick={e => expanded && e.stopPropagation()}>
           <div className="cf-desc-col">
             {house.recommended_use && (
               <p className="cf-desc-text">{house.recommended_use}</p>
             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -360,6 +369,21 @@ const CSS = `
 body:has(.cf-list) {
   font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* smooth easing shared by all transitions */
+.cf-row,
+.cf-row-grid,
+.cf-col-left,
+.cf-col-center,
+.cf-col-right,
+.cf-meta-col,
+.cf-info-col,
+.cf-desc-col,
+.cf-img-stage,
+.cf-img-real,
+.cf-main-counter {
+  transition-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
 
 /* ─── TOP NAV ─────────────────────────────────── */
@@ -440,32 +464,84 @@ body:has(.cf-list) {
   position: relative;
   margin-bottom: 80px;
   cursor: pointer;
-  transition: margin .5s cubic-bezier(.4,0,.2,1);
+  transition-property: margin;
+  transition-duration: .9s;
 }
 .cf-row:last-child { margin-bottom: 0; }
-.cf-row.cf-expanded { cursor: default; margin-bottom: 40px; margin-top: 40px; }
+.cf-row.cf-expanded {
+  cursor: default;
+  margin-top: 56px;
+  margin-bottom: 56px;
+}
 
-/* ─── COLLAPSED LAYOUT (big.dk style) ──────────── */
-.cf-row-collapsed {
+/* Unified grid: never changes its column count.
+   Column widths animate between collapsed (1fr 2fr 1fr) and expanded (22% 1fr 22%). */
+.cf-row-grid {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
   gap: 24px;
+  transition-property: grid-template-columns, gap, min-height;
+  transition-duration: .9s;
   min-height: 400px;
 }
+.cf-row.cf-expanded .cf-row-grid {
+  grid-template-columns: 22% 1fr 22%;
+  gap: 0;
+  min-height: 82vh;
+}
 
+/* ─── COL LEFT: meta (collapsed) + info (expanded) ─────── */
+.cf-col-left {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Meta (collapsed state) */
 .cf-meta-col {
   display: flex; flex-direction: column;
   justify-content: center;
   align-items: flex-end;
   text-align: right;
   padding-right: 20px;
+  width: 100%;
+  opacity: 1;
+  transition-property: opacity;
+  transition-duration: .35s;
 }
+.cf-row.cf-expanded .cf-meta-col {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: .25s;
+}
+
+/* Info (expanded state) — overlays col-left */
+.cf-info-col {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  align-items: flex-end; text-align: right;
+  padding: 48px 32px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition-property: opacity, transform;
+  transition-duration: .55s;
+  transition-delay: 0s;
+}
+.cf-row.cf-expanded .cf-info-col {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-delay: .35s;
+}
+
 .cf-meta-name {
-  font-size: 20px; font-weight: 400;
+  font-size: 28px; font-weight: 400;
   letter-spacing: -.02em; line-height: 1.15;
   margin-bottom: 10px;
-  text-transform: uppercase;
 }
 .cf-meta-loc {
   font-size: 11px; font-weight: 500;
@@ -479,62 +555,20 @@ body:has(.cf-list) {
   color: #bbb;
 }
 
-.cf-thumb-col {
-  position: relative;
-  aspect-ratio: 16/10;
-  overflow: hidden;
-  background: #f0f0ee;
-}
-
-.cf-spacer-col { /* right whitespace */ }
-
-.cf-thumb-wrap { position: absolute; inset: 0; }
-.cf-thumb-lqip {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  filter: blur(22px); transform: scale(1.1);
-  transition: opacity .8s ease; z-index: 2;
-}
-.cf-thumb-wrap.cf-loaded .cf-thumb-lqip { opacity: 0; }
-.cf-thumb-real {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; display: block; opacity: 1; z-index: 1;
-  transition: transform .85s cubic-bezier(.2,.8,.2,1);
-}
-.cf-row:not(.cf-expanded):hover .cf-thumb-real { transform: scale(1.04); }
-
-/* ─── EXPANDED LAYOUT (big.dk style) ───────────── */
-.cf-expanded-wrap {
-  display: grid;
-  grid-template-columns: 22% 1fr 22%;
-  min-height: 78vh;
-  position: relative;
-  user-select: none;
-  animation: cfFadeIn .4s ease;
-}
-@keyframes cfFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.cf-info-col {
-  display: flex; flex-direction: column; justify-content: center;
-  align-items: flex-end; text-align: right;
-  padding: 48px 32px;
-  position: relative;
-}
 .cf-close-btn {
   position: absolute; top: 18px; left: 18px;
   width: 28px; height: 28px; border-radius: 50%;
   border: 1px solid #e0e0e0; background: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: #999; transition: border-color .2s, color .2s;
+  font-size: 16px; color: #999;
+  transition: border-color .2s, color .2s;
   font-family: inherit;
 }
 .cf-close-btn:hover { border-color: #0a0a0a; color: #0a0a0a; }
 
 .cf-info-name {
-  font-size: 24px; font-weight: 400; letter-spacing: -.02em;
-  line-height: 1.15; margin-bottom: 32px; text-transform: uppercase;
+  font-size: 34px; font-weight: 400; letter-spacing: -.02em;
+  line-height: 1.15; margin-bottom: 32px;
 }
 
 .cf-info-meta { display: flex; flex-direction: column; gap: 18px; margin-bottom: 32px; width: 100%; }
@@ -559,29 +593,83 @@ body:has(.cf-list) {
 }
 .cf-info-more:hover { opacity: .6; }
 
-.cf-main-col {
-  position: relative; overflow: hidden;
-  cursor: ew-resize;
+/* ─── COL CENTER: image ─── */
+.cf-col-center {
+  position: relative;
+  overflow: hidden;
   background: #f0f0ee;
+  aspect-ratio: 16/10;
+  transition-property: aspect-ratio, height;
+  transition-duration: .9s;
 }
-.cf-main-col img {
-  width: 100%; height: 100%;
-  object-fit: cover; display: block;
-  pointer-events: none; -webkit-user-drag: none;
+.cf-row.cf-expanded .cf-col-center {
+  aspect-ratio: auto;
+  height: 82vh;
+  cursor: ew-resize;
 }
+
+.cf-img-stage {
+  position: absolute; inset: 0;
+}
+.cf-img-lqip {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  filter: blur(22px); transform: scale(1.1);
+  transition-property: opacity;
+  transition-duration: .8s;
+  z-index: 2;
+}
+.cf-img-stage.cf-loaded .cf-img-lqip { opacity: 0; }
+.cf-img-real {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; opacity: 1; z-index: 1;
+  transition-property: transform;
+  transition-duration: 1s;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+.cf-row:not(.cf-expanded):hover .cf-img-real { transform: scale(1.04); }
+
 .cf-main-counter {
   position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: rgba(255,255,255,.9); backdrop-filter: blur(6px);
   padding: 6px 14px; border-radius: 100px;
   font-size: 11px; letter-spacing: .08em; color: #999;
   pointer-events: none;
+  opacity: 0;
+  transition-property: opacity;
+  transition-duration: .4s;
+  transition-delay: 0s;
+}
+.cf-row.cf-expanded .cf-main-counter {
+  opacity: 1;
+  transition-delay: .5s;
 }
 .cf-main-counter strong { color: #0a0a0a; font-weight: 500; }
 .cf-main-counter-sep { opacity: .5; }
 
+/* ─── COL RIGHT: whitespace (collapsed) / description (expanded) ─── */
+.cf-col-right {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
 .cf-desc-col {
   display: flex; flex-direction: column; justify-content: flex-start;
   padding: 48px 32px;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition-property: opacity, transform;
+  transition-duration: .55s;
+  transition-delay: 0s;
+}
+.cf-row.cf-expanded .cf-desc-col {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition-delay: .35s;
 }
 .cf-desc-text {
   font-size: 14px; line-height: 1.7; color: #333;
@@ -597,22 +685,30 @@ body:has(.cf-list) {
   .cf-subbar { flex-wrap: wrap; height: auto; padding: 6px 0; gap: 10px; }
 
   .cf-row { margin-bottom: 48px; }
+  .cf-row.cf-expanded { margin-top: 32px; margin-bottom: 32px; }
 
-  .cf-row-collapsed {
+  .cf-row-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    min-height: auto;
+  }
+  .cf-row.cf-expanded .cf-row-grid {
     grid-template-columns: 1fr;
     gap: 16px;
     min-height: auto;
   }
   .cf-meta-col { align-items: flex-start; text-align: left; padding-right: 0; }
   .cf-meta-tag { margin-top: 12px; }
-  .cf-spacer-col { display: none; }
 
-  .cf-expanded-wrap { grid-template-columns: 1fr; min-height: auto; }
-  .cf-info-col { align-items: flex-start; text-align: left; padding: 24px 20px; }
+  .cf-info-col { position: static; opacity: 1; transform: none; pointer-events: auto;
+    align-items: flex-start; text-align: left; padding: 24px 20px; }
   .cf-info-row { align-items: flex-start; }
   .cf-info-price { align-items: flex-start; }
-  .cf-main-col { height: 60vh; }
-  .cf-desc-col { padding: 24px 20px; }
+
+  .cf-col-center { aspect-ratio: 16/10; }
+  .cf-row.cf-expanded .cf-col-center { aspect-ratio: auto; height: 60vh; }
+
+  .cf-desc-col { opacity: 1; transform: none; pointer-events: auto; padding: 24px 20px; }
 }
 @media (max-width: 580px) {
   .cf-nav-btn { padding: 0 10px; font-size: 10px; }
