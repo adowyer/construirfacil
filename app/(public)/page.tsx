@@ -2,22 +2,8 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getPublishedModels } from '@/lib/supabase/queries/models'
 import CatalogPage from '@/components/catalog/CatalogPage'
-import { MOCK_HOUSES } from '@/lib/supabase/mock-data'
 
 export const dynamic = 'force-dynamic'
-
-const mappedMockHouses = MOCK_HOUSES.map((m: any) => ({
-  ...m,
-  variant_code: m.slug,
-  area_m2: m.total_area_m2,
-  min_bedrooms: m.bedrooms,
-  max_bedrooms: m.bedrooms,
-  beds: String(m.bedrooms ?? '–'),
-  recommended_use: m.description,
-  construction_system: m.construction_system?.name ?? null,
-  public_price_usd: m.price_lista_usd ?? null,
-  brochure_url: null,
-})) as any
 
 export const metadata: Metadata = {
   title: 'Catálogo de modelos — ConstruirFácil',
@@ -28,34 +14,30 @@ export const metadata: Metadata = {
 const B = 'https://posadasalrio.construirfacil.com/wp-content/uploads/2025/11/'
 
 const COVER_IMAGE_MAP: Record<string, string> = {
-  HPR02_1_I:  B + 'living-t2.png',
-  HPR01_2_I:  B + 'Estilo-2-6.png',
-  HPR03_1_I:  B + 'casa3_opc1_2_posadas_PBjpg.jpg',
-  HPR01_3_I:  B + 'Image-from-Google-Drive-1-1-2.png',
+  HPR02_1_I: B + 'living-t2.png',
+  HPR01_2_I: B + 'Estilo-2-6.png',
+  HPR03_1_I: B + 'casa3_opc1_2_posadas_PBjpg.jpg',
+  HPR01_3_I: B + 'Image-from-Google-Drive-1-1-2.png',
   HPR01_1_II: B + 'Interiores-Typologia-1-IMG2-2-e1764112587890.png',
   HPR02_3_II: B + 'R-2-PLANTAS-D3.1.jpg',
-  HPR03_3_I:  B + '3opc2_PB_posadas.png',
+  HPR03_3_I: B + '3opc2_PB_posadas.png',
   HPR02_2_II: B + 'R-2-PLANTAS-D-2.4.jpg',
   HPR02_1_II: B + 'R-2-PLANTAS-D1.2-1.jpg',
   HPR01_3_II: B + 'Image-from-Google-Drive-2-2.png',
-  HPR02_3_I:  B + 'R-1-PLANTA-D3.1.jpg',
-  HPR01_1_I:  B + 'Image-from-Google-Drive-4.png',
+  HPR02_3_I: B + 'R-1-PLANTA-D3.1.jpg',
+  HPR01_1_I: B + 'Image-from-Google-Drive-4.png',
   HPR03_3_II: B + 'casa_opc3_1_posadas-2.jpg',
   HPR03_2_II: B + '3OPC2_2_posadas-2.png',
   HPR01_2_II: B + 'Image-from-Google-Drive-1-3.png',
   HPR03_1_II: B + 'casa3_opc1_2_posadas-2-1.jpg',
-  HPR02_2_I:  B + 'living-t2.png',
-  HPR03_2_I:  B + '3opc2_PB_posadas.png',
+  HPR02_2_I: B + 'living-t2.png',
+  HPR03_2_I: B + '3opc2_PB_posadas.png',
 }
 
 export default async function HomePage() {
   try {
     const supabase = await createClient()
     const houses = await getPublishedModels(supabase)
-
-    if (!houses.length) {
-      return <CatalogPage houses={mappedMockHouses} />
-    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const normalized = houses.map((h: any) => {
@@ -79,14 +61,14 @@ export default async function HomePage() {
     return <CatalogPage houses={normalized} />
   } catch (err) {
     console.error('[HomePage]', err)
-    return <CatalogPage houses={mappedMockHouses} />
+    return <CatalogPage houses={[]} />
   }
 }
 
 const GRADIENT_KEYS = [
   'ph-timbo2', 'ph-cedro1', 'ph-cedro2', 'ph-roble3',
-  'ph-alamo1', 'ph-pino4',  'ph-sauce1', 'ph-nogal2',
-  'ph-eucalip3','ph-jacar1', 'ph-quebr2', 'ph-lapach1',
+  'ph-alamo1', 'ph-pino4', 'ph-sauce1', 'ph-nogal2',
+  'ph-eucalip3', 'ph-jacar1', 'ph-quebr2', 'ph-lapach1',
 ]
 
 const LQIP_PALETTE = [
