@@ -112,7 +112,7 @@ function Row({
       : house.cover_image
         ? [{ storage_url: house.cover_image.storage_url, alt: house.cover_image.alt_text }]
         : []
-  ).map(s => ({ storage_url: s.storage_url, alt: ('alt_text' in s ? s.alt_text : s.alt) ?? house.name }))
+  ).map(s => ({ storage_url: s.storage_url, alt: s.alt_text ?? house.name }))
 
   const total = slides.length
 
