@@ -10,8 +10,8 @@ import CatalogPage from '@/components/catalog/CatalogPage'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Catálogo de modelos — ConstruirFácil',
-  description: 'Explorá modelos de casas en Steel Frame y Wood Frame de constructoras verificadas en Argentina.',
+  title: 'ConstruirFácil',
+  description: 'La casa que queres, al precio que necesitás. Construir nunca fue tan fácil.',
 }
 
 // Legacy cover map — kept as fallback while you migrate photos to Supabase Storage
@@ -42,6 +42,8 @@ export default async function HomePage() {
     const supabase = await createClient()
     const houses = await getPublishedModels(supabase)
 
+    console.log('[DEBUG] houses count:', houses.length, houses[0])
+
     // 1. Fetch all images for these models in one query
     const variantCodes = houses.map((h: { variant_code: string }) => h.variant_code).filter(Boolean)
     const imagesByVariant = await getHouseImagesByVariantCodes(supabase, variantCodes)
@@ -68,7 +70,7 @@ export default async function HomePage() {
               : null
 
       // LQIP: use the first gallery image's color if present, else deterministic fallback
-      const lqip_color = galleryImgs[0]?.lqip_color ?? getLqipColor(h.id ?? h.variant_code ?? h.name)
+      const lqip_color = galleryImgs[0]?.lqip_color ?? '#1c2d1a'
 
       return {
         ...h,
@@ -81,7 +83,6 @@ export default async function HomePage() {
           : null,
         cover_image,
         gallery_images,                            // ← array of {storage_url, alt_text}, empty if none
-        gradient_key: getGradientKey(h.id ?? h.variant_code ?? h.name),
         lqip_color,
         tags: [h.variant_style, h.recommended_use].filter(Boolean),
       }
@@ -92,32 +93,4 @@ export default async function HomePage() {
     console.error('[HomePage]', err)
     return <CatalogPage houses={[]} />
   }
-}
-
-const GRADIENT_KEYS = [
-  'ph-timbo2', 'ph-cedro1', 'ph-cedro2', 'ph-roble3',
-  'ph-alamo1', 'ph-pino4', 'ph-sauce1', 'ph-nogal2',
-  'ph-eucalip3', 'ph-jacar1', 'ph-quebr2', 'ph-lapach1',
-]
-
-const LQIP_PALETTE = [
-  '#1c2d1a', '#0d1f35', '#2a1f3d', '#3a1a0a',
-  '#2a2620', '#0c1f18', '#0a1c28', '#281a08',
-  '#1a1e1a', '#1e0c0c', '#0e0e2a', '#1a2010',
-]
-
-function hashId(id: string): number {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) {
-    hash = (Math.imul(31, hash) + id.charCodeAt(i)) | 0
-  }
-  return Math.abs(hash)
-}
-
-function getGradientKey(id: string): string {
-  return GRADIENT_KEYS[hashId(id) % GRADIENT_KEYS.length]
-}
-
-function getLqipColor(id: string): string {
-  return LQIP_PALETTE[hashId(id) % LQIP_PALETTE.length]
 }
