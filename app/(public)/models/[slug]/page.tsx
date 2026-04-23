@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getModelByVariantCode } from '@/lib/supabase/queries/models'
 import type { HouseCatalogRow } from '@/lib/supabase/queries/models'
-import { getMockHouseDetail, MOCK_HOUSES } from '@/lib/supabase/mock-data'
+import { getMockHouseDetail } from '@/lib/supabase/mock-data'
 import ModelPlaceholder from '@/components/catalog/ModelPlaceholder'
 
 // ── Cover images keyed by variant_code ───────────────────────────────────────
@@ -115,20 +115,7 @@ async function getHouseForSlug(slug: string): Promise<any | null> {
   return getMockHouseDetail(slug) ?? null
 }
 
-// ── Static params: mock slugs + real variant codes ───────────────────────────
-export async function generateStaticParams() {
-  const mockParams = MOCK_HOUSES.map(h => ({ slug: h.slug }))
-  try {
-    const supabase = await createClient()
-    const { getAllVariantCodes } = await import('@/lib/supabase/queries/models')
-    const codes = await getAllVariantCodes(supabase)
-    return [...mockParams, ...codes.map(c => ({ slug: c }))]
-  } catch {
-    return mockParams
-  }
-}
-
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 // ── Metadata ─────────────────────────────────────────────────────────────────
 export async function generateMetadata({
