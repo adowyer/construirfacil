@@ -1,22 +1,14 @@
 'use client'
 
-/**
- * components/catalog/HeroSlider.tsx
- *
- * Slider hero con 5 slides:
- *   0. Buscador sobre foto destacada
- *   1. Las 3 líneas (Bosque / Atlas / Terra)
- *   2. Tipologías
- *   3. Sistemas constructivos
- *   4. La casa que crece (variantes)
- *
- * Características:
- *   - Slides no full-width (88%) → peek del siguiente a la derecha
- *   - Manual: flechas izq/der + dots clickeables
- *   - Sin auto-avance
- */
-
 import { useRef, useState, useCallback } from 'react'
+
+const LINE_OPTIONS = ['BOSQUE', 'ATLAS', 'TERRA']
+const BED_OPTIONS = ['1-2', '3', '4+']
+const SIZE_OPTIONS = [
+  { v: 'S', l: '–80m²' },
+  { v: 'M', l: '80–160m²' },
+  { v: 'L', l: '+160m²' },
+]
 
 const SLIDES = [
   {
@@ -30,8 +22,8 @@ const SLIDES = [
     text: 'De casas premium a soluciones modulares. Cada línea responde a un estilo de vida diferente.',
     cards: [
       { name: 'Bosque', meta: 'Premium · 9 modelos', bg: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600' },
-      { name: 'Atlas',  meta: 'Estándar · 5 modelos', bg: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=600' },
-      { name: 'Terra',  meta: 'Modular · 5 modelos', bg: 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?w=600' },
+      { name: 'Atlas', meta: 'Estándar · 5 modelos', bg: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=600' },
+      { name: 'Terra', meta: 'Modular · 5 modelos', bg: 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?w=600' },
     ],
   },
   {
@@ -69,7 +61,20 @@ const SLIDES = [
   },
 ]
 
-export default function HeroSlider() {
+interface HeroSliderProps {
+  lineFilter: string
+  bedFilter: string
+  sizeFilter: string
+  resultCount: number
+  onLineChange: (v: string) => void
+  onBedChange: (v: string) => void
+  onSizeChange: (v: string) => void
+}
+
+export default function HeroSlider({
+  lineFilter, bedFilter, sizeFilter, resultCount,
+  onLineChange, onBedChange, onSizeChange,
+}: HeroSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [current, setCurrent] = useState(0)
 
@@ -77,9 +82,7 @@ export default function HeroSlider() {
     const track = trackRef.current
     if (!track) return
     const slide = track.children[i] as HTMLElement
-    if (slide) {
-      slide.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
-    }
+    if (slide) slide.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
     setCurrent(i)
   }, [])
 
@@ -96,15 +99,20 @@ export default function HeroSlider() {
 
   return (
     <div className="cf-hero-wrapper">
-      <div
-        className="cf-hero-track"
-        ref={trackRef}
-        onScroll={handleScroll}
-      >
+      <div className="cf-hero-track" ref={trackRef} onScroll={handleScroll}>
         {SLIDES.map((slide, i) => (
           <div key={i} className="cf-slide">
             {slide.type === 'search' ? (
-              <SlideSearch bg={slide.bg!} />
+              <SlideSearch
+                bg={slide.bg!}
+                lineFilter={lineFilter}
+                bedFilter={bedFilter}
+                sizeFilter={sizeFilter}
+                resultCount={resultCount}
+                onLineChange={onLineChange}
+                onBedChange={onBedChange}
+                onSizeChange={onSizeChange}
+              />
             ) : (
               <SlideEdu
                 eyebrow={slide.eyebrow!}
@@ -117,7 +125,6 @@ export default function HeroSlider() {
         ))}
       </div>
 
-      {/* Flechas */}
       {current > 0 && (
         <button className="cf-hero-arr cf-hero-arr-left" onClick={prev} aria-label="Anterior">‹</button>
       )}
@@ -125,7 +132,6 @@ export default function HeroSlider() {
         <button className="cf-hero-arr cf-hero-arr-right" onClick={next} aria-label="Siguiente">›</button>
       )}
 
-      {/* Dots */}
       <div className="cf-hero-dots">
         {SLIDES.map((_, i) => (
           <button
@@ -140,23 +146,76 @@ export default function HeroSlider() {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Slide 1: buscador hero
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SlideSearch({ bg }: { bg: string }) {
+function SlideSearch({
+  bg, lineFilter, bedFilter, sizeFilter, resultCount,
+  onLineChange, onBedChange, onSizeChange,
+}: {
+  bg: string
+  lineFilter: string
+  bedFilter: string
+  sizeFilter: string
+  resultCount: number
+  onLineChange: (v: string) => void
+  onBedChange: (v: string) => void
+  onSizeChange: (v: string) => void
+}) {
   return (
     <div
       className="cf-slide-search"
       style={{ backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.55)), url('${bg}')` }}
     >
       <p className="cf-slide-eyebrow">Catálogo Hausind</p>
-      <h1 className="cf-slide-title">La casa que querés,<br/>al precio que necesitás</h1>
+      <h1 className="cf-slide-title">La casa que querés,<br />al precio que necesitás</h1>
       <div className="cf-search-bar">
-        <SearchField label="Línea" value="Todas" />
-        <SearchField label="Tamaño" value="Cualquiera" />
-        <SearchField label="Dorm." value="Cualquiera" />
-        <button className="cf-search-go">Buscar 248 →</button>
+
+        <div className="cf-search-field cf-search-field--select">
+          <p className="cf-search-lbl">Línea</p>
+          <div className="cf-search-chips">
+            {LINE_OPTIONS.map(v => (
+              <button
+                key={v}
+                className={`cf-search-chip ${lineFilter === v ? 'active' : ''}`}
+                onClick={() => onLineChange(lineFilter === v ? 'ALL' : v)}
+              >
+                {v.charAt(0) + v.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cf-search-field cf-search-field--select">
+          <p className="cf-search-lbl">Dorm.</p>
+          <div className="cf-search-chips">
+            {BED_OPTIONS.map(v => (
+              <button
+                key={v}
+                className={`cf-search-chip ${bedFilter === v ? 'active' : ''}`}
+                onClick={() => onBedChange(bedFilter === v ? 'ALL' : v)}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cf-search-field cf-search-field--select">
+          <p className="cf-search-lbl">Tamaño</p>
+          <div className="cf-search-chips">
+            {SIZE_OPTIONS.map(({ v, l }) => (
+              <button
+                key={v}
+                className={`cf-search-chip ${sizeFilter === v ? 'active' : ''}`}
+                onClick={() => onSizeChange(sizeFilter === v ? 'ALL' : v)}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button className="cf-search-go">
+          Ver {resultCount} casas →
+        </button>
       </div>
     </div>
   )
@@ -170,10 +229,6 @@ function SearchField({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Slides 2-5: educativos
-// ─────────────────────────────────────────────────────────────────────────────
 
 function SlideEdu({
   eyebrow, title, text, cards,

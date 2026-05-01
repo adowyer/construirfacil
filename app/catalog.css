@@ -135,6 +135,35 @@ body:has(.cf-row.cf-expanded) {
   white-space: nowrap;
 }
 
+.cf-search-field--select {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cf-search-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.cf-search-chip {
+  background: rgba(255, 255, 255, 0.15);
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 100px;
+  transition: background 0.2s;
+}
+
+.cf-search-chip.active {
+  background: #fff;
+  color: #0a0a0a;
+  border-color: #fff;
+}
+
 /* Slide edu */
 .cf-slide-edu {
   background: #fff;
