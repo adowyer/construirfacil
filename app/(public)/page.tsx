@@ -6,6 +6,7 @@ import {
   buildStorageUrl,
 } from '@/lib/supabase/queries/house_images'
 import CatalogPage from '@/components/catalog/CatalogPage'
+import '../catalog.css'
 
 export const dynamic = 'force-dynamic'
 

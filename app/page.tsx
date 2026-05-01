@@ -9,7 +9,6 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
 import CatalogPage from '@/components/catalog/CatalogPage'
-import '../../catalog.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +20,8 @@ export const metadata: Metadata = {
 export default async function CatalogRoute() {
   const supabase = await createClient()
   const models = await getGroupedCatalog(supabase)
+
+  console.log('models count:', models.length, models[0])
 
   return <CatalogPage models={models} />
 }

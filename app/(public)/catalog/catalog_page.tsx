@@ -9,7 +9,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
 import CatalogPage from '@/components/catalog/CatalogPage'
-import '../../catalog.css'
+import '@/app/catalog.css'
 
 export const dynamic = 'force-dynamic'
 

@@ -1,0 +1,1212 @@
+/* ============================================================================
+   ConstruirFácil / Hausind — Catalog styles
+   Archivo: app/catalog.css (importar en app/(public)/catalog/page.tsx o globals.css)
+   ============================================================================ */
+
+/* ── Rules ── */
+body:has(.cf-row.cf-expanded) {
+  overflow-x: hidden !important;
+}
+
+/* ── Animations ── */
+@keyframes cfSlideFade {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Hero slider ── */
+.cf-hero-wrapper {
+  background: #fafaf8;
+  padding: 0px 0 14px;
+  position: relative;
+}
+
+.cf-hero-track {
+  display: flex;
+  gap: 12px;
+  padding: 0 28px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.cf-hero-track::-webkit-scrollbar {
+  display: none;
+}
+
+.cf-slide {
+  flex: 0 0 80%;
+  scroll-snap-align: start;
+  aspect-ratio: 16/8;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Slide 1: búsqueda */
+.cf-slide-search {
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  padding: 40px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.cf-slide-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin: 0 0 10px;
+}
+
+.cf-slide-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  margin: 0 0 28px;
+  max-width: 18ch;
+}
+
+.cf-search-bar {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  display: flex;
+  gap: 0;
+  padding: 6px;
+  max-width: 660px;
+  flex-wrap: wrap;
+}
+
+.cf-search-field {
+  flex: 1;
+  min-width: 90px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-right: 0.5px solid rgba(255, 255, 255, 0.18);
+}
+
+.cf-search-field:last-of-type {
+  border-right: 0;
+}
+
+.cf-search-lbl {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin: 0 0 2px;
+}
+
+.cf-search-val {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.cf-search-go {
+  background: #fff;
+  color: #0a0a0a;
+  border: 0;
+  padding: 0 22px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: inherit;
+  border-radius: 8px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* Slide edu */
+.cf-slide-edu {
+  background: #fff;
+  padding: 36px 44px;
+  display: flex;
+  gap: 36px;
+  height: 100%;
+}
+
+.cf-slide-edu-left {
+  flex: 0 0 20%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.cf-slide-edu-right {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+}
+
+.cf-slide-edu-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0 0 12px;
+}
+
+.cf-slide-edu-title {
+  font-size: clamp(20px, 2.5vw, 36px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0 0 14px;
+  color: #0a0a0a;
+}
+
+.cf-slide-edu-text {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+  max-width: 30ch;
+  margin: 0;
+}
+
+.cf-edu-card {
+  flex: 1;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3/4;
+}
+
+.cf-edu-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 14px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  color: #fff;
+}
+
+.cf-edu-card-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 2px;
+}
+
+.cf-edu-card-meta {
+  font-size: 10px;
+  opacity: 0.85;
+  margin: 0;
+}
+
+.cf-edu-card-plain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 14px;
+  text-align: center;
+}
+
+.cf-edu-card-code {
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  color: #0a0a0a;
+}
+
+.cf-edu-card-plain-meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* Hero controls */
+.cf-hero-arr {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: 18px;
+  font-family: inherit;
+}
+
+.cf-hero-arr-left {
+  left: 28px;
+}
+
+.cf-hero-arr-right {
+  right: 28px;
+}
+
+.cf-hero-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 14px 0 6px;
+}
+
+.cf-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d4d4d0;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.cf-dot-active {
+  background: #0a0a0a;
+  width: 22px;
+  border-radius: 100px;
+}
+
+/* ── Filtros ── */
+.cf-filters {
+  background: #fff;
+  border-top: 0.5px solid #e8e8e8;
+  border-bottom: 0.5px solid #e8e8e8;
+  padding: 12px 28px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cf-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cf-filter-label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.cf-chip {
+  background: #fff;
+  border: 0.5px solid #d4d4d0;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #555;
+  font-family: inherit;
+  border-radius: 100px;
+}
+
+.cf-chip.active {
+  background: #0a0a0a;
+  color: #fff;
+  border-color: #0a0a0a;
+}
+
+/* ── Grilla ── */
+.cf-grid {
+  background: #fafaf8;
+  padding: 80px 15%;
+}
+
+.cf-group-header {
+  background: #fff;
+  padding: 28px 0 14px;
+  border-bottom: 0.5px solid #e8e8e8;
+}
+
+.cf-group-eyebrow {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0 0 4px;
+}
+
+.cf-group-title {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  margin: 0 0 4px;
+  color: #0a0a0a;
+}
+
+.cf-group-sub {
+  font-size: 12px;
+  color: #777;
+  margin: 0;
+}
+
+/* ── Row (flex layout — replica BIG.dk OLD) ── */
+.cf-row-shell {
+  max-width: 1540px;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.cf-row-shell.cf-expanded {
+  position: relative;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  contain: layout paint;
+  touch-action: pan-y;
+}
+
+.cf-row-shell.cf-expanded::-webkit-scrollbar {
+  display: none;
+}
+
+.cf-row-shell.cf-dragging {
+  cursor: grabbing;
+}
+
+.cf-row {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 48px;
+  height: 440px;
+  border-bottom: 1px solid #e8e8e8;
+  cursor: pointer;
+  overflow: hidden;
+  background: #fff;
+  transition: height 2.5s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1),
+    padding 2.5s cubic-bezier(0.16, 1, 0.3, 1),
+    background 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-row:nth-child(even) {
+  background: #f7f6f1;
+}
+
+/* ── Estado Expandido (BIG.dk) ── */
+.cf-row.cf-expanded {
+  height: 85vh;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-left: 48px;
+  padding-right: 48px;
+  cursor: grab;
+  background: #fdfdfd;
+  /* Keep zoom anchored to viewport center (avoid right drift on huge row width) */
+  transform-origin: 50vw 50%;
+  /* Continuous visible close until near off-screen (avoid "stuck" plateau) */
+  transform: scale(calc(0.52 + 0.48 * var(--expand-progress, 1)));
+  z-index: 3;
+  overflow: visible;
+}
+
+/* Close button now rendered inline in cf-row-info with explicit styles */
+
+/* ── LEFT: Info column ── */
+.cf-row-info {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px 48px 48px 0;
+  width: 380px;
+  flex-shrink: 0;
+  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-row.cf-expanded .cf-row-info {
+  width: clamp(220px, 22vw, 350px);
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.cf-row-tag {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0 0 10px;
+}
+
+.cf-row-name {
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  margin: 0 0 6px;
+  color: #0a0a0a;
+}
+
+.cf-row-subtitle {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  margin: 0 0 22px;
+}
+
+.cf-row-stats {
+  display: flex;
+  gap: 22px;
+  margin: 0 0 22px;
+}
+
+.cf-stat-num {
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1;
+  color: #0a0a0a;
+}
+
+.cf-stat-lbl {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+.cf-row-systems {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+
+.cf-sys-badge {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  background: #ebe8df;
+  color: #666;
+}
+
+.cf-row-price {
+  margin: 0 0 18px;
+}
+
+.cf-price-lbl {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #888;
+  margin: 0;
+}
+
+.cf-price-amt {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+  margin: 2px 0 0;
+}
+
+.cf-row-cta {
+  background: 0;
+  border: 0;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0a0a0a;
+  cursor: pointer;
+  font-family: inherit;
+  border-bottom: 1px solid #0a0a0a;
+  padding-bottom: 2px;
+  width: fit-content;
+  transition: opacity 0.2s;
+}
+
+.cf-row-cta:hover {
+  opacity: 0.6;
+}
+
+/* ── CENTER: Horizontal Gallery ── */
+.cf-row-photo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+  padding: 40px 0;
+  overflow: hidden;
+}
+
+.cf-row.cf-expanded .cf-row-photo {
+  flex: 0 0 auto;
+  width: max-content;
+  padding: 0;
+  overflow: visible;
+  justify-content: center;
+}
+
+.cf-row-track {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cf-row.cf-expanded .cf-row-track {
+  width: max-content;
+}
+
+.cf-row-lqip {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.cf-row-img {
+  height: auto;
+  max-height: 100%;
+  width: 100%;
+  max-width: 650px;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  flex-shrink: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: transform 2.5s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-row:not(.cf-expanded):hover .cf-row-img {
+  transform: scale(1.025);
+}
+
+.cf-row.cf-expanded .cf-row-img {
+  height: auto;
+  max-height: 65vh;
+  width: auto;
+  max-width: none;
+  aspect-ratio: auto;
+}
+
+/* ── RIGHT: Detail column (visible only when expanded) ── */
+.cf-row-detail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 48px 0 48px 64px;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-row.cf-expanded .cf-row-detail {
+  width: clamp(220px, 24vw, 450px);
+  opacity: 1;
+}
+
+.cf-row-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, transparent 45%);
+  transition: opacity 0.4s ease;
+  display: flex;
+  align-items: flex-end;
+  padding: 28px 32px;
+}
+
+.cf-row-overlay-content {
+  transform: translateY(8px);
+  transition: transform 0.4s cubic-bezier(.2, .8, .2, 1);
+  color: #fff;
+}
+
+.cf-row-photo:hover .cf-row-overlay-content {
+  transform: translateY(0);
+}
+
+.cf-row-overlay-name {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  margin: 0 0 4px;
+}
+
+.cf-row-overlay-sub {
+  font-size: 12px;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* ── Station slides (content panels inside expanded gallery) ── */
+.cf-station-slide {
+  flex: 0 0 auto;
+  width: auto;
+  height: 65vh;
+  aspect-ratio: 16/10;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  pointer-events: auto;
+  animation: cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cf-station-slide>* {
+  width: 100%;
+  height: 100%;
+}
+
+/* CTA medio */
+.cf-mid-cta {
+  background: #0a0a0a;
+  color: #fff;
+  padding: 40px 28px;
+  text-align: center;
+  margin: 60px 0;
+}
+
+.cf-mid-cta h3 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+
+.cf-mid-cta p {
+  font-size: 13px;
+  opacity: 0.8;
+  margin: 0 0 18px;
+}
+
+.cf-mid-cta-btn {
+  background: #fff;
+  color: #0a0a0a;
+  border: 0;
+  padding: 12px 28px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Detail slider ── */
+.cf-detail {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.5s cubic-bezier(.2, .8, .2, 1);
+}
+
+.cf-detail-nav {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 0.5px solid #e8e8e8;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cf-detail-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.cf-detail-back {
+  background: 0;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  color: #888;
+  padding: 0;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.cf-detail-stations {
+  display: flex;
+  flex: 1;
+}
+
+.cf-station-btn {
+  background: 0;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #999;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.cf-station-btn.active {
+  color: #0a0a0a;
+  border-bottom-color: #0a0a0a;
+}
+
+/* Botón X siempre visible */
+.cf-detail-close {
+  background: 0;
+  border: 0;
+  cursor: pointer;
+  font-size: 16px;
+  color: #888;
+  padding: 4px 8px;
+  font-family: inherit;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: color 0.2s;
+}
+
+.cf-detail-close:hover {
+  color: #0a0a0a;
+}
+
+.cf-detail-track {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+.cf-detail-track::-webkit-scrollbar {
+  display: none;
+}
+
+.cf-station {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Station: Portada */
+.cf-st-portada {
+  height: 100%;
+  min-height: 600px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.cf-st-portada-content {
+  padding: 36px 40px 30px;
+  color: #fff;
+}
+
+.cf-st-portada-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin: 0 0 6px;
+}
+
+.cf-st-portada-name {
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  margin: 0 0 8px;
+}
+
+.cf-st-portada-meta {
+  font-size: 13px;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* Station: Camera */
+.cf-st-camera {
+  height: 100%;
+  min-height: 600px;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+}
+
+.cf-camera-label {
+  position: absolute;
+  top: 28px;
+  left: 28px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 6px 12px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.cf-camera-pills {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+.cf-camera-pill {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0a0a0a;
+  padding: 7px 14px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 100px;
+  backdrop-filter: blur(10px);
+  transition: background 0.2s, color 0.2s;
+}
+
+.cf-camera-pill.active {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+/* Station: Comparador */
+.cf-st-compare {
+  height: 100%;
+  min-height: 600px;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.cf-cmp-modes {
+  position: absolute;
+  top: 28px;
+  left: 28px;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 4px;
+  border-radius: 100px;
+  backdrop-filter: blur(10px);
+}
+
+.cf-cmp-mode {
+  background: 0;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #888;
+  font-family: inherit;
+  border-radius: 100px;
+}
+
+.cf-cmp-mode.active {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.cf-cmp-base,
+.cf-cmp-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.cf-cmp-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #fff;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+}
+
+.cf-cmp-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border-radius: 50%;
+  cursor: ew-resize;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  font-size: 18px;
+}
+
+.cf-cmp-tags {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.cf-cmp-tag {
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+/* Station: Datos */
+.cf-st-datos {
+  padding: 40px 48px;
+  min-height: 600px;
+}
+
+.cf-st-section-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin: 0 0 14px;
+}
+
+.cf-variant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.cf-variant-card {
+  border: 1px solid #e8e8e8;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: #fff;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.cf-variant-card.selected {
+  border-color: #0a0a0a;
+  background: #f7f7f5;
+}
+
+.cf-variant-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 2px;
+  color: #0a0a0a;
+}
+
+.cf-variant-meta {
+  font-size: 10px;
+  color: #888;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.cf-system-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.cf-system-pill {
+  border: 1px solid #d4d4d0;
+  background: #fff;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  color: #555;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.cf-system-pill.selected {
+  background: #0a0a0a;
+  color: #fff;
+  border-color: #0a0a0a;
+}
+
+.cf-price-block {
+  background: #f7f7f5;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+.cf-price-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #0a0a0a;
+}
+
+.cf-price-row+.cf-price-row {
+  border-top: 0.5px solid #d4d4d0;
+}
+
+.cf-price-row span:first-child {
+  color: #888;
+  font-size: 12px;
+}
+
+.cf-price-row span:last-child {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.cf-price-featured span:last-child {
+  color: #0a7a3e;
+}
+
+.cf-wa-cta {
+  width: 100%;
+  background: #0a0a0a;
+  color: #fff;
+  border: 0;
+  padding: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .cf-slide {
+    flex-basis: 92%;
+  }
+
+  .cf-slide-edu {
+    flex-direction: column;
+    padding: 24px;
+  }
+
+  .cf-slide-edu-left {
+    flex: 0;
+  }
+
+  .cf-slide-search {
+    padding: 28px;
+  }
+
+  .cf-search-bar {
+    flex-wrap: wrap;
+  }
+
+  .cf-row,
+  .cf-row.cf-row-flipped {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-row-info {
+    padding: 22px;
+    text-align: left !important;
+  }
+
+  .cf-row-stats {
+    justify-content: flex-start !important;
+  }
+
+  .cf-row-systems {
+    justify-content: flex-start !important;
+  }
+
+  .cf-row-cta {
+    align-self: flex-start !important;
+  }
+
+  .cf-row-photo {
+    aspect-ratio: 4/3;
+  }
+
+  .cf-st-datos {
+    padding: 28px 22px;
+  }
+
+  .cf-detail-nav {
+    gap: 8px;
+    padding: 10px 16px;
+  }
+
+}
+
+/* ── Eliminación de toasts ── */
+.nextjs-toast {
+  display: none !important;
+}

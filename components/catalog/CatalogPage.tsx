@@ -1,721 +1,623 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+/**
+ * components/catalog/CatalogPage.tsx
+ *
+ * Orquesta:
+ *   1. HeroSlider arriba (5 slides educativos)
+ *   2. Filtros sticky
+ *   3. Grilla de modelos agrupados (por línea, alternando lado)
+ *   4. Detail slider overlay (abre al clickear una tarjeta)
+ *
+ * El detail slider tiene 5 estaciones:
+ *   Portada / Exteriores / Interiores / Comparador / Datos
+ *
+ * Se cierra con el botón X (top-right, siempre visible) o al scrollear hacia abajo.
+ */
+'use client'
 
-export type House = {
-  id?: string
-  variant_code: string
-  name: string
-  area_m2: number | null
-  floors?: number | null
-  min_bedrooms: number | null
-  max_bedrooms: number | null
-  beds?: string
-  recommended_use: string | null
-  construction_system: string | null
-  public_price_usd: number | null
-  price_pozo_usd?: number | null
-  presale_discount_pct?: number | null
-  brochure_url: string | null
-  cover_image: { storage_url: string; alt_text?: string | null } | null
-  lqip_color: string
-  tags?: (string | null)[]
-  status?: string
-  linea?: string | null
-  gallery_images?: { storage_url: string; alt_text?: string | null }[]
+import { useEffect, useRef, useState, useCallback } from 'react'
+import HeroSlider from './HeroSlider'
+import ModelRow from './ModelRow'
+import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PageProps {
+  models: CatalogModel[]
 }
 
-const LINES = [
-  { key: 'all', label: 'Todos' },
-  { key: 'BOSQUE', label: 'Bosque' },
-  { key: 'ATLAS', label: 'Atlas' },
-  { key: 'TERRA', label: 'Terra' },
+type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
+
+const STATIONS: { id: Station; label: string }[] = [
+  { id: 'portada', label: 'Portada' },
+  { id: 'exteriores', label: 'Exteriores' },
+  { id: 'interiores', label: 'Interiores' },
+  { id: 'comparador', label: 'Comparador' },
+  { id: 'datos', label: 'Datos' },
 ]
 
-const BED_FILTERS = [
-  { key: 'all', label: 'Todos', match: (_h: House) => true },
-  { key: '1', label: '1 Dorm.', match: (h: House) => (h.min_bedrooms ?? 0) <= 1 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) <= 1 },
-  { key: '2-3', label: '2–3 Dorm.', match: (h: House) => (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 2 && (h.max_bedrooms ?? h.min_bedrooms ?? 0) <= 3 },
-  { key: '4+', label: '4+ Dorm.', match: (h: House) => (h.max_bedrooms ?? h.min_bedrooms ?? 0) >= 4 },
-]
+const LINE_ORDER = ['ATLAS', 'BOSQUE', 'TERRA']
 
-type SortOrder = 'none' | 'asc' | 'desc'
+const LINE_META: Record<string, { title: string; sub: string }> = {
+  ATLAS: { title: 'Atlas', sub: 'Estándar · desde USD 63k · 1 planta · 5 modelos' },
+  BOSQUE: { title: 'Bosque', sub: 'Premium · desde USD 200k · 1 ó 2 plantas · 9 modelos' },
+  TERRA: { title: 'Terra', sub: 'Modular · desde USD 58k · tipologías U/O/Z · 5 modelos' },
+}
 
-export default function CatalogPage({ houses = [] }: { houses: House[] }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [lineKey, setLineKey] = useState<string>('all')
-  const [bedKey, setBedKey] = useState<string>('all')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('none')
+function fmtUSD(n: number | null) {
+  if (!n) return '—'
+  return 'USD ' + Math.round(n).toLocaleString('es-AR')
+}
 
-  const byLine = lineKey === 'all'
-    ? houses
-    : houses.filter(h => h.linea === lineKey)
+// ─────────────────────────────────────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const activeBed = BED_FILTERS.find(b => b.key === bedKey) ?? BED_FILTERS[0]
-  const byBed = byLine.filter(activeBed.match)
+export default function CatalogPage({ models = [] }: PageProps) {
+  const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
+  const [station, setStation] = useState<Station>('portada')
+  const [lineFilter, setLineFilter] = useState<string>('ALL')
+  const [bedFilter, setBedFilter] = useState<string>('ALL')
+  const [sizeFilter, setSizeFilter] = useState<string>('ALL')
+  const [sortOrder, setSortOrder] = useState<string>('recommended')
 
-  const sorted = [...byBed].sort((a, b) => {
-    if (sortOrder === 'none') return 0
-    const pa = a.public_price_usd ?? Infinity
-    const pb = b.public_price_usd ?? Infinity
-    return sortOrder === 'asc' ? pa - pb : pb - pa
+  const detailRef = useRef<HTMLDivElement>(null)
+  const detailTrackRef = useRef<HTMLDivElement>(null)
+
+  // ── Filter models ──
+  const filtered = models.filter(m => {
+    if (lineFilter !== 'ALL' && m.linea !== lineFilter) return false
+    if (bedFilter !== 'ALL') {
+      if (bedFilter === '1-2' && (m.beds_min ?? 0) > 2) return false
+      if (bedFilter === '3' && !((m.beds_min ?? 0) <= 3 && (m.beds_max ?? 0) >= 3)) return false
+      if (bedFilter === '4+' && (m.beds_max ?? 0) < 4) return false
+    }
+    if (sizeFilter !== 'ALL') {
+      if (sizeFilter === 'S' && (m.area_min ?? 0) > 80) return false
+      if (sizeFilter === 'M' && ((m.area_max ?? 0) < 80 || (m.area_min ?? 0) > 160)) return false
+      if (sizeFilter === 'L' && (m.area_max ?? 0) < 160) return false
+    }
+    return true
+  }).sort((a, b) => {
+    if (sortOrder === 'price-asc') return (a.price_from ?? 0) - (b.price_from ?? 0)
+    if (sortOrder === 'price-desc') return (b.price_from ?? 0) - (a.price_from ?? 0)
+    return 0
   })
 
-  function selectLine(key: string) {
-    setLineKey(key)
-    setBedKey('all')
-    setExpandedId(null)
-  }
+  // ── Group by line ──
+  const grouped = LINE_ORDER.reduce((acc, line) => {
+    const items = filtered.filter(m => m.linea === line)
+    if (items.length) acc[line] = items
+    return acc
+  }, {} as Record<string, CatalogModel[]>)
+
+  // ── Open / close detail ──
+  const openDetail = useCallback((model: CatalogModel) => {
+    setActiveModel(model)
+    setStation('portada')
+    document.body.style.overflow = 'hidden'
+  }, [])
+
+  const closeDetail = useCallback(() => {
+    setActiveModel(null)
+    document.body.style.overflow = ''
+    if (detailRef.current) {
+      detailRef.current.style.transform = 'translateX(100%)'
+    }
+  }, [])
 
   useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setExpandedId(null)
+    const el = detailTrackRef.current
+    if (!el || !activeModel) return
+
+    const firstStation = el.children[0] as HTMLElement
+    if (!firstStation) return
+
+    let startY = 0
+
+    const onTouchStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY
     }
-    function handleClick(e: MouseEvent) {
-      if (!expandedId) return
-      const target = e.target as HTMLElement
-      if (!target.closest('.cf-row')) setExpandedId(null)
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - startY
+      if (dy > 80 && station === 'portada' && firstStation.scrollTop < 10) {
+        closeDetail()
+      }
     }
-    window.addEventListener('keydown', handleKey)
-    document.addEventListener('click', handleClick)
+
+    const onScroll = () => {
+      if (station === 'portada' && firstStation.scrollTop > 60) {
+        closeDetail()
+      }
+    }
+
+    firstStation.addEventListener('scroll', onScroll)
+    firstStation.addEventListener('touchstart', onTouchStart)
+    firstStation.addEventListener('touchend', onTouchEnd)
+
     return () => {
-      window.removeEventListener('keydown', handleKey)
-      document.removeEventListener('click', handleClick)
+      firstStation.removeEventListener('scroll', onScroll)
+      firstStation.removeEventListener('touchstart', onTouchStart)
+      firstStation.removeEventListener('touchend', onTouchEnd)
     }
-  }, [expandedId])
+  }, [activeModel, station, closeDetail])
+
+  // ── Navigate stations ──
+  const goToStation = useCallback((s: Station) => {
+    setStation(s)
+    const track = detailTrackRef.current
+    if (!track) return
+    const idx = STATIONS.findIndex(st => st.id === s)
+    const slide = track.children[idx] as HTMLElement
+    if (slide) slide.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
+  }, [])
+
+  // Sync station from scroll
+  useEffect(() => {
+    const track = detailTrackRef.current
+    if (!track) return
+    let timer: ReturnType<typeof setTimeout>
+    const onScroll = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const w = track.clientWidth || 1
+        const idx = Math.round(track.scrollLeft / w)
+        const s = STATIONS[idx]
+        if (s) setStation(s.id)
+      }, 80)
+    }
+    track.addEventListener('scroll', onScroll)
+    return () => { track.removeEventListener('scroll', onScroll); clearTimeout(timer) }
+  }, [activeModel])
+
+  // Animate detail open/close
+  useEffect(() => {
+    const el = detailRef.current
+    if (!el) return
+    if (activeModel) {
+      el.style.transform = 'translateX(0)'
+    } else {
+      el.style.transform = 'translateX(100%)'
+    }
+  }, [activeModel])
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      {/* ── Hero educativo ── */}
+      <HeroSlider />
 
-      <header className="cf-topnav">
-        <a href="#" className="cf-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/cf_logo_gris.png" alt="ConstruirFácil" className="cf-brand-logo" />
-        </a>
+      {/* ── Filtros ── */}
+      <div className="cf-filters">
+        <FilterGroup label="Línea">
+          {['ALL', 'ATLAS', 'BOSQUE', 'TERRA'].map(v => (
+            <Chip key={v} active={lineFilter === v} onClick={() => setLineFilter(v)}>
+              {v === 'ALL' ? 'Todas' : v.charAt(0) + v.slice(1).toLowerCase()}
+            </Chip>
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Dorm.">
+          {(['ALL', '1-2', '3', '4+'] as const).map(v => (
+            <Chip key={v} active={bedFilter === v} onClick={() => setBedFilter(v)}>
+              {v === 'ALL' ? 'todos' : v}
+            </Chip>
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Tamaño" style={{ marginLeft: 0 }}>
+          {(['ALL', 'S', 'M', 'L'] as const).map(v => (
+            <Chip key={v} active={sizeFilter === v} onClick={() => setSizeFilter(v)}>
+              {v === 'ALL' ? 'todos' : v === 'S' ? '–80m²' : v === 'M' ? '80–160m²' : '+160m²'}
+            </Chip>
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Orden" style={{ marginLeft: 'auto' }}>
+          {[
+            { v: 'recommended', l: 'Sugeridos' },
+            { v: 'price-asc', l: 'Precio ↑' },
+            { v: 'price-desc', l: 'Precio ↓' },
+          ].map(({ v, l }) => (
+            <Chip key={v} active={sortOrder === v} onClick={() => setSortOrder(v)}>{l}</Chip>
+          ))}
+        </FilterGroup>
+      </div>
 
-        <div className="cf-nav-area">
-          <nav className="cf-nav">
-            {LINES.map(l => (
-              <button
-                key={l.key}
-                className={'cf-nav-btn' + (lineKey === l.key ? ' cf-active' : '')}
-                onClick={() => selectLine(l.key)}
-              >
-                {l.label}
-              </button>
+      {/* ── Grilla agrupada por línea ── */}
+      <div className="cf-grid">
+        {Object.entries(grouped).map(([line, items], gi) => (
+          <div key={line}>
+            {/* Header de sección */}
+            <div className="cf-group-header">
+              <p className="cf-group-eyebrow">Línea</p>
+              <h2 className="cf-group-title">{LINE_META[line]?.title ?? line}</h2>
+              <p className="cf-group-sub">{LINE_META[line]?.sub}</p>
+            </div>
+
+            {/* Filas */}
+            {items.map((model, i) => (
+              <ModelRow
+                key={model.group_slug}
+                model={model}
+                index={i}
+                onOpen={openDetail}
+              />
             ))}
-          </nav>
 
-          <div className="cf-subbar">
-            {lineKey !== 'all' && (
-              <div className="cf-bed-filters">
-                {BED_FILTERS.map(b => (
+            {/* CTA entre Atlas y Bosque */}
+            {gi === 0 && (
+              <div className="cf-mid-cta">
+                <h3>¿Te ayudo a elegir?</h3>
+                <p>Conversá con nuestro asistente y encontrá la casa que mejor se adapta a vos.</p>
+                <button className="cf-mid-cta-btn">Hablar con asesor</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Detail slider overlay ── */}
+      <div
+        ref={detailRef}
+        className="cf-detail"
+        style={{ transform: 'translateX(100%)' }}
+        aria-hidden={!activeModel}
+      >
+        {activeModel && (
+          <>
+            {/* Detail nav */}
+            <div className="cf-detail-nav">
+              <button className="cf-detail-back" onClick={closeDetail}>← Volver</button>
+              <div className="cf-detail-stations">
+                {STATIONS.map(s => (
                   <button
-                    key={b.key}
-                    className={'cf-bed-btn' + (bedKey === b.key ? ' cf-active' : '')}
-                    onClick={() => { setBedKey(b.key); setExpandedId(null) }}
+                    key={s.id}
+                    className={`cf-station-btn ${station === s.id ? 'active' : ''}`}
+                    onClick={() => goToStation(s.id)}
                   >
-                    {b.label}
+                    {s.label}
                   </button>
                 ))}
               </div>
-            )}
-
-            <div className="cf-sort">
-              <span className="cf-sort-label">Precio</span>
-              <button
-                className={'cf-sort-btn' + (sortOrder === 'asc' ? ' cf-active' : '')}
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'none' : 'asc')}
-              >↑ Menor</button>
-              <button
-                className={'cf-sort-btn' + (sortOrder === 'desc' ? ' cf-active' : '')}
-                onClick={() => setSortOrder(sortOrder === 'desc' ? 'none' : 'desc')}
-              >↓ Mayor</button>
+              {/* Botón X siempre visible */}
+              <button className="cf-detail-close" onClick={closeDetail} aria-label="Cerrar">✕</button>
             </div>
-          </div>
-        </div>
 
-        <div className="cf-nav-right">
-          <a href="#" className="cf-constructoras-link">Constructoras</a>
-        </div>
-      </header>
+            {/* Detail track horizontal */}
+            <div ref={detailTrackRef} className="cf-detail-track">
 
-      <main className="cf-list">
-        {sorted.map(h => (
-          <Row
-            key={h.variant_code}
-            house={h}
-            expanded={expandedId === h.variant_code}
-            onOpen={() => setExpandedId(h.variant_code)}
-            onClose={() => setExpandedId(null)}
-          />
-        ))}
-        {sorted.length === 0 && (
-          <div className="cf-empty">No hay modelos que coincidan con este filtro.</div>
+              {/* PORTADA */}
+              <div className="cf-station">
+                <StationPortada model={activeModel} />
+              </div>
+
+              {/* EXTERIORES */}
+              <div className="cf-station">
+                <StationCamera
+                  label="Exteriores"
+                  model={activeModel}
+                  isExterior
+                />
+              </div>
+
+              {/* INTERIORES */}
+              <div className="cf-station">
+                <StationCamera
+                  label="Interiores"
+                  model={activeModel}
+                  isExterior={false}
+                />
+              </div>
+
+              {/* COMPARADOR */}
+              <div className="cf-station">
+                <StationCompare model={activeModel} />
+              </div>
+
+              {/* DATOS */}
+              <div className="cf-station">
+                <StationDatos model={activeModel} />
+              </div>
+
+            </div>
+          </>
         )}
-    </main>
+      </div>
+
     </>
   )
 }
 
-function Row({
-  house, expanded, onOpen, onClose,
-}: {
-  house: House; expanded: boolean; onOpen: () => void; onClose: () => void
-}) {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
+// ─────────────────────────────────────────────────────────────────────────────
+// Filtros helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const slides: { storage_url: string; alt?: string | null }[] = (
-    house.gallery_images && house.gallery_images.length
-      ? house.gallery_images
-      : house.cover_image
-        ? [{ storage_url: house.cover_image.storage_url, alt: house.cover_image.alt_text }]
-        : []
-  ).map(s => ({ storage_url: s.storage_url, alt: (s as any).alt_text ?? (s as any).alt ?? house.name }))
-
-  // --- 1. Pure Zoom-Out Intercept (BIG.dk standard) ---
-  useEffect(() => {
-    if (!expanded) {
-      document.body.style.overflowY = 'auto'
-      if (rowRef.current) rowRef.current.style.removeProperty('--expand-progress')
-      return
-    }
-
-    let rafId: number
-    let isLooping = true
-    let virtualScroll = 0
-
-    // Spring physics states
-    const targetProgress = { current: 1.0 }
-    const currentProgress = { current: 0.45 } // Starts zoomed out to actively bounce open!
-    const velocity = { current: 0.0 }
-
-    const loop = () => {
-      if (!isLooping) return
-      
-      const stiffness = 0.08  
-      const damping = 0.70    
-      
-      const pull = (targetProgress.current - currentProgress.current) * stiffness
-      velocity.current += pull
-      velocity.current *= damping
-      currentProgress.current += velocity.current
-
-      // Lock bounds & Close execution
-      if (targetProgress.current <= 0 && currentProgress.current <= 0.02 && Math.abs(velocity.current) < 0.005) {
-        document.body.style.overflowY = 'auto'
-        onClose()
-        isLooping = false
-        return
-      }
-
-      if (rowRef.current) {
-        rowRef.current.style.setProperty('--expand-progress', Math.max(0, currentProgress.current).toFixed(4))
-      }
-
-      rafId = requestAnimationFrame(loop)
-    }
-
-    // Start loop immediately so it bounces open right away without jump!
-    rafId = requestAnimationFrame(loop)
-
-    const handleWheel = (e: WheelEvent) => {
-      // If primarily vertical, capture it as "zoom out"
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) + 5) {
-        e.preventDefault() 
-        virtualScroll += e.deltaY
-        if (virtualScroll < 0) virtualScroll = 0 // Don't allow scrolling 'up' into negative
-        targetProgress.current = Math.max(0, 1.0 - (virtualScroll / 180))
-      }
-    }
-
-    // Wait 850ms for the auto-smooth scroll to finish, THEN lock body and listen
-    const timer = setTimeout(() => {
-      document.body.style.overflowY = 'hidden'
-      window.addEventListener('wheel', handleWheel, { passive: false })
-    }, 850)
-
-    return () => {
-      isLooping = false
-      document.body.style.overflowY = 'auto'
-      clearTimeout(timer)
-      window.removeEventListener('wheel', handleWheel)
-      cancelAnimationFrame(rafId)
-    }
-  }, [expanded, onClose])
-
-  // --- 2. Click and Drag to Pan Horizontal (like BIG.dk) ---
-  const [isDragging, setIsDragging] = useState(false)
-  const [startX, setStartX] = useState(0)
-  const [startD, setStartD] = useState(0)
-
-  const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!expanded) return
-    setIsDragging(true)
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    setStartX(clientX)
-    setStartD(window.scrollX)
-  }
-  const onDragEnd = () => setIsDragging(false)
-  const onDragMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDragging || !expanded) return
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const walk = (clientX - startX) * 1.5 // Panning speed weight
-    window.scrollTo({ left: startD - walk, top: window.scrollY, behavior: 'instant' })
-  }
-
-  // Center row horizontally aligned with the nav organically
-  useEffect(() => {
-    if (expanded && rowRef.current) {
-      setTimeout(() => {
-        const navHeight = 140
-        const rowEl = rowRef.current
-        if (!rowEl) return
-        const rowRect = rowEl.getBoundingClientRect()
-        const targetY = rowRect.top + window.scrollY - navHeight
-        window.scrollTo({ top: targetY, behavior: 'smooth' })
-      }, 150)
-    }
-  }, [expanded])
-
-  const locLine = [
-    house.area_m2 ? `${house.area_m2} m²` : null,
-    house.beds ? `${house.beds} DORM.` : null,
-  ].filter(Boolean).join(' · ')
-
-  const statusTag = house.construction_system || 'HAUSIND'
-  const discountedPrice = house.price_pozo_usd ?? (
-    house.public_price_usd && house.presale_discount_pct
-      ? house.public_price_usd * (1 - house.presale_discount_pct / 100)
-      : null
-  )
-
+function FilterGroup({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div
-      ref={rowRef}
-      className={'cf-row' + (expanded ? ' cf-expanded' : '') + (isDragging ? ' cf-dragging' : '')}
-      onClick={() => !expanded && onOpen()}
-      onMouseDown={onDragStart}
-      onMouseUp={onDragEnd}
-      onMouseLeave={onDragEnd}
-      onMouseMove={onDragMove}
-      onTouchStart={onDragStart}
-      onTouchEnd={onDragEnd}
-      onTouchMove={onDragMove}
-    >
-      {/* ── COL 1: Meta (Left) ── */}
-      <div className="cf-col-left">
-        {!expanded ? (
-          <div className="cf-meta-col">
-            <div className="cf-meta-name">{house.name}</div>
-            <div className="cf-meta-loc">{locLine}</div>
-            <div className="cf-meta-tag">{statusTag}</div>
-          </div>
-        ) : (
-          <div className="cf-info-col" onClick={e => e.stopPropagation()}>
-            <button
-              className="cf-close-btn"
-              onClick={e => { e.stopPropagation(); onClose() }}
-              aria-label="Cerrar"
-            >×</button>
+    <div className="cf-filter-group" style={style}>
+      <span className="cf-filter-label">{label}</span>
+      {children}
+    </div>
+  )
+}
 
-            <div className="cf-info-name">{house.name}</div>
+function Chip({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
+  return (
+    <button className={`cf-chip ${active ? 'active' : ''}`} onClick={onClick}>{children}</button>
+  )
+}
 
-            <div className="cf-info-meta">
-              {house.linea && (
-                <div className="cf-info-row">
-                  <div className="cf-info-label">Línea</div>
-                  <div className="cf-info-value">{house.linea}</div>
-                </div>
-              )}
-              {house.area_m2 && (
-                <div className="cf-info-row">
-                  <div className="cf-info-label">Superficie</div>
-                  <div className="cf-info-value">{house.area_m2} m²</div>
-                </div>
-              )}
-              {house.beds && (
-                <div className="cf-info-row">
-                  <div className="cf-info-label">Dormitorios</div>
-                  <div className="cf-info-value">{house.beds}</div>
-                </div>
-              )}
-              {house.construction_system && (
-                <div className="cf-info-row">
-                  <div className="cf-info-label">Sistema</div>
-                  <div className="cf-info-value">{house.construction_system}</div>
-                </div>
-              )}
-              {house.floors && (
-                <div className="cf-info-row">
-                  <div className="cf-info-label">Plantas</div>
-                  <div className="cf-info-value">{house.floors}</div>
-                </div>
-              )}
-            </div>
+// ─────────────────────────────────────────────────────────────────────────────
+// Estación: Portada
+// ─────────────────────────────────────────────────────────────────────────────
 
-            {house.public_price_usd && (
-              <div className="cf-info-price">
-                <div className="cf-info-label">Precio llave en mano</div>
-                <div className="cf-info-price-value">USD {Math.round(house.public_price_usd).toLocaleString('es-AR')}</div>
-                {discountedPrice && discountedPrice !== house.public_price_usd && (
-                  <div className="cf-info-price-pozo">En pozo: USD {Math.round(discountedPrice).toLocaleString('es-AR')}</div>
-                )}
-              </div>
-            )}
-
-            <a
-              href={`/models/${house.variant_code}`}
-              className="cf-info-more"
-              onClick={e => e.stopPropagation()}
-            >
-              Ver más →
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* ── COL 2: Gallery (Center Horizontal Scroll) ── */}
-      <div className="cf-col-center cf-gallery" ref={scrollRef}>
-        {slides.length > 0 && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={slides[0].storage_url} alt={slides[0].alt || house.name} className="cf-img-item" />
-        )}
-        {expanded && slides.slice(1).map((img, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={img.storage_url} alt={img.alt || house.name} className="cf-img-item" />
-        ))}
-      </div>
-
-      {/* ── COL 3: Description (Right) ── */}
-      <div className="cf-col-right" onClick={e => expanded && e.stopPropagation()}>
-        {expanded && house.recommended_use && (
-          <div className="cf-desc-col">
-            <p className="cf-desc-text">{house.recommended_use}</p>
-          </div>
-        )}
+export function StationPortada({ model }: { model: CatalogModel }) {
+  return (
+    <div className="cf-st-portada" style={{
+      backgroundImage: model.cover_url
+        ? `linear-gradient(rgba(0,0,0,0) 50%, rgba(0,0,0,0.7)), url('${model.cover_url}')`
+        : undefined,
+      backgroundColor: model.cover_url ? undefined : model.lqip_color,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }}>
+      <div className="cf-st-portada-content">
+        <p className="cf-st-portada-eyebrow">{model.linea} · {model.estilo}</p>
+        <h1 className="cf-st-portada-name">{model.display_name}</h1>
+        <p className="cf-st-portada-meta">
+          Desde {fmtUSD(model.price_from)} · {model.area_min && model.area_max ? `${Math.round(model.area_min)}–${Math.round(model.area_max)} m²` : '—'} · {model.variantes_count} variantes
+        </p>
       </div>
     </div>
   )
 }
 
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap');
+// ─────────────────────────────────────────────────────────────────────────────
+// Estación: Camera switcher (Exteriores / Interiores)
+// ─────────────────────────────────────────────────────────────────────────────
 
-body:has(.cf-list) {
-  font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: auto !important; /* ALLOW HORIZONTAL SCROLL FOR EXPANDED ITEM */
-}
+const EXTERIOR_ROOMS = ['Frente', 'Lateral', 'Atrás', 'Vista aérea']
+const INTERIOR_ROOMS = ['Living', 'Cocina', 'Dormitorio', 'Baño', 'Galería']
 
-/* smooth easing shared by clean elements */
-.cf-row,
-.cf-col-left,
-.cf-col-center,
-.cf-col-right,
-.cf-info-col,
-.cf-desc-col,
-.cf-img-item {
-  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
+export function StationCamera({
+  label,
+  model,
+  isExterior,
+}: {
+  label: string
+  model: CatalogModel
+  isExterior: boolean
+}) {
+  const rooms = isExterior ? EXTERIOR_ROOMS : INTERIOR_ROOMS
+  const [active, setActive] = useState(0)
 
-/* ─── TOP NAV ─────────────────────────────────── */
-.cf-topnav {
-  position: sticky; top: 0; left: 0; z-index: 100;
-  width: 100vw !important; /* Ensure it stays viewport width when body stretches horizontally */
-  display: flex; align-items: center;
-  background: rgba(255,255,255,.97);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e8e8e8;
-  padding: 0 48px;
-  font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
-  color: #0a0a0a;
-  min-height: 140px;
-  flex-wrap: wrap;
-}
-.cf-brand { display: flex; align-items: center; margin-right: 48px; flex-shrink: 0; text-decoration: none; }
-.cf-brand-logo { height: 85px; width: auto; display: block; }
+  // Placeholder: en producción vendría de model.exterior_images / interior_images
+  const coverUrl = model.cover_url ?? ''
 
-.cf-nav-area { flex: 1; display: flex; flex-direction: column; justify-content: center; height: 140px; }
-.cf-nav { display: flex; align-items: center; height: 52px; }
-.cf-nav-btn {
-  display: flex; align-items: center; padding: 0 18px; height: 100%;
-  font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-  color: #aaa; background: none; border: 0; cursor: pointer;
-  position: relative; transition: color .2s; font-family: inherit;
-}
-.cf-nav-btn:hover, .cf-nav-btn.cf-active { color: #0a0a0a; }
-.cf-nav-btn.cf-active::after {
-  content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
-  height: 2px; background: #0a0a0a;
-}
+  return (
+    <div
+      className="cf-st-camera"
+      style={{
+        backgroundImage: coverUrl ? `url('${coverUrl}')` : undefined,
+        backgroundColor: coverUrl ? undefined : model.lqip_color,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <span className="cf-camera-label">{label}</span>
 
-.cf-subbar { display: flex; align-items: center; height: 40px; border-top: 1px solid #f0f0f0; gap: 24px; }
-.cf-bed-filters { display: flex; align-items: center; gap: 4px; }
-.cf-bed-btn {
-  padding: 4px 14px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
-  color: #aaa; background: none; border: 1px solid transparent; border-radius: 100px;
-  cursor: pointer; transition: color .2s, border-color .2s; font-family: inherit;
-}
-.cf-bed-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
-.cf-bed-btn.cf-active { color: #0a0a0a; border-color: #0a0a0a; }
-
-.cf-sort { display: flex; align-items: center; gap: 6px; margin-left: auto; padding-right: 24px; }
-.cf-sort-label { font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #ccc; }
-.cf-sort-btn {
-  padding: 4px 12px; font-size: 11px; font-weight: 500; letter-spacing: .04em; color: #aaa; background: none;
-  border: 1px solid transparent; border-radius: 100px; cursor: pointer; transition: color .2s, border-color .2s, background .2s; font-family: inherit;
-}
-.cf-sort-btn:hover { color: #0a0a0a; border-color: #e0e0e0; }
-.cf-sort-btn.cf-active { color: #fff; background: #0a0a0a; border-color: #0a0a0a; }
-.cf-nav-right { flex-shrink: 0; display: flex; align-items: center; margin-left: 24px; }
-.cf-constructoras-link {
-  font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-  color: #aaa; text-decoration: none; transition: color .2s;
-}
-.cf-constructoras-link:hover { color: #0a0a0a; }
-
-/* ─── LIST ─────────────────────────────────────── */
-.cf-list {
-  width: 100%; margin: 0; padding: 40px 0 80px;
-  /* Removed max-width here so expanded rows can stretch infinitely horizontally */
-  font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
-  color: #0a0a0a; font-size: 13px; line-height: 1.5; letter-spacing: -.01em;
-}
-.cf-empty { padding: 80px 0; text-align: center; color: #999; font-size: 14px; }
-
-/* ─── ROW LAYOUT (BIG PATTERN) ──────────────────── */
-.cf-row {
-  display: flex;
-  max-width: 1540px; /* Constrain collapsed rows */
-  margin: 0 auto;
-  padding: 0 48px;
-  height: 440px;
-  border-bottom: 1px solid #e8e8e8;
-  cursor: pointer;
-  overflow: hidden;
-  /* Extreme cinematic 2.5s transitions for opening / closing */
-  transition: height 2.5s cubic-bezier(0.16, 1, 0.3, 1), 
-              max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1), 
-              padding 2.5s cubic-bezier(0.16, 1, 0.3, 1), 
-              background 2.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.cf-row.cf-expanded {
-  height: 85vh;
-  max-width: none;
-  width: max-content; /* This creates the huge horizontal canvas */
-  margin: 0;
-  /* Retain left padding dynamically proportional to the container so it aligns */
-  padding-left: max(48px, calc(50vw - 770px));
-  padding-right: 48px;
-  cursor: grab;
-  background: #fdfdfd;
-  /* Mapped directly to scroll via JS Physics Loop (60fps Spring) */
-  transform-origin: center center;
-  transform: scale(calc(0.75 + 0.25 * var(--expand-progress, 1)));
-}
-.cf-row.cf-dragging {
-  cursor: grabbing;
+      {/* Pills sobre la foto */}
+      <div className="cf-camera-pills">
+        {rooms.map((room, i) => (
+          <button
+            key={room}
+            className={`cf-camera-pill ${i === active ? 'active' : ''}`}
+            onClick={() => setActive(i)}
+          >
+            {room}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
-/* ─── LEFT: Meta ─── */
-.cf-col-left {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 48px 48px 48px 0;
-  width: 380px;       /* Fixed left column */
-  flex-shrink: 0;
-  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.cf-row.cf-expanded .cf-col-left {
-  width: 350px;
-}
-.cf-meta-col {
-  display: flex; flex-direction: column; align-items: flex-end; text-align: right;
-  animation: cfFadeIn 0.5s ease forwards;
-}
-.cf-meta-name { font-size: 22px; font-weight: 400; letter-spacing: -.02em; margin-bottom: 8px; color: #0a0a0a; }
-.cf-meta-loc { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: #888; }
-.cf-meta-tag { margin-top: 16px; font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #bbb; }
+// ─────────────────────────────────────────────────────────────────────────────
+// Estación: Comparador (clip-path)
+// ─────────────────────────────────────────────────────────────────────────────
 
-.cf-info-col {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column; justify-content: center;
-  align-items: flex-end; text-align: right;
-  padding: 48px 48px 48px 0;
-  animation: cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-.cf-close-btn {
-  position: absolute; top: 32px; left: 0px;
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 1px solid #e0e0e0; background: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: #999;
-  transition: border-color .2s, color .2s;
-  font-family: inherit;
-}
-.cf-close-btn:hover { border-color: #0a0a0a; color: #0a0a0a; }
+export function StationCompare({ model }: { model: CatalogModel }) {
+  const stageRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const handleRef = useRef<HTMLDivElement>(null)
+  const lineRef = useRef<HTMLDivElement>(null)
+  const draggingRef = useRef(false)
+  const [mode, setMode] = useState<'variantes' | 'sistemas'>('variantes')
 
-.cf-info-name {
-  font-size: 30px; font-weight: 400; letter-spacing: -.02em;
-  line-height: 1.15; margin-bottom: 32px; color: #0a0a0a;
-}
-.cf-info-meta { display: flex; flex-direction: column; gap: 18px; margin-bottom: 32px; width: 100%; }
-.cf-info-row { display: flex; flex-direction: column; align-items: flex-end; }
-.cf-info-label { font-size: 9.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #aaa; margin-bottom: 4px; }
-.cf-info-value { font-size: 13px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a; }
+  // Variantes del modelo (V1 y V2 si existen)
+  const v1 = model.skus.find(s => s.variante === '1' || s.variante === '2')
+  const v2 = model.skus.find(s => s.variante === '2' || s.variante === '3')
 
-.cf-info-price { width: 100%; margin-bottom: 22px; display: flex; flex-direction: column; align-items: flex-end; }
-.cf-info-price-value { font-size: 18px; font-weight: 500; letter-spacing: -.01em; color: #0a0a0a; }
-.cf-info-price-pozo { font-size: 11px; color: #888; margin-top: 4px; }
+  const moveTo = useCallback((clientX: number) => {
+    const stage = stageRef.current
+    const overlay = overlayRef.current
+    const handle = handleRef.current
+    const line = lineRef.current
+    if (!stage || !overlay || !handle || !line) return
+    const rect = stage.getBoundingClientRect()
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left))
+    const pct = (x / rect.width) * 100
+    overlay.style.clipPath = `inset(0 0 0 ${pct}%)`
+    handle.style.left = `${pct}%`
+    line.style.left = `${pct}%`
+  }, [])
 
-.cf-info-more {
-  font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
-  color: #0a0a0a; text-decoration: none;
-  border-bottom: 1px solid #0a0a0a; padding-bottom: 2px;
-  transition: opacity .2s;
-}
-.cf-info-more:hover { opacity: .6; }
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { if (draggingRef.current) moveTo(e.clientX) }
+    const onUp = () => { draggingRef.current = false }
+    const onTouchMove = (e: TouchEvent) => { if (draggingRef.current && e.touches[0]) moveTo(e.touches[0].clientX) }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    window.addEventListener('touchmove', onTouchMove)
+    window.addEventListener('touchend', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onUp)
+    }
+  }, [moveTo])
 
-/* ─── CENTER: Horizontal Gallery ─── */
-.cf-col-center {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* Always keeps the image optically centered to avoid layout jumps */
-  flex: 1; /* Stretch to fill space when collapsed */
-  gap: 16px;
-  padding: 40px 0;
-}
-.cf-row.cf-expanded .cf-col-center {
-  flex: 0 0 auto;
-  width: max-content; /* Expands to natural bounds of all photos */
-  padding: 0;
-}
+  const basePhoto = model.cover_url ?? ''
+  // En producción, esto usaría fotos distintas por variante o por sistema
+  const overlayPhoto = model.cover_url ?? ''
 
-.cf-img-item {
-  height: auto;
-  max-height: 100%;
-  width: 100%; 
-  max-width: 650px; /* Constrains image when collapsed, creating whitespace */
-  aspect-ratio: 16/10;
-  object-fit: cover;
-  flex-shrink: 0;
-  pointer-events: none; /* Prevents dragging the img element natively */
-  /* Intense 2.5s cinematic transformation */
-  transition: transform 2.5s cubic-bezier(0.16, 1, 0.3, 1), max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.cf-row:not(.cf-expanded):hover .cf-img-item {
-  transform: scale(1.025);
-}
-.cf-row.cf-expanded .cf-img-item {
-  height: auto;
-  max-height: 65vh; /* Massive cinematic top/bottom padding to center perfectly */
-  width: auto;
-  max-width: none; 
-  aspect-ratio: auto;
-}
+  const leftLabel = mode === 'variantes'
+    ? `V${v1?.variante ?? '1'} · ${v1 ? Math.round(v1.area_m2 ?? 0) + ' m²' : '—'}`
+    : 'Wood Plus'
+  const rightLabel = mode === 'variantes'
+    ? `V${v2?.variante ?? '2'} · ${v2 ? Math.round(v2.area_m2 ?? 0) + ' m²' : '—'}`
+    : 'Steel Plus'
 
-/* ─── RIGHT: Description ─── */
-.cf-col-right {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 48px 0 48px 64px;
-  width: 0;           /* Hidden when collapsed */
-  opacity: 0;
-  overflow: hidden;
-  flex-shrink: 0;
-  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 2.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.cf-row.cf-expanded .cf-col-right {
-  width: 450px;
-  opacity: 1;
-}
-.cf-desc-col {
-  animation: cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-.cf-desc-text {
-  font-size: 13px; line-height: 1.75; color: #555; margin: 0;
+  return (
+    <div className="cf-st-compare" ref={stageRef}>
+      {/* Mode toggle */}
+      <div className="cf-cmp-modes">
+        <button
+          className={`cf-cmp-mode ${mode === 'variantes' ? 'active' : ''}`}
+          onClick={() => setMode('variantes')}
+        >
+          V1 vs V2
+        </button>
+        <button
+          className={`cf-cmp-mode ${mode === 'sistemas' ? 'active' : ''}`}
+          onClick={() => setMode('sistemas')}
+        >
+          Wood vs Steel
+        </button>
+      </div>
+
+      {/* Base (V1 / Wood) */}
+      <div
+        className="cf-cmp-base"
+        style={{ backgroundImage: `url('${basePhoto}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+      />
+
+      {/* Overlay (V2 / Steel) — se revela con clip-path */}
+      <div
+        ref={overlayRef}
+        className="cf-cmp-overlay"
+        style={{
+          backgroundImage: `url('${overlayPhoto}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          clipPath: 'inset(0 0 0 50%)',
+        }}
+      />
+
+      {/* Línea separadora */}
+      <div ref={lineRef} className="cf-cmp-line" style={{ left: '50%' }} />
+
+      {/* Handle arrastrable */}
+      <div
+        ref={handleRef}
+        className="cf-cmp-handle"
+        style={{ left: '50%' }}
+        onMouseDown={e => { draggingRef.current = true; e.preventDefault() }}
+        onTouchStart={e => { draggingRef.current = true; e.preventDefault() }}
+      >
+        ⟷
+      </div>
+
+      {/* Labels */}
+      <div className="cf-cmp-tags">
+        <span className="cf-cmp-tag">{leftLabel}</span>
+        <span className="cf-cmp-tag">{rightLabel}</span>
+      </div>
+    </div>
+  )
 }
 
-/* ─── UTILS ─── */
-@keyframes cfSlideFade {
-  0% { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: translateY(0); }
+// ─────────────────────────────────────────────────────────────────────────────
+// Estación: Datos
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function StationDatos({ model }: { model: CatalogModel }) {
+  const [selectedVariante, setSelectedVariante] = useState(0)
+  const [selectedSystem, setSelectedSystem] = useState(0)
+
+  // Variantes únicas (sin repetir sistema)
+  const uniqueVariantes = model.skus.reduce((acc, s) => {
+    if (!acc.find(v => v.variante === s.variante)) acc.push(s)
+    return acc
+  }, [] as typeof model.skus)
+
+  const currentSku = model.skus.find(
+    s => s.variante === uniqueVariantes[selectedVariante]?.variante
+      && s.sistema_constructivo === model.systems[selectedSystem]
+  ) ?? model.skus[0]
+
+  return (
+    <div className="cf-st-datos">
+      {/* Selector variante */}
+      <p className="cf-st-section-label">Elegí tu variante</p>
+      <div className="cf-variant-grid">
+        {uniqueVariantes.map((v, i) => (
+          <button
+            key={v.variante}
+            className={`cf-variant-card ${i === selectedVariante ? 'selected' : ''}`}
+            onClick={() => setSelectedVariante(i)}
+          >
+            <p className="cf-variant-name">V{v.variante}</p>
+            <p className="cf-variant-meta">
+              {v.area_m2 ? Math.round(v.area_m2) + ' m²' : '—'}
+              {v.bedrooms_label ? ` · ${v.bedrooms_label} dorm.` : ''}
+              {v.floors ? ` · ${v.floors} planta${v.floors > 1 ? 's' : ''}` : ''}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      {/* Selector sistema */}
+      <p className="cf-st-section-label" style={{ marginTop: 28 }}>Sistema constructivo</p>
+      <div className="cf-system-pills">
+        {model.systems.map((s, i) => (
+          <button
+            key={s}
+            className={`cf-system-pill ${i === selectedSystem ? 'selected' : ''}`}
+            onClick={() => setSelectedSystem(i)}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Precios */}
+      {currentSku && (
+        <>
+          <p className="cf-st-section-label" style={{ marginTop: 28 }}>Precio estimado</p>
+          <div className="cf-price-block">
+            <div className="cf-price-row">
+              <span>Lista</span>
+              <span>{fmtUSD(currentSku.precio_lista_usd)}</span>
+            </div>
+            <div className="cf-price-row">
+              <span>Contado</span>
+              <span>{fmtUSD(currentSku.precio_contado_usd)}</span>
+            </div>
+            <div className="cf-price-row cf-price-featured">
+              <span>Al pozo</span>
+              <span>{fmtUSD(currentSku.precio_pozo_usd)}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* CTA WhatsApp */}
+      <button className="cf-wa-cta">
+        Consultar por WhatsApp →
+      </button>
+    </div>
+  )
 }
-@keyframes cfFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* ─── RESPONSIVE ────────────────────────────────── */
-@media (max-width: 900px) {
-  .cf-list { padding: 24px 0 60px; }
-  .cf-topnav { padding: 0 20px; min-height: auto; }
-  .cf-nav-area { height: auto; padding: 8px 0; }
-  .cf-nav { height: 40px; }
-  .cf-subbar { flex-wrap: wrap; height: auto; padding: 6px 0; gap: 10px; }
-
-  .cf-row { 
-    flex-direction: column;
-    height: auto;
-    min-height: 480px;
-    padding: 0 20px;
-    margin-bottom: 56px;
-    border-bottom: none;
-  }
-  .cf-row.cf-expanded { 
-    flex-direction: column;
-    height: auto;
-    min-height: 80vh;
-    padding: 0 20px;
-    width: 100vw; /* limit for mobile */
-  }
-  
-  .cf-col-left {
-    width: 100%;
-    padding: 0 0 24px 0;
-    align-items: flex-start;
-  }
-  .cf-row.cf-expanded .cf-col-left {
-    width: 100%;
-  }
-  .cf-meta-col, .cf-info-col {
-    align-items: flex-start; text-align: left; padding: 0; position: static;
-  }
-  .cf-info-col { margin-top: 16px; }
-  .cf-info-row, .cf-info-price { align-items: flex-start; }
-  .cf-close-btn { position: absolute; right: 0; left: auto; top: -8px; }
-
-  .cf-col-center {
-    width: 100%;
-    padding: 0;
-  }
-  .cf-img-item {
-    max-width: none;
-    aspect-ratio: 16/10;
-  }
-  .cf-row.cf-expanded .cf-img-item {
-    width: 100%;
-    height: auto;
-  }
-  
-  .cf-col-right {
-    width: 100%;
-    padding: 24px 0;
-  }
-  .cf-row.cf-expanded .cf-col-right {
-    width: 100%;
-  }
-}
-@media (max-width: 580px) {
-  .cf-nav-btn { padding: 0 10px; font-size: 10px; }
-  .cf-constructoras-link { display: none; }
-  .cf-meta-name { font-size: 22px; }
-}`
-

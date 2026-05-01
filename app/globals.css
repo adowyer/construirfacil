@@ -89,3 +89,4 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
 /* Detail page nav back-link hover */
 .detail-back-link { color: #999; text-decoration: none; }
 .detail-back-link:hover { color: #0a0a0a; }
+@import './catalog.css';
