@@ -188,7 +188,15 @@ export default function CatalogPage({ models = [] }: PageProps) {
   return (
     <>
       {/* ── Hero educativo ── */}
-      <HeroSlider />
+      <HeroSlider
+        lineFilter={lineFilter}
+        bedFilter={bedFilter}
+        sizeFilter={sizeFilter}
+        resultCount={filtered.length}
+        onLineChange={setLineFilter}
+        onBedChange={setBedFilter}
+        onSizeChange={setSizeFilter}
+      />
 
       {/* ── Filtros ── */}
       <div className="cf-filters">
