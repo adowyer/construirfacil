@@ -54,3 +54,10 @@ next-env.d.ts
 /atributos.csv
 debug_collisions.mjs
 CATALOG_AUDIT.md
+
+# …pero los assets servidos por Next desde /public sí van al repo.
+!/public/**/*.png
+!/public/**/*.jpg
+!/public/**/*.jpeg
+!/public/**/*.svg
+!/public/**/*.webp
