@@ -34,9 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts",
-    "/Users/adowyer/.cache/next-construirfacil/types/**/*.ts",
-    "/Users/adowyer/.cache/next-construirfacil/dev/types/**/*.ts"
+    "**/*.mts"
   ],
   "exclude": [
     "node_modules"
