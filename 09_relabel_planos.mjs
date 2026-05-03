@@ -64,9 +64,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false },
 })
 
-// Match cualquier segmento del path llamado "Planos" o "AXONOMETRIAS",
-// independientemente de mayúsculas/minúsculas.
-const PLANOS_RE = /(^|\/)(planos|axonometrias)(\/|$)/i
+// Match cualquier segmento del path llamado "Planos", "AXONOMETRIAS" o
+// "AXONOMETRICAS" (con o sin "C" final), independientemente de mayúsculas.
+const PLANOS_RE = /(^|\/)(planos|axonometricas|axonometrias)(\/|$)/i
 
 async function main() {
   console.log(`Modo: ${DRY_RUN ? 'DRY-RUN (no escribe)' : 'EJECUTAR UPDATE'}`)

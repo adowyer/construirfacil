@@ -18,7 +18,9 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
-import HeroSlider from './HeroSlider'
+import SiteHeader from '@/components/SiteHeader'
+import HeroRow, { type GrowthPair } from './HeroRow'
+import StickyFilters from './StickyFilters'
 import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
@@ -57,12 +59,6 @@ const STATIONS: { id: Station; label: string }[] = [
 
 const LINE_ORDER = ['ATLAS', 'BOSQUE', 'TERRA']
 
-const LINE_META: Record<string, { title: string; sub: string }> = {
-  ATLAS: { title: 'Atlas', sub: 'Estándar · desde USD 63k · 1 planta · 5 modelos' },
-  BOSQUE: { title: 'Bosque', sub: 'Premium · desde USD 200k · 1 ó 2 plantas · 9 modelos' },
-  TERRA: { title: 'Terra', sub: 'Modular · desde USD 58k · tipologías U/O/Z · 5 modelos' },
-}
-
 function fmtUSD(n: number | null) {
   if (!n) return '—'
   return 'USD ' + Math.round(n).toLocaleString('es-AR')
@@ -83,10 +79,10 @@ export default function CatalogPage({
 }: PageProps) {
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
-  const [lineFilter, setLineFilter] = useState<string>('BOSQUE')
+  const [lineFilter, setLineFilter] = useState<string>('ALL')
   const [bedFilter, setBedFilter] = useState<string>('ALL')
   const [sizeFilter, setSizeFilter] = useState<string>('ALL')
-  const [sortOrder] = useState<string>('recommended')
+  const [sortOrder, setSortOrder] = useState<string>('recommended')
 
   const detailRef = useRef<HTMLDivElement>(null)
   const detailTrackRef = useRef<HTMLDivElement>(null)
@@ -128,6 +124,65 @@ export default function CatalogPage({
     },
     {} as Record<string, string | null>,
   )
+
+  // ── Map name → cover_url para usar como fondo del slide de cada línea
+  // en el HeroRow. Si la línea no tiene hero_image_url cargado, fallback a
+  // la primera cover_url de un modelo de esa línea.
+  const coverByLineaName: Record<string, string | null> = lineas.reduce(
+    (acc, l) => {
+      const m = models.find((mod) => mod.linea === l.name && mod.cover_url)
+      acc[l.name] = l.hero_image_url ?? m?.cover_url ?? null
+      return acc
+    },
+    {} as Record<string, string | null>,
+  )
+
+  // ── Pares 1 planta / 2 plantas para la animación "La Casa que Crece" ──
+  // En Bosque cada modelo tiene una sola fila con floors_options "1 ó 2",
+  // y las dos versiones viven como skus distintos (cada uno con su `floors`
+  // y `variante`). Buscamos la foto exterior que matchee la variante de
+  // cada sku para armar el par.
+  const growthPairs: GrowthPair[] = (() => {
+    const bosque = models.filter((m) => m.linea === 'BOSQUE')
+    const pairs: GrowthPair[] = []
+
+    const findExteriorForVariante = (
+      modelLinea: string,
+      modelStyle: string,
+      variante: string,
+    ): string | undefined => {
+      // Match más específico → menos específico (mismo patrón que ModelRow).
+      const candidates = catalogImages.filter(
+        (img) =>
+          img.linea === modelLinea &&
+          img.is_exterior === true &&
+          img.image_type !== 'plano' &&
+          img.style_name === modelStyle &&
+          (img.variante === variante || img.variante == null),
+      )
+      // Priorizar la que tenga variante exacta.
+      const exact = candidates.find((img) => img.variante === variante)
+      return (exact ?? candidates[0])?.storage_url
+    }
+
+    for (const model of bosque) {
+      const sku1 = model.skus.find((s) => s.floors === 1)
+      const sku2 = model.skus.find((s) => s.floors === 2)
+      if (!sku1 || !sku2) continue
+
+      const imgOfSku1 = findExteriorForVariante(model.linea, model.style_name, sku1.variante)
+      const imgOfSku2 = findExteriorForVariante(model.linea, model.style_name, sku2.variante)
+
+      if (imgOfSku1 && imgOfSku2 && imgOfSku1 !== imgOfSku2) {
+        pairs.push({
+          name: model.display_name,
+          img1: imgOfSku1, // sku con floors=1 → foto de 1 planta
+          img2: imgOfSku2, // sku con floors=2 → foto de 2 plantas
+        })
+      }
+    }
+    return pairs
+  })()
 
   // ── Open / close detail ──
   const openDetail = useCallback((model: CatalogModel) => {
@@ -220,38 +275,37 @@ export default function CatalogPage({
     }
   }, [activeModel])
 
-  const heroBg = models.find(m => m.linea === lineFilter)?.cover_url
-  ?? models[0]?.cover_url
-  ?? 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1600'
-
   return (
     <>
-      {/* ── Hero educativo ── */}
-      <HeroSlider
-        lineFilter={lineFilter}
-        bedFilter={bedFilter}
-        sizeFilter={sizeFilter}
-        resultCount={filtered.length}
-        heroBg={heroBg}
+      {/* ── Header del sitio (NO sticky) ── */}
+      <SiteHeader />
+
+      {/* ── Hero row: primera fila siempre desplegada ── */}
+      <HeroRow
         brandContent={brandContent}
         lineContent={lineContent}
         lineas={lineas}
+        lineaCoverByName={coverByLineaName}
+        growthPairs={growthPairs}
+      />
+
+      {/* ── Filtros sticky en color CF ── */}
+      <StickyFilters
+        lineFilter={lineFilter}
+        bedFilter={bedFilter}
+        sizeFilter={sizeFilter}
+        sortOrder={sortOrder}
+        resultCount={filtered.length}
         onLineChange={setLineFilter}
         onBedChange={setBedFilter}
         onSizeChange={setSizeFilter}
+        onSortChange={setSortOrder}
       />
 
-      {/* ── Grilla agrupada por línea ── */}
+      {/* ── Grilla agrupada por línea (sin group-header) ── */}
       <div className="cf-grid">
         {Object.entries(grouped).map(([line, items], gi) => (
           <div key={line}>
-            {/* Header de sección */}
-            <div className="cf-group-header">
-              <p className="cf-group-eyebrow">Línea</p>
-              <h2 className="cf-group-title">{LINE_META[line]?.title ?? line}</h2>
-              <p className="cf-group-sub">{LINE_META[line]?.sub}</p>
-            </div>
-
             {/* Filas */}
             {items.map((model, i) => {
               const mcKey = `${model.linea}::${model.style_name}`
