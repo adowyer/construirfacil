@@ -68,10 +68,12 @@ interface ImageGalleryProps {
   showArchived?: boolean
 }
 
+// Planos y axonometrías comparten image_type='plano' (se diferencian por
+// view_label: "Planta", "Corte", "Axonométrica", etc.). El catálogo público
+// las muestra juntas en el panel "Planos".
 const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'render', label: 'Render' },
-  { value: 'plano', label: 'Plano' },
-  { value: 'axonometria', label: 'Axonometría' },
+  { value: 'plano', label: 'Plano / Axonometría' },
   { value: 'cover', label: 'Cover' },
 ]
 

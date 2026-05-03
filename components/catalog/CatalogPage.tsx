@@ -292,6 +292,7 @@ export default function CatalogPage({
                   lineContent={lineContent}
                   attributesForCatalogIds={modelAttributes}
                   otherStyles={otherStyles}
+                  modelContentMap={modelContentMap}
                   lineaIconUrl={iconByLineaName[model.linea] ?? null}
                 />
               )

@@ -55,6 +55,8 @@ interface PanelsProps {
   lineContent: LineContentLite[]
   attributesForCatalogIds: CatalogAttributeRow[] // todos los attributes de los SKUs del modelo
   otherStyles: CatalogModel[] // otros modelos en misma linea+tipologia
+  /** Map para resolver model_content de OTROS modelos (panel comparativa estilos). */
+  modelContentMap?: Record<string, ModelContentRow>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,7 +178,12 @@ export function PanelGallery({
   images: CatalogImage[]
   isExterior: boolean
 }) {
-  const filtered = images.filter((img) => Boolean(img.is_exterior) === isExterior)
+  // Excluimos planos/axonométricas: viven en su propio panel.
+  const filtered = images.filter(
+    (img) =>
+      Boolean(img.is_exterior) === isExterior &&
+      img.image_type !== 'plano',
+  )
   const [active, setActive] = useState(0)
 
   if (filtered.length === 0) {
@@ -229,6 +236,71 @@ export function PanelGallery({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Panel Planos — planos arquitectónicos + axonometrías
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function PanelPlanos({
+  model,
+  images,
+}: {
+  model: CatalogModel
+  images: CatalogImage[]
+}) {
+  // Solo imágenes con image_type='plano' (incluye axonometrías por convención).
+  // Filtramos también por aplicabilidad al modelo (mismo match que el resto).
+  const filtered = images.filter((img) => img.image_type === 'plano')
+  const [active, setActive] = useState(0)
+
+  if (filtered.length === 0) {
+    return (
+      <div className="cf-pn cf-pn-gallery cf-pn-empty">
+        <div className="cf-pn-empty-content">
+          <p className="cf-pn-eyebrow">Planos</p>
+          <h2 className="cf-pn-title">{model.display_name}</h2>
+          <p className="cf-pn-body-empty">
+            Sin planos cargados todavía.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const safeActive = Math.min(active, filtered.length - 1)
+  const current = filtered[safeActive]
+
+  return (
+    <div
+      className="cf-pn cf-pn-gallery"
+      style={{
+        backgroundImage: `url('${current.storage_url}')`,
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#f7f6f1',
+      }}
+    >
+      <div className="cf-pn-gallery-overlay">
+        <div className="cf-pn-gallery-top">
+          <span className="cf-pn-gallery-label">Planos</span>
+        </div>
+        <div className="cf-pn-pills">
+          {filtered.map((img, i) => (
+            <button
+              key={img.id}
+              type="button"
+              className={`cf-pn-pill ${i === safeActive ? 'active' : ''}`}
+              onClick={() => setActive(i)}
+            >
+              {img.view_label ?? `Plano ${i + 1}`}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Panel 3 — Tipología arquitectónica
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -269,89 +341,127 @@ export function Panel3Tipologia({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel 5 — Estilos: intro + galería comparativa
+// Panel Estilo (intro) — solo texto: introducción a los estilos de la línea
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function Panel5Estilos({
+export function PanelEstiloIntro({
   model,
   lineContent,
-  otherStyles,
 }: {
   model: CatalogModel
   lineContent: LineContentLite[]
-  otherStyles: CatalogModel[]
 }) {
   const intro = lineContent.find(
     (lc) => lc.linea === model.linea && lc.tipologia_code === 'estilos_intro',
   )
 
-  // Incluimos el modelo actual primero, luego los otros.
+  return (
+    <div className="cf-pn cf-pn-text">
+      <div className="cf-pn-text-inner">
+        <p className="cf-pn-eyebrow">{model.linea} · Estilos</p>
+        <h2 className="cf-pn-title">{intro?.title ?? 'Maneras de habitar'}</h2>
+        {intro?.body ? (
+          paragraphs(intro.body).map((p, i) => (
+            <p key={i} className="cf-pn-body-p">
+              {p}
+            </p>
+          ))
+        ) : (
+          <p className="cf-pn-body-empty">Sin texto introductorio cargado.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel Comparativa de estilos — foto full bleed + columna lateral con texto
+// del estilo seleccionado (scrolleable) + pills bottom para alternar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function PanelEstilosCompare({
+  model,
+  otherStyles,
+  modelContentMap = {},
+}: {
+  model: CatalogModel
+  otherStyles: CatalogModel[]
+  modelContentMap?: Record<string, ModelContentRow>
+}) {
+  // Modelo actual + los otros en la misma línea + tipología.
   const allStyles = [model, ...otherStyles.filter((m) => m.style_name !== model.style_name)]
   const [active, setActive] = useState(0)
-  const current = allStyles[active] ?? model
+  const current = allStyles[Math.min(active, allStyles.length - 1)] ?? model
+  const currentContent = modelContentMap[`${current.linea}::${current.style_name}`] ?? null
+
+  if (allStyles.length <= 1) {
+    return (
+      <div
+        className="cf-pn cf-pn-estilos-cmp"
+        style={{
+          backgroundImage: model.cover_url ? `url('${model.cover_url}')` : undefined,
+          backgroundColor: model.cover_url ? undefined : model.lqip_color,
+        }}
+      >
+        <div className="cf-pn-estilos-cmp-overlay">
+          <span className="cf-pn-gallery-label">Estilo</span>
+        </div>
+        <aside className="cf-pn-estilos-aside">
+          <p className="cf-pn-eyebrow">Estilo</p>
+          <h3 className="cf-pn-estilos-aside-title">{current.estilo}</h3>
+          <p className="cf-pn-body-empty">
+            Esta tipología solo se ofrece en este estilo.
+          </p>
+        </aside>
+      </div>
+    )
+  }
 
   return (
-    <div className="cf-pn cf-pn-estilos">
-      <div className="cf-pn-estilos-grid">
-        <div className="cf-pn-estilos-text">
-          <p className="cf-pn-eyebrow">{model.linea} · Estilos</p>
-          <h2 className="cf-pn-title">{intro?.title ?? 'Maneras de habitar'}</h2>
-          {intro?.body ? (
-            paragraphs(intro.body).map((p, i) => (
+    <div
+      className="cf-pn cf-pn-estilos-cmp"
+      style={{
+        backgroundImage: current.cover_url ? `url('${current.cover_url}')` : undefined,
+        backgroundColor: current.cover_url ? undefined : current.lqip_color,
+      }}
+    >
+      {/* Label arriba */}
+      <div className="cf-pn-estilos-cmp-overlay">
+        <span className="cf-pn-gallery-label">Estilo</span>
+      </div>
+
+      {/* Columna lateral con texto del estilo seleccionado, scrolleable */}
+      <aside className="cf-pn-estilos-aside">
+        <p className="cf-pn-eyebrow">{current.linea} · Estilo</p>
+        <h3 className="cf-pn-estilos-aside-title">{current.estilo}</h3>
+        <p className="cf-pn-estilos-aside-sub">{current.display_name}</p>
+        <div className="cf-pn-estilos-aside-body">
+          {currentContent?.body ? (
+            paragraphs(currentContent.body).map((p, i) => (
               <p key={i} className="cf-pn-body-p">
                 {p}
               </p>
             ))
+          ) : currentContent?.tagline ? (
+            <p className="cf-pn-body-p">{currentContent.tagline}</p>
           ) : (
-            <p className="cf-pn-body-empty">
-              Sin texto introductorio cargado.
-            </p>
+            <p className="cf-pn-body-empty">Sin descripción cargada.</p>
           )}
         </div>
+      </aside>
 
-        <div className="cf-pn-estilos-visual">
-          {allStyles.length > 1 ? (
-            <>
-              <div
-                className="cf-pn-estilos-img"
-                style={{
-                  backgroundImage: current.cover_url
-                    ? `url('${current.cover_url}')`
-                    : undefined,
-                  backgroundColor: current.cover_url ? undefined : current.lqip_color,
-                }}
-              >
-                <div className="cf-pn-estilos-img-cap">
-                  {current.display_name} · {current.estilo}
-                </div>
-              </div>
-              <div className="cf-pn-pills cf-pn-pills-static">
-                {allStyles.map((m, i) => (
-                  <button
-                    key={m.group_slug}
-                    type="button"
-                    className={`cf-pn-pill ${i === active ? 'active' : ''}`}
-                    onClick={() => setActive(i)}
-                  >
-                    {m.estilo}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div
-              className="cf-pn-estilos-img"
-              style={{
-                backgroundImage: model.cover_url ? `url('${model.cover_url}')` : undefined,
-                backgroundColor: model.cover_url ? undefined : model.lqip_color,
-              }}
-            >
-              <div className="cf-pn-estilos-img-cap">
-                Esta tipología solo se ofrece en estilo {model.estilo}.
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Pills bottom */}
+      <div className="cf-pn-estilos-cmp-pills">
+        {allStyles.map((m, i) => (
+          <button
+            key={m.group_slug}
+            type="button"
+            className={`cf-pn-pill ${i === active ? 'active' : ''}`}
+            onClick={() => setActive(i)}
+          >
+            {m.estilo}
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -569,7 +679,67 @@ export function Panel8Equipamiento({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel 9 — Datos + Precios + CTA
+// Panel Sistema Constructivo — solo texto. Si el modelo se ofrece en >1 sistema,
+// agrega pills para alternar entre ellos. Texto sale de brand_content.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SYSTEM_KEY_MAP: Record<string, string> = {
+  'WOOD PLUS': 'system_wood',
+  'STEEL PLUS': 'system_steel',
+  'HORMIGÓN PLUS': 'system_concrete',
+  'HORMIGON PLUS': 'system_concrete',
+}
+
+export function PanelSistemaConstructivo({
+  model,
+  brandContent,
+}: {
+  model: CatalogModel
+  brandContent: BrandContentLite[]
+}) {
+  const [active, setActive] = useState(0)
+  const safeIdx = Math.min(active, model.systems.length - 1)
+  const currentSystem = model.systems[safeIdx]
+  const key = SYSTEM_KEY_MAP[currentSystem?.toUpperCase().trim() ?? ''] ?? null
+  const content = key ? brandContent.find((b) => b.key === key) : null
+
+  return (
+    <div className="cf-pn cf-pn-text">
+      <div className="cf-pn-text-inner">
+        <p className="cf-pn-eyebrow">Sistema constructivo</p>
+        <h2 className="cf-pn-title">{content?.title ?? currentSystem ?? '—'}</h2>
+
+        {model.systems.length > 1 && (
+          <div className="cf-pn-pills cf-pn-pills-static" style={{ marginTop: 18, marginBottom: 24 }}>
+            {model.systems.map((s, i) => (
+              <button
+                key={s}
+                type="button"
+                className={`cf-pn-pill ${i === safeIdx ? 'active' : ''}`}
+                onClick={() => setActive(i)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {content?.body ? (
+          paragraphs(content.body).map((p, i) => (
+            <p key={i} className="cf-pn-body-p">
+              {p}
+            </p>
+          ))
+        ) : (
+          <p className="cf-pn-body-empty">Sin descripción cargada para este sistema.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel 9 — Datos + Precios + CTA (Ficha Completa)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function Panel9Datos({ model }: { model: CatalogModel }) {
@@ -684,41 +854,78 @@ export function Panel9Datos({ model }: { model: CatalogModel }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ExpandedPanels(props: PanelsProps) {
+  // Si la línea no tiene planos cargados (ej. ATLAS hoy), saltamos el slide.
+  const hasPlanos = props.images.some((img) => img.image_type === 'plano')
+
   return (
     <>
+      {/* 1. Description */}
       <div className="cf-station-slide cf-slide-text">
         <Panel1Description model={props.model} modelContent={props.modelContent} />
       </div>
+
+      {/* 2. Exteriores */}
       <div className="cf-station-slide cf-slide-image">
         <PanelGallery model={props.model} images={props.images} isExterior={true} />
       </div>
-      <div className="cf-station-slide cf-slide-text">
-        <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
-      </div>
+
+      {/* 3. Interiores */}
       <div className="cf-station-slide cf-slide-image">
         <PanelGallery model={props.model} images={props.images} isExterior={false} />
       </div>
-      <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
-        <Panel5Estilos
+
+      {/* 4. Estilo (intro de estilos de la línea, solo texto) */}
+      <div className="cf-station-slide cf-slide-text">
+        <PanelEstiloIntro model={props.model} lineContent={props.lineContent} />
+      </div>
+
+      {/* 5. Comparativa de estilos (foto + columna lateral + pills) */}
+      <div className="cf-station-slide cf-slide-image">
+        <PanelEstilosCompare
           model={props.model}
-          lineContent={props.lineContent}
           otherStyles={props.otherStyles}
+          modelContentMap={props.modelContentMap}
         />
       </div>
+
+      {/* 6. Tipología arquitectónica */}
+      <div className="cf-station-slide cf-slide-text">
+        <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
+      </div>
+
+      {/* 7. Planos / Axonometrías — solo si hay imágenes cargadas */}
+      {hasPlanos && (
+        <div className="cf-station-slide cf-slide-image">
+          <PanelPlanos model={props.model} images={props.images} />
+        </div>
+      )}
+
+      {/* 8. La Casa que Crece (concept) */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
         <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} />
       </div>
+
+      {/* 9. Comparativo de variantes (V1 / V2) */}
       <div className="cf-station-slide cf-slide-image">
         <Panel7Comparativo model={props.model} images={props.images} />
       </div>
+
+      {/* 10. Ficha Completa (datos + precios + WhatsApp CTA) */}
+      <div className="cf-station-slide cf-slide-text">
+        <Panel9Datos model={props.model} />
+      </div>
+
+      {/* 11. Sistema Constructivo */}
+      <div className="cf-station-slide cf-slide-text">
+        <PanelSistemaConstructivo model={props.model} brandContent={props.brandContent} />
+      </div>
+
+      {/* 12. Equipamiento */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
         <Panel8Equipamiento
           model={props.model}
           attributesForCatalogIds={props.attributesForCatalogIds}
         />
-      </div>
-      <div className="cf-station-slide cf-slide-text">
-        <Panel9Datos model={props.model} />
       </div>
     </>
   )

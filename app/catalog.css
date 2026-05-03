@@ -1562,56 +1562,109 @@ body:has(.cf-row.cf-expanded) {
   width: 100%;
 }
 
-/* ── Panel 5: Estilos ── */
+/* ── Panel Comparativa de Estilos: foto full bleed + columna lateral ── */
 
-.cf-pn-estilos {
-  background: transparent;
-  padding: 48px 40px;
-  align-items: flex-start;
-  text-align: left;
-}
-
-.cf-pn-estilos-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 60px;
-  width: 100%;
-  align-items: center;
-}
-
-.cf-pn-estilos-text {
-  max-width: 44ch;
-}
-
-.cf-pn-estilos-visual {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.cf-pn-estilos-img {
-  position: relative;
-  aspect-ratio: 16 / 10;
+.cf-pn-estilos-cmp {
   background-size: cover;
   background-position: center;
-  border-radius: 6px;
+  background-color: #1a1a1a;
+}
+
+.cf-pn-estilos-cmp-overlay {
+  position: absolute;
+  top: 32px;
+  left: 40px;
+  z-index: 2;
+}
+
+.cf-pn-estilos-aside {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  bottom: 88px;
+  width: clamp(280px, 30vw, 380px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 28px 0;
+  background: rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  color: #fff;
   overflow: hidden;
 }
 
-.cf-pn-estilos-img-cap {
-  position: absolute;
-  bottom: 14px;
-  left: 14px;
-  font-size: 11px;
+.cf-pn-estilos-aside .cf-pn-eyebrow {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.cf-pn-estilos-aside-title {
+  font-size: clamp(22px, 2.4vw, 30px);
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
   color: #fff;
-  background: rgba(0, 0, 0, 0.55);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  padding: 6px 12px;
-  border-radius: 100px;
+}
+
+.cf-pn-estilos-aside-sub {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 18px;
+}
+
+.cf-pn-estilos-aside-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-bottom: 28px;
+  /* Máscara sutil para indicar scroll arriba/abajo. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 18px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 18px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+}
+
+.cf-pn-estilos-aside-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cf-pn-estilos-aside-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+.cf-pn-estilos-aside-body .cf-pn-body-p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+
+.cf-pn-estilos-cmp-pills {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  z-index: 3;
+  max-width: 60vw;
 }
 
 /* ── Panel 6: La casa que crece + variantes ── */

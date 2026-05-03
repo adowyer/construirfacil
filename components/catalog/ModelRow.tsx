@@ -43,6 +43,9 @@ interface ModelRowProps {
   lineContent?: LineContentLite[]
   attributesForCatalogIds?: CatalogAttributeRow[]
   otherStyles?: CatalogModel[]
+  /** Map global de model_content; usado en el panel comparativa de estilos
+      para mostrar el texto de OTROS modelos en la misma tipología. */
+  modelContentMap?: Record<string, ModelContentRow>
   /** URL del ícono de la línea (mostrado arriba de la ficha colapsada). */
   lineaIconUrl?: string | null
 }
@@ -73,6 +76,7 @@ export default function ModelRow({
   lineContent = [],
   attributesForCatalogIds = [],
   otherStyles = [],
+  modelContentMap,
   lineaIconUrl = null,
 }: ModelRowProps) {
   const [hovered, setHovered] = useState(false)
@@ -322,7 +326,7 @@ export default function ModelRow({
             </div>
           )}
 
-          {/* 9 paneles del expandido (data real desde Supabase) */}
+          {/* 12 paneles del expandido (data real desde Supabase) */}
           {isExpanded && (
             <ExpandedPanels
               model={model}
@@ -332,6 +336,7 @@ export default function ModelRow({
               lineContent={lineContent}
               attributesForCatalogIds={attributesForCatalogIds}
               otherStyles={otherStyles}
+              modelContentMap={modelContentMap}
             />
           )}
         </div>
