@@ -43,6 +43,8 @@ interface ModelRowProps {
   lineContent?: LineContentLite[]
   attributesForCatalogIds?: CatalogAttributeRow[]
   otherStyles?: CatalogModel[]
+  /** URL del ícono de la línea (mostrado arriba de la ficha colapsada). */
+  lineaIconUrl?: string | null
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -71,6 +73,7 @@ export default function ModelRow({
   lineContent = [],
   attributesForCatalogIds = [],
   otherStyles = [],
+  lineaIconUrl = null,
 }: ModelRowProps) {
   const [hovered, setHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -78,8 +81,9 @@ export default function ModelRow({
   const rowRef = useRef<HTMLDivElement>(null)
   const galleryRef = useRef<HTMLDivElement>(null)
 
-  // --- 1. BIG-like focus physics ---
-
+  // --- BIG-like focus physics: cierre por scroll ---
+  // El RAF anima --expand-progress según la distancia al centro del viewport,
+  // y dispara el cierre cuando la fila salió casi por completo del viewport.
   useEffect(() => {
     if (!isExpanded) {
       if (shellRef.current) shellRef.current.scrollLeft = 0
@@ -103,13 +107,11 @@ export default function ModelRow({
       const viewportCenter = vh * ZOOM_VIEWPORT_CENTER
       const rowCenter = rect.top + rect.height / 2
       const distToCenter = Math.abs(rowCenter - viewportCenter)
-      // Keep zoom-out continuous across a longer travel distance.
       const maxDist = vh * ZOOM_CLOSE_DISTANCE
       const ratio = Math.max(0, Math.min(1, distToCenter / maxDist))
       const normalized = 1 - ratio
       targetProgress.current = normalized
 
-      // Keep row expanded while visible; collapse only once off-screen.
       const fullyOutOfView = rect.bottom < -vh * 0.02 || rect.top > vh * 1.02
       if (fullyOutOfView) {
         if (outOfViewSince === null) outOfViewSince = performance.now()
@@ -123,7 +125,6 @@ export default function ModelRow({
         return
       }
 
-      // Asymmetric damping: fast close, smooth reopen, no spring rebound.
       const follow = targetProgress.current < currentProgress.current ? ZOOM_FOLLOW_CLOSE : ZOOM_FOLLOW_OPEN
       currentProgress.current += (targetProgress.current - currentProgress.current) * follow
 
@@ -178,16 +179,16 @@ export default function ModelRow({
     shellRef.current.scrollLeft = startD - walk
   }
 
-  // Center row horizontally aligned with the nav organically
+  // Al abrir: posicionar el TOP de la fila a ~7% del viewport (no centrar).
+  // Centrar geométricamente dejaba el bottom cortado porque el row
+  // expandido es ~85vh — más alto que medio viewport.
   useEffect(() => {
     if (isExpanded && rowRef.current) {
       setTimeout(() => {
         const rowEl = rowRef.current
         if (!rowEl) return
         const rowRect = rowEl.getBoundingClientRect()
-        const viewportCenterY = window.innerHeight / 2
-        const rowCenterY = rowRect.top + rowRect.height / 2
-        const targetY = rowCenterY + window.scrollY - viewportCenterY
+        const targetY = rowRect.top + window.scrollY - window.innerHeight * 0.07
         window.scrollTo({ top: targetY, behavior: 'smooth' })
       }, 150)
 
@@ -223,50 +224,41 @@ export default function ModelRow({
       {/* ── COL 1: Info (Left) ── */}
       <div className="cf-row-info" onClick={e => isExpanded && e.stopPropagation()}>
         {!isExpanded ? (
-          /* Collapsed: minimal meta */
-          <div className="cf-meta-collapsed" style={{ textAlign: 'right', alignItems: 'flex-end', display: 'flex', flexDirection: 'column' }}>
-            <p className="cf-row-tag">{model.linea} · {model.estilo} · T{model.tipologia_code}</p>
-            <h3 className="cf-row-name">{model.display_name}</h3>
-            <p className="cf-row-subtitle">
-              {model.variantes_count} variante{model.variantes_count !== 1 ? 's' : ''} · {model.floors_options} planta{model.floors_options === '1' ? '' : 's'}
+          /* Collapsed: ícono + línea + NOMBRE + dormitorios */
+          <div className="cf-meta-collapsed">
+            {lineaIconUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lineaIconUrl}
+                alt=""
+                aria-hidden="true"
+                className="cf-row-icon"
+              />
+            )}
+            <p className="cf-row-tag">{model.linea}</p>
+            <h3 className="cf-row-name cf-row-name-collapsed">{model.display_name}</h3>
+            <p className="cf-row-bedrooms">
+              {fmtRange(model.beds_min, model.beds_max)} dormitorio
+              {model.beds_max && model.beds_max > 1 ? 's' : ''}
             </p>
-            <div className="cf-row-stats" style={{ justifyContent: 'flex-end' }}>
-              <div>
-                <p className="cf-stat-num">{fmtRange(model.area_min, model.area_max)} m²</p>
-                <p className="cf-stat-lbl">Superficie</p>
-              </div>
-              <div>
-                <p className="cf-stat-num">{fmtRange(model.beds_min, model.beds_max)}</p>
-                <p className="cf-stat-lbl">Dormitorios</p>
-              </div>
-            </div>
-            <div className="cf-row-systems" style={{ justifyContent: 'flex-end' }}>
-              {model.systems.map(s => (
-                <span key={s} className="cf-sys-badge">{s.replace(' PLUS', '')}</span>
-              ))}
-            </div>
-            <div className="cf-row-price">
-              <p className="cf-price-lbl">Desde</p>
-              <p className="cf-price-amt">{fmtUSD(model.price_from)}</p>
-            </div>
           </div>
         ) : (
           /* Expanded: detailed info panel (like cf-info-col in OLD) */
-          <div className="cf-info-expanded" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', textAlign: 'right', width: '100%', animation: 'cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-            <button
-              className="cf-row-close"
-              onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-              aria-label="Cerrar"
-              style={{ position: 'absolute', top: 32, left: 0, width: 28, height: 28, borderRadius: '50%', border: '1px solid #e0e0e0', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#999', fontFamily: 'inherit', opacity: 1, pointerEvents: 'auto', right: 'auto' }}
-            >×</button>
-
-            <h3 className="cf-row-name" style={{ fontSize: 30, marginBottom: 32 }}>{model.display_name}</h3>
+          <div className="cf-info-expanded" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-end', textAlign: 'right', width: '100%', animation: 'cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+            {lineaIconUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lineaIconUrl}
+                alt=""
+                aria-hidden="true"
+                className="cf-row-icon"
+                style={{ marginBottom: 12 }}
+              />
+            )}
+            <p className="cf-row-tag" style={{ marginBottom: 12 }}>{model.linea}</p>
+            <h3 className="cf-row-name" style={{ fontSize: 22, marginBottom: 28, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{model.display_name}</h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 32, width: '100%' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Línea</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{model.linea}</span>
-              </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Superficie</span>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtRange(model.area_min, model.area_max)} m²</span>
@@ -306,15 +298,28 @@ export default function ModelRow({
         onMouseLeave={() => !isExpanded && setHovered(false)}
       >
         <div className="cf-row-track">
-          {/* Cover image siempre visible */}
+          {/* Cover image + overlay hover viven adentro de un wrapper común
+              para que el overlay tenga exactamente el tamaño de la foto. */}
           {model.cover_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={model.cover_url}
-              alt={model.display_name}
-              loading={index < 3 ? 'eager' : 'lazy'}
-              className="cf-row-img"
-            />
+            <div className="cf-row-img-wrap">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={model.cover_url}
+                alt={model.display_name}
+                loading={index < 3 ? 'eager' : 'lazy'}
+                className="cf-row-img"
+              />
+
+              {/* Overlay hover (solo cuando NO está expandido) */}
+              {!isExpanded && (
+                <div className="cf-row-overlay" style={{ opacity: hovered ? 1 : 0 }}>
+                  <div className="cf-row-overlay-content">
+                    <p className="cf-row-overlay-name">{model.display_name}</p>
+                    <p className="cf-row-overlay-sub">{fmtRange(model.area_min, model.area_max)} m² · desde {fmtUSD(model.price_from)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* 9 paneles del expandido (data real desde Supabase) */}
@@ -330,16 +335,6 @@ export default function ModelRow({
             />
           )}
         </div>
-
-        {/* Overlay hover (solo cuando NO está expandido) */}
-        {!isExpanded && (
-          <div className="cf-row-overlay" style={{ opacity: hovered ? 1 : 0 }}>
-            <div className="cf-row-overlay-content">
-              <p className="cf-row-overlay-name">{model.display_name}</p>
-              <p className="cf-row-overlay-sub">{fmtRange(model.area_min, model.area_max)} m² · desde {fmtUSD(model.price_from)}</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── COL 3: Detail (Right, only visible when expanded) ── */}

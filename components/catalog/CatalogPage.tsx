@@ -118,6 +118,17 @@ export default function CatalogPage({
     return acc
   }, {} as Record<string, CatalogModel[]>)
 
+  // ── Map name → icon_url para resolver el ícono de cada modelo en el catálogo ──
+  // El nombre de la línea en `lineas.name` está en MAYÚSCULAS (normalizado por
+  // el action) y coincide con `house_catalog.linea` (poblada por el trigger).
+  const iconByLineaName: Record<string, string | null> = lineas.reduce(
+    (acc, l) => {
+      acc[l.name] = l.icon_url
+      return acc
+    },
+    {} as Record<string, string | null>,
+  )
+
   // ── Open / close detail ──
   const openDetail = useCallback((model: CatalogModel) => {
     setActiveModel(model)
@@ -281,6 +292,7 @@ export default function CatalogPage({
                   lineContent={lineContent}
                   attributesForCatalogIds={modelAttributes}
                   otherStyles={otherStyles}
+                  lineaIconUrl={iconByLineaName[model.linea] ?? null}
                 />
               )
             })}

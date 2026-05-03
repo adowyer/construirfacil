@@ -255,6 +255,144 @@ export async function updateLinea(
 }
 
 // ---------------------------------------------------------------------------
+// uploadLineaIcon / removeLineaIcon
+// Sube el ícono representativo de la línea al bucket `linea-icons` y
+// actualiza lineas.icon_url. Mismo patrón que uploadMarcaLogo.
+// ---------------------------------------------------------------------------
+
+const ICON_BUCKET = 'linea-icons'
+const ICON_MAX_BYTES = 200 * 1024 // 200 KB
+const ICON_ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+
+export type IconActionResult =
+  | { ok: true; iconUrl: string | null }
+  | { ok: false; error: string }
+
+function sanitizeFilename(name: string): string {
+  const normalized = name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return (
+    normalized
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9._-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^[-_.]+|[-_.]+$/g, '') || 'icon'
+  )
+}
+
+/** Devuelve el storage_path relativo al bucket si la URL apunta a linea-icons. */
+function iconStoragePathFromUrl(url: string | null): string | null {
+  if (!url) return null
+  const marker = `/storage/v1/object/public/${ICON_BUCKET}/`
+  const idx = url.indexOf(marker)
+  if (idx === -1) return null
+  return decodeURIComponent(url.slice(idx + marker.length))
+}
+
+export async function uploadLineaIcon(
+  lineaId: string,
+  formData: FormData,
+): Promise<IconActionResult> {
+  if (!lineaId) return { ok: false, error: 'Falta el ID de la línea.' }
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'Seleccioná un archivo de imagen.' }
+  }
+  if (!ICON_ALLOWED_MIME.includes(file.type)) {
+    return { ok: false, error: 'Formato no permitido. Usá PNG, JPG, WebP o SVG.' }
+  }
+  if (file.size > ICON_MAX_BYTES) {
+    return { ok: false, error: 'El archivo supera los 200 KB.' }
+  }
+
+  const admin = createAdminClient()
+
+  // Verificar que la línea existe (y traer icon_url anterior para limpieza).
+  const { data: linea, error: fetchErr } = await admin
+    .from('lineas')
+    .select('id, icon_url')
+    .eq('id', lineaId)
+    .maybeSingle()
+
+  if (fetchErr) return { ok: false, error: `Error verificando la línea: ${fetchErr.message}` }
+  if (!linea) return { ok: false, error: 'La línea no existe.' }
+
+  const safeName = sanitizeFilename(file.name)
+  const storagePath = `${lineaId}/${Date.now()}-${safeName}`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const { error: uploadErr } = await admin.storage
+    .from(ICON_BUCKET)
+    .upload(storagePath, arrayBuffer, {
+      contentType: file.type,
+      upsert: false,
+    })
+
+  if (uploadErr) {
+    return { ok: false, error: `Error al subir el archivo: ${uploadErr.message}` }
+  }
+
+  const { data: publicUrlData } = admin.storage
+    .from(ICON_BUCKET)
+    .getPublicUrl(storagePath)
+  const iconUrl = publicUrlData.publicUrl
+
+  const { error: updateErr } = await admin
+    .from('lineas')
+    .update({ icon_url: iconUrl })
+    .eq('id', lineaId)
+
+  if (updateErr) {
+    // Rollback del archivo si falla el update.
+    await admin.storage.from(ICON_BUCKET).remove([storagePath])
+    return { ok: false, error: `Error al actualizar la línea: ${updateErr.message}` }
+  }
+
+  // Limpieza del ícono anterior (best-effort).
+  const previousPath = iconStoragePathFromUrl(linea.icon_url ?? null)
+  if (previousPath && previousPath !== storagePath) {
+    await admin.storage.from(ICON_BUCKET).remove([previousPath])
+  }
+
+  revalidateLineas(lineaId)
+  return { ok: true, iconUrl }
+}
+
+export async function removeLineaIcon(lineaId: string): Promise<IconActionResult> {
+  if (!lineaId) return { ok: false, error: 'Falta el ID de la línea.' }
+
+  const admin = createAdminClient()
+
+  const { data: linea, error: fetchErr } = await admin
+    .from('lineas')
+    .select('id, icon_url')
+    .eq('id', lineaId)
+    .maybeSingle()
+
+  if (fetchErr) return { ok: false, error: `Error verificando la línea: ${fetchErr.message}` }
+  if (!linea) return { ok: false, error: 'La línea no existe.' }
+
+  const previousPath = iconStoragePathFromUrl(linea.icon_url ?? null)
+
+  const { error: updateErr } = await admin
+    .from('lineas')
+    .update({ icon_url: null })
+    .eq('id', lineaId)
+
+  if (updateErr) {
+    return { ok: false, error: `Error al actualizar la línea: ${updateErr.message}` }
+  }
+
+  if (previousPath) {
+    await admin.storage.from(ICON_BUCKET).remove([previousPath])
+  }
+
+  revalidateLineas(lineaId)
+  return { ok: true, iconUrl: null }
+}
+
+// ---------------------------------------------------------------------------
 // deleteLinea
 // Elimina la fila en `lineas`. Los modelos asociados quedan con
 // linea_id NULL (FK ON DELETE SET NULL).

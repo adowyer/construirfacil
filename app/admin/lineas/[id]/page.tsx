@@ -13,6 +13,7 @@ import {
 } from '@/lib/supabase/queries/lineas'
 import { getAllMarcas } from '@/lib/supabase/queries/marcas'
 import { LineaForm } from '@/components/admin/LineaForm'
+import { LineaIconUploader } from '@/components/admin/LineaIconUploader'
 import { DeleteLineaButton } from '@/components/admin/DeleteLineaButton'
 import { updateLinea } from '@/app/admin/lineas/actions'
 
@@ -59,6 +60,15 @@ export default async function AdminLineaEditPage({ params }: PageProps) {
         </div>
 
         <DeleteLineaButton id={id} name={linea.name} />
+      </div>
+
+      {/* Ícono de la línea */}
+      <div className="mb-8">
+        <LineaIconUploader
+          lineaId={id}
+          lineaName={linea.name}
+          initialIconUrl={linea.icon_url}
+        />
       </div>
 
       {/* Edit form */}

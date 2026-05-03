@@ -66,7 +66,7 @@ function sanitizeFilename(name: string): string {
 function revalidateAll(modelId: string) {
   revalidatePath('/admin/models')
   revalidatePath(`/admin/models/${modelId}`)
-  revalidatePath('/catalog')
+  revalidatePath('/')
   revalidatePath('/admin')
 }
 

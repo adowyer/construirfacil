@@ -23,7 +23,7 @@ body:has(.cf-row.cf-expanded) {
 
 /* ── Hero slider ── */
 .cf-hero-wrapper {
-  background: #fafaf8;
+  background: #fff;
   padding: 0px 0 14px;
   position: relative;
 }
@@ -364,7 +364,7 @@ body:has(.cf-row.cf-expanded) {
 
 /* ── Grilla ── */
 .cf-grid {
-  background: #fafaf8;
+  background: #fff;
   padding: 80px 15%;
 }
 
@@ -400,7 +400,7 @@ body:has(.cf-row.cf-expanded) {
 /* ── Row (flex layout — replica BIG.dk OLD) ── */
 .cf-row-shell {
   max-width: 1540px;
-  margin: 0 auto;
+  margin: 0 auto 55px;
   overflow: visible;
 }
 
@@ -432,8 +432,7 @@ body:has(.cf-row.cf-expanded) {
   max-width: none;
   margin: 0;
   padding: 0 48px;
-  height: 440px;
-  border-bottom: 1px solid #e8e8e8;
+  height: 420px;
   cursor: pointer;
   overflow: hidden;
   background: #fff;
@@ -444,23 +443,24 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-row:nth-child(even) {
-  background: #f7f6f1;
+  background: #fff;
 }
 
-/* ── Estado Expandido (BIG.dk) ── */
+/* ── Estado Expandido (BIG.dk) ──
+   El RAF anima --expand-progress y aplica scale ancla al borde izquierdo:
+   la ficha info queda pegada al viewport edge y la fila se encoge hacia
+   ahí cuando el usuario scroleea, dando la sensación BIG-like de cierre. */
 .cf-row.cf-expanded {
   height: 85vh;
   width: max-content;
   min-width: 100%;
   max-width: none;
   margin: 0;
-  padding-left: 48px;
-  padding-right: 48px;
+  padding-left: 20px;
+  padding-right: 0;
   cursor: grab;
-  background: #fdfdfd;
-  /* Keep zoom anchored to viewport center (avoid right drift on huge row width) */
-  transform-origin: 50vw 50%;
-  /* Continuous visible close until near off-screen (avoid "stuck" plateau) */
+  background: #fff;
+  transform-origin: 0 50%;
   transform: scale(calc(0.52 + 0.48 * var(--expand-progress, 1)));
   z-index: 3;
   overflow: visible;
@@ -468,25 +468,58 @@ body:has(.cf-row.cf-expanded) {
 
 /* Close button now rendered inline in cf-row-info with explicit styles */
 
-/* ── LEFT: Info column ── */
+/* ── LEFT: Info column ──
+   Alineada arriba: el ícono queda al mismo nivel que el top de la foto. */
 .cf-row-info {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-end;
   text-align: right;
-  padding: 32px 24px 32px 0;
-  width: 320px;
+  padding: 0 18px 0 0;
+  width: 200px;
   flex-shrink: 0;
   transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cf-row.cf-expanded .cf-row-info {
-  width: clamp(220px, 22vw, 350px);
-  justify-content: center;
+  width: 195px;
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
+/* Collapsed meta: ícono + línea + NOMBRE + dormitorios, alineado a la derecha */
+.cf-meta-collapsed {
+  display: flex;
+  flex-direction: column;
   align-items: flex-end;
   text-align: right;
+  gap: 10px;
+  width: 100%;
+}
+
+.cf-row-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+
+.cf-row-name-collapsed {
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+}
+
+.cf-row-bedrooms {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  margin: 0;
 }
 
 .cf-row-tag {
@@ -499,11 +532,11 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-row-name {
-  font-size: clamp(26px, 3vw, 36px);
+  font-size: clamp(16px, 1.6vw, 22px);
   font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1;
-  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
   color: #0a0a0a;
 }
 
@@ -595,15 +628,18 @@ body:has(.cf-row.cf-expanded) {
   opacity: 0.6;
 }
 
-/* ── CENTER: Horizontal Gallery ── */
+/* ── CENTER: Horizontal Gallery ──
+   En collapsed: la foto se pega al inicio (próxima a la columna info que
+   alinea a la derecha) y limita su ancho; el espacio remanente se descarta.
+   En expanded: el track toma su ancho natural (lo manejan los slides). */
 .cf-row-photo {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   flex: 1;
   gap: 16px;
-  padding: 40px 0;
+  padding: 0;
   overflow: hidden;
 }
 
@@ -617,8 +653,9 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-row-track {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 16px;
+  height: 100%;
 }
 
 .cf-row.cf-expanded .cf-row-track {
@@ -631,30 +668,44 @@ body:has(.cf-row.cf-expanded) {
   z-index: 0;
 }
 
-.cf-row-img {
-  height: auto;
-  max-height: 100%;
-  width: 100%;
-  max-width: 650px;
-  aspect-ratio: 16/10;
-  object-fit: cover;
+/* Wrapper de la imagen:
+   - Listado: tamaño UNIFORME (aspect-ratio 16/10) + cover → todas iguales.
+   - Expanded: alto fijo (80vh) + width auto → foto a tamaño natural,
+     sin cover, sin crop.
+   El wrap se adapta exacto a la foto, así el overlay queda pegado al borde. */
+.cf-row-img-wrap {
+  position: relative;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 16 / 10;
   flex-shrink: 0;
+  overflow: hidden;
+  transition: height 2.5s cubic-bezier(0.16, 1, 0.3, 1),
+    aspect-ratio 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-row.cf-expanded .cf-row-img-wrap {
+  height: 80vh;
+  aspect-ratio: auto;
+}
+
+.cf-row-img {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
   pointer-events: none;
   z-index: 1;
-  transition: transform 2.5s cubic-bezier(0.16, 1, 0.3, 1),
-    max-width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-row.cf-expanded .cf-row-img {
+  width: auto;
+  object-fit: unset;
 }
 
 .cf-row:not(.cf-expanded):hover .cf-row-img {
   transform: scale(1.025);
-}
-
-.cf-row.cf-expanded .cf-row-img {
-  height: auto;
-  max-height: 65vh;
-  width: auto;
-  max-width: none;
-  aspect-ratio: auto;
 }
 
 /* ── RIGHT: Detail column (visible only when expanded) ── */
@@ -685,6 +736,7 @@ body:has(.cf-row.cf-expanded) {
   display: flex;
   align-items: flex-end;
   padding: 28px 32px;
+  pointer-events: none;
 }
 
 .cf-row-overlay-content {
@@ -693,7 +745,7 @@ body:has(.cf-row.cf-expanded) {
   color: #fff;
 }
 
-.cf-row-photo:hover .cf-row-overlay-content {
+.cf-row-img-wrap:hover .cf-row-overlay-content {
   transform: translateY(0);
 }
 
@@ -726,7 +778,7 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-slide-image {
-  width: 100vw;
+  width: 85vw;
   overflow: hidden;
 }
 
@@ -1264,7 +1316,7 @@ body:has(.cf-row.cf-expanded) {
    ============================================================================ */
 
 .cf-pn {
-  width: 100vw;
+  width: 85vw;
   height: 100%;
   display: flex;
   align-items: stretch;
@@ -1449,27 +1501,22 @@ body:has(.cf-row.cf-expanded) {
   flex-wrap: wrap;
   gap: 6px;
   align-self: center;
-  background: rgba(255, 255, 255, 0.18);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  padding: 6px;
-  border-radius: 100px;
   max-width: 90vw;
 }
 
 .cf-pn-pills-static {
-  background: #f0eee6;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
   margin-top: 14px;
 }
 
+/* Cada pill es una pastilla individual con su propio bg blur. */
 .cf-pn-pill {
   font-family: inherit;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.04em;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   color: #fff;
   border: 0;
   padding: 8px 14px;
@@ -1480,11 +1527,14 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-pn-pills-static .cf-pn-pill {
+  background: #f0eee6;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   color: #555;
 }
 
 .cf-pn-pill:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .cf-pn-pill.active {

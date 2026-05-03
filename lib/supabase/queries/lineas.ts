@@ -15,6 +15,7 @@ export interface LineaRow {
   tagline: string | null
   description: string | null
   hero_image_url: string | null
+  icon_url: string | null
   sort_order: number
   status: 'active' | 'inactive' | 'archived'
   created_at: string

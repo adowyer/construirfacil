@@ -85,7 +85,6 @@ function revalidateBrand(id?: string) {
   revalidatePath('/admin')
   // Catálogo público lee brand_content para los sliders educativos.
   revalidatePath('/')
-  revalidatePath('/catalog')
   if (id) revalidatePath(`/admin/brand/${id}`)
 }
 
