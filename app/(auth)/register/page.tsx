@@ -1,6 +1,6 @@
 /**
  * app/(auth)/register/page.tsx
- * Registration page for new constructora owners.
+ * Registration page for new marca owners.
  */
 
 'use client'
@@ -31,7 +31,7 @@ export default function RegisterPage() {
       options: {
         data: {
           full_name: fullName,
-          role: 'constructora_owner',
+          role: 'marca_owner',
         },
       },
     })

@@ -473,9 +473,11 @@ body:has(.cf-row.cf-expanded) {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 48px 48px 48px 0;
-  width: 380px;
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+  padding: 32px 24px 32px 0;
+  width: 320px;
   flex-shrink: 0;
   transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -708,20 +710,37 @@ body:has(.cf-row.cf-expanded) {
   margin: 0;
 }
 
-/* ── Station slides (content panels inside expanded gallery) ── */
+/* ── Station slides (content panels inside expanded gallery) ──
+   Anchos variables según el tipo de slide:
+     - .cf-slide-image: 100vw (galerías full-bleed)
+     - .cf-slide-text: angosto (~620px) — texto suelto sin fondo, fluye con
+       el catálogo en lugar de parecer una "pantalla" más
+     - .cf-slide-text-wide: medio (~860px) para paneles con 2 columnas
+   Sin border-radius ni fondo en el slide; el panel interno define todo. */
 .cf-station-slide {
   flex: 0 0 auto;
-  width: auto;
-  height: 65vh;
-  aspect-ratio: 16/10;
+  height: 80vh;
   position: relative;
-  overflow: hidden;
-  border-radius: 4px;
   pointer-events: auto;
-  animation: cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: cfSlideFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.cf-station-slide>* {
+.cf-slide-image {
+  width: 100vw;
+  overflow: hidden;
+}
+
+.cf-slide-text {
+  width: clamp(560px, 38vw, 720px);
+  background: transparent;
+  overflow: visible;
+}
+
+.cf-slide-text-wide {
+  width: clamp(800px, 58vw, 1080px);
+}
+
+.cf-station-slide > * {
   width: 100%;
   height: 100%;
 }
@@ -1238,4 +1257,653 @@ body:has(.cf-row.cf-expanded) {
 /* ── Eliminación de toasts ── */
 .nextjs-toast {
   display: none !important;
+}
+/* ============================================================================
+   Expanded Panels — 9 paneles del expandido del catálogo público
+   (componente ExpandedPanels.tsx)
+   ============================================================================ */
+
+.cf-pn {
+  width: 100vw;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cf-pn-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0 0 14px;
+}
+
+.cf-pn-title {
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0 0 18px;
+  color: #0a0a0a;
+}
+
+.cf-pn-tagline {
+  font-size: clamp(15px, 1.4vw, 20px);
+  font-weight: 500;
+  line-height: 1.4;
+  color: #2a2a2a;
+  margin: 0 0 28px;
+  max-width: 32ch;
+}
+
+.cf-pn-meta {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #888;
+  margin: 18px 0 0;
+}
+
+.cf-pn-body-p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #2a2a2a;
+  margin: 0 0 14px;
+}
+
+.cf-pn-body-empty {
+  font-size: 13px;
+  color: #aaa;
+  font-style: italic;
+}
+
+.cf-pn-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 18px 0 24px;
+  max-width: 360px;
+}
+
+.cf-pn-stat-num {
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+  margin: 0;
+  line-height: 1;
+}
+
+.cf-pn-stat-lbl {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 4px 0 0;
+}
+
+.cf-pn-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 24px;
+}
+
+.cf-pn-tag {
+  font-size: 11px;
+  padding: 4px 10px;
+  background: #f0eee6;
+  color: #555;
+  border-radius: 100px;
+}
+
+/* ── Panel 1: Descripción ──
+   Sin fondo, alineado a la izquierda. Layout en 1 columna por defecto
+   (los slides text son angostos). Si el slide es .cf-slide-text-wide,
+   abrimos 2 columnas. */
+
+.cf-pn-desc {
+  background: transparent;
+  padding: 48px 40px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.cf-pn-desc-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.cf-pn-desc-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.cf-pn-desc-right {
+  max-width: 50ch;
+}
+
+/* ── Paneles Galería (2, 4) ── */
+
+.cf-pn-gallery {
+  background-color: #1a1a1a;
+}
+
+.cf-pn-gallery-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0) 60%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 56px;
+  color: #fff;
+}
+
+.cf-pn-gallery-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cf-pn-gallery-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 100px;
+}
+
+.cf-pn-empty {
+  background: #f7f6f1;
+  align-items: center;
+  justify-content: center;
+}
+
+.cf-pn-empty-content {
+  text-align: center;
+}
+
+/* ── Pills (galerías + estilos + comparativo + datos) ── */
+
+.cf-pn-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-self: center;
+  background: rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 6px;
+  border-radius: 100px;
+  max-width: 90vw;
+}
+
+.cf-pn-pills-static {
+  background: #f0eee6;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  margin-top: 14px;
+}
+
+.cf-pn-pill {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  background: transparent;
+  color: #fff;
+  border: 0;
+  padding: 8px 14px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.cf-pn-pills-static .cf-pn-pill {
+  color: #555;
+}
+
+.cf-pn-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cf-pn-pill.active {
+  background: #fff;
+  color: #0a0a0a;
+}
+
+.cf-pn-pills-static .cf-pn-pill.active {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+/* ── Panel texto largo (3, sólo texto) ── */
+
+.cf-pn-text {
+  background: transparent;
+  padding: 48px 40px;
+  align-items: flex-start;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.cf-pn-text-inner {
+  max-width: 60ch;
+  width: 100%;
+}
+
+/* ── Panel 5: Estilos ── */
+
+.cf-pn-estilos {
+  background: transparent;
+  padding: 48px 40px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.cf-pn-estilos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 60px;
+  width: 100%;
+  align-items: center;
+}
+
+.cf-pn-estilos-text {
+  max-width: 44ch;
+}
+
+.cf-pn-estilos-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cf-pn-estilos-img {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background-size: cover;
+  background-position: center;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cf-pn-estilos-img-cap {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  padding: 6px 12px;
+  border-radius: 100px;
+}
+
+/* ── Panel 6: La casa que crece + variantes ── */
+
+.cf-pn-crece {
+  background: transparent;
+  padding: 48px 40px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.cf-pn-crece-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  width: 100%;
+  align-items: start;
+}
+
+.cf-pn-crece-text {
+  max-width: 56ch;
+}
+
+.cf-pn-crece-variants {
+  background: #fff;
+  border-radius: 8px;
+  padding: 32px 28px;
+  border: 1px solid #ebe8df;
+}
+
+.cf-pn-variants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cf-pn-variant-card {
+  border: 1px solid #ebe8df;
+  border-radius: 6px;
+  padding: 14px 16px;
+  background: #faf9f5;
+}
+
+.cf-pn-variant-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.cf-pn-variant-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #0a0a0a;
+}
+
+.cf-pn-variant-floors {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.cf-pn-variant-meta {
+  font-size: 12px;
+  color: #555;
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Panel 7: Comparativo ── */
+
+.cf-pn-compare {
+  background-size: cover;
+  background-position: center;
+  background-color: #1a1a1a;
+}
+
+.cf-pn-compare-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0) 35%,
+    rgba(0, 0, 0, 0) 55%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 56px;
+  color: #fff;
+}
+
+.cf-pn-compare-top .cf-pn-eyebrow,
+.cf-pn-compare-top .cf-pn-compare-title {
+  color: #fff;
+}
+
+.cf-pn-compare-top .cf-pn-eyebrow {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cf-pn-compare-title {
+  font-size: clamp(24px, 2.6vw, 36px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.cf-pn-compare-data {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 28px;
+  align-self: center;
+  background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  padding: 18px 24px;
+  border-radius: 8px;
+  margin: 0 auto;
+}
+
+.cf-pn-compare-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+}
+
+.cf-pn-compare-stat .cf-pn-stat-lbl {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.cf-pn-compare-stat .cf-pn-stat-num {
+  color: #fff;
+  font-size: 18px;
+}
+
+/* ── Panel 8: Equipamiento ── */
+
+.cf-pn-equip {
+  background: transparent;
+  padding: 48px 40px;
+  overflow-y: auto;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.cf-pn-equip-inner {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.cf-pn-equip-sub {
+  font-size: 12px;
+  color: #888;
+  margin: 0 0 20px;
+}
+
+.cf-pn-equip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+}
+
+.cf-pn-equip-cat {
+  border: 1px solid #ebe8df;
+  border-radius: 6px;
+  background: #faf9f5;
+  overflow: hidden;
+}
+
+.cf-pn-equip-cat-head {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.cf-pn-equip-cat-head::-webkit-details-marker {
+  display: none;
+}
+
+.cf-pn-equip-cat-name {
+  color: #0a0a0a;
+  text-transform: capitalize;
+}
+
+.cf-pn-equip-cat-count {
+  font-size: 10px;
+  background: #ebe8df;
+  color: #555;
+  padding: 2px 8px;
+  border-radius: 100px;
+  letter-spacing: 0;
+}
+
+.cf-pn-equip-cat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 14px;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.cf-pn-equip-cat-list li {
+  padding: 4px 0;
+  border-top: 1px solid #ebe8df;
+}
+
+.cf-pn-equip-cat-list li:first-child {
+  border-top: 0;
+}
+
+/* ── Panel 9: Datos + CTA ── */
+
+.cf-pn-datos {
+  background: transparent;
+  padding: 48px 40px;
+  overflow-y: auto;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.cf-pn-datos-inner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.cf-pn-datos-vargrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.cf-pn-datos-vcard {
+  border: 1px solid #ebe8df;
+  border-radius: 6px;
+  background: #fff;
+  padding: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cf-pn-datos-vcard.selected {
+  border-color: #0a0a0a;
+  box-shadow: 0 0 0 2px #0a0a0a inset;
+}
+
+.cf-pn-datos-syspills {
+  display: inline-flex;
+  background: #ebe8df;
+  padding: 4px;
+  border-radius: 100px;
+}
+
+.cf-pn-datos-syspills .cf-pn-pill {
+  color: #555;
+}
+
+.cf-pn-datos-syspills .cf-pn-pill.active {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.cf-pn-datos-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cf-pn-datos-price {
+  display: flex;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid #ebe8df;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #555;
+}
+
+.cf-pn-datos-price-feat {
+  background: #0a0a0a;
+  color: #fff;
+  font-weight: 500;
+  border-color: #0a0a0a;
+}
+
+.cf-pn-datos-cta {
+  display: block;
+  margin-top: 28px;
+  background: #0a0a0a;
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.cf-pn-datos-cta:hover {
+  background: #2a2a2a;
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 768px) {
+  .cf-pn-desc-grid,
+  .cf-pn-estilos-grid,
+  .cf-pn-crece-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .cf-pn-desc,
+  .cf-pn-text,
+  .cf-pn-estilos,
+  .cf-pn-crece,
+  .cf-pn-equip,
+  .cf-pn-datos {
+    padding: 40px 24px;
+  }
+  .cf-pn-gallery-overlay,
+  .cf-pn-compare-overlay {
+    padding: 28px 20px;
+  }
 }

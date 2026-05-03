@@ -3,15 +3,23 @@
 /**
  * components/admin/CatalogTable.tsx
  *
- * Client component: status filter tabs + search + table for house_catalog.
- * Receives the full dataset from the Server Component parent and filters
- * entirely on the client — no round-trip needed for tab/search changes.
+ * Tabla del listado de modelos del admin, agrupada por línea.
+ * Mantiene los filtros de status (tabs) + búsqueda en el cliente.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { HouseCatalogRow } from '@/lib/supabase/queries/models'
 import { ModelRowActions } from './ModelRowActions'
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export type LineaInfo = {
+  name: string
+  sort_order: number
+}
 
 // ---------------------------------------------------------------------------
 // Status badge
@@ -53,32 +61,146 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const TABLE_HEADERS = [
+  'Código',
+  'Nombre',
+  'Sistema',
+  'Área m²',
+  'Dorm.',
+  'Precio USD',
+  'Estado',
+  '',
+] as const
+
+function ModelRow({ row }: { row: HouseCatalogRow }) {
+  return (
+    <tr className="hover:bg-[#F7F7F5] transition-colors">
+      <td className="px-4 py-3 font-mono text-xs text-neutral-500 whitespace-nowrap">
+        {row.variant_code}
+      </td>
+      <td className="px-4 py-3 font-semibold text-neutral-900 whitespace-nowrap">
+        <Link href={`/admin/models/${row.id}`} className="hover:underline">
+          {row.name}
+        </Link>
+      </td>
+      <td className="px-4 py-3 text-neutral-500 whitespace-nowrap text-xs">
+        {row.construction_system ?? '—'}
+      </td>
+      <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
+        {row.area_m2 != null ? `${row.area_m2} m²` : '—'}
+      </td>
+      <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
+        {row.min_bedrooms != null && row.max_bedrooms != null
+          ? row.min_bedrooms === row.max_bedrooms
+            ? String(row.min_bedrooms)
+            : `${row.min_bedrooms}–${row.max_bedrooms}`
+          : (row.min_bedrooms ?? row.max_bedrooms ?? '—')}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        {row.public_price_usd != null
+          ? `USD ${row.public_price_usd.toLocaleString('es-AR')}`
+          : '—'}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <StatusBadge status={row.status} />
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <ModelRowActions id={row.id} currentStatus={row.status} />
+      </td>
+    </tr>
+  )
+}
+
+function TableHead() {
+  return (
+    <thead>
+      <tr className="border-b border-[#E8E8E5] bg-[#F7F7F5]">
+        {TABLE_HEADERS.map((h, i) => (
+          <th
+            key={i}
+            className="px-4 py-3 text-left text-[11px] uppercase tracking-widest text-neutral-400 font-semibold whitespace-nowrap"
+          >
+            {h}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
-export function CatalogTable({ rows }: { rows: HouseCatalogRow[] }) {
+export function CatalogTable({
+  rows,
+  lineas,
+}: {
+  rows: HouseCatalogRow[]
+  lineas: LineaInfo[]
+}) {
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
 
-  const filtered = rows.filter((r) => {
-    if (tab !== 'all' && r.status !== tab) return false
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      return (
-        r.name.toLowerCase().includes(q) ||
-        r.variant_code.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return rows.filter((r) => {
+      if (tab !== 'all' && r.status !== tab) return false
+      if (q) {
+        return (
+          r.name.toLowerCase().includes(q) ||
+          r.variant_code.toLowerCase().includes(q) ||
+          (r.linea?.toLowerCase().includes(q) ?? false)
+        )
+      }
+      return true
+    })
+  }, [rows, tab, search])
 
-  // Counts per tab
   const counts: Record<Tab, number> = {
     all: rows.length,
     active: rows.filter((r) => r.status === 'active').length,
     inactive: rows.filter((r) => r.status === 'inactive').length,
     archived: rows.filter((r) => r.status === 'archived').length,
   }
+
+  // Agrupar por línea, respetando el orden de `lineas` (sort_order desde DB).
+  // Modelos sin línea van al final como "Sin línea".
+  const grouped = useMemo(() => {
+    const buckets = new Map<string, HouseCatalogRow[]>()
+    for (const row of filtered) {
+      const key = row.linea ?? '__none__'
+      const arr = buckets.get(key) ?? []
+      arr.push(row)
+      buckets.set(key, arr)
+    }
+
+    const ordered: { linea: string; rows: HouseCatalogRow[] }[] = []
+    // Primero las líneas conocidas, en su sort_order
+    for (const l of lineas) {
+      const r = buckets.get(l.name)
+      if (r && r.length > 0) {
+        ordered.push({ linea: l.name, rows: r })
+        buckets.delete(l.name)
+      }
+    }
+    // Luego cualquier línea no listada (datos huérfanos), alfabético
+    const remaining = [...buckets.entries()]
+      .filter(([k]) => k !== '__none__')
+      .sort(([a], [b]) => a.localeCompare(b))
+    for (const [k, r] of remaining) {
+      ordered.push({ linea: k, rows: r })
+    }
+    // Sin línea al final
+    const none = buckets.get('__none__')
+    if (none && none.length > 0) {
+      ordered.push({ linea: 'Sin línea', rows: none })
+    }
+    return ordered
+  }, [filtered, lineas])
 
   return (
     <div>
@@ -114,85 +236,41 @@ export function CatalogTable({ rows }: { rows: HouseCatalogRow[] }) {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o código…"
+          placeholder="Buscar por nombre, código o línea…"
           className="flex-1 border border-[#E8E8E5] rounded-full px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
         />
       </div>
 
-      {/* Table */}
-      {filtered.length === 0 ? (
+      {/* Tabla agrupada */}
+      {grouped.length === 0 ? (
         <div className="text-sm text-neutral-400 py-16 text-center border border-[#E8E8E5] rounded-xl">
           Sin resultados para los filtros seleccionados.
         </div>
       ) : (
-        <div className="border border-[#E8E8E5] rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#E8E8E5] bg-[#F7F7F5]">
-                {[
-                  'Código',
-                  'Nombre',
-                  'Sistema',
-                  'Área m²',
-                  'Dorm.',
-                  'Precio USD',
-                  'Estado',
-                  '',
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left text-[11px] uppercase tracking-widest text-neutral-400 font-semibold whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E8E8E5]">
-              {filtered.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-[#F7F7F5] transition-colors"
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-neutral-500 whitespace-nowrap">
-                    {row.variant_code}
-                  </td>
-                  <td className="px-4 py-3 font-semibold text-neutral-900 whitespace-nowrap">
-                    <Link
-                      href={`/admin/models/${row.id}`}
-                      className="hover:underline"
-                    >
-                      {row.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500 whitespace-nowrap text-xs">
-                    {row.construction_system ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-                    {row.area_m2 != null ? `${row.area_m2} m²` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-                    {row.min_bedrooms != null && row.max_bedrooms != null
-                      ? row.min_bedrooms === row.max_bedrooms
-                        ? String(row.min_bedrooms)
-                        : `${row.min_bedrooms}–${row.max_bedrooms}`
-                      : (row.min_bedrooms ?? row.max_bedrooms ?? '—')}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {row.public_price_usd != null
-                      ? `USD ${row.public_price_usd.toLocaleString('es-AR')}`
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <ModelRowActions id={row.id} currentStatus={row.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-8">
+          {grouped.map((group) => (
+            <section key={group.linea}>
+              <header className="flex items-baseline justify-between mb-3 px-1">
+                <h2 className="text-sm font-black uppercase tracking-widest">
+                  {group.linea}
+                </h2>
+                <span className="text-[11px] text-neutral-400 uppercase tracking-widest">
+                  {group.rows.length}{' '}
+                  {group.rows.length === 1 ? 'modelo' : 'modelos'}
+                </span>
+              </header>
+              <div className="border border-[#E8E8E5] rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <TableHead />
+                  <tbody className="divide-y divide-[#E8E8E5]">
+                    {group.rows.map((row) => (
+                      <ModelRow key={row.id} row={row} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
         </div>
       )}
     </div>

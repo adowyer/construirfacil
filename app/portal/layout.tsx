@@ -1,12 +1,12 @@
 /**
  * app/portal/layout.tsx
- * Constructora portal shell. Auth is enforced by middleware.tsx — any
+ * Marca portal shell. Auth is enforced by middleware.tsx — any
  * unauthenticated request to /portal/* is redirected to /login before
  * reaching this layout.
  *
  * This layout:
  *   1. Reads the session and profile server-side (for the nav display name)
- *   2. If the user has no constructora yet, redirects to /portal/onboarding
+ *   2. If the user has no marca yet, redirects to /portal/onboarding
  *      EXCEPT when already on /portal/onboarding itself
  *   3. Renders the portal chrome (top nav + sidebar)
  */
@@ -15,7 +15,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { getMyConstructora } from '@/lib/supabase/queries/constructoras'
+import { getMyMarca } from '@/lib/supabase/queries/marcas'
 
 export default async function PortalLayout({
   children,
@@ -30,9 +30,9 @@ export default async function PortalLayout({
   // Should not happen — middleware redirects unauthenticated users — but be safe
   if (!user) redirect('/login')
 
-  const [{ data: profile }, constructora] = await Promise.all([
+  const [{ data: profile }, marca] = await Promise.all([
     supabase.from('profiles').select('role, full_name').eq('id', user.id).single(),
-    getMyConstructora(supabase, user.id),
+    getMyMarca(supabase, user.id),
   ])
 
   // Read the pathname from headers to know if we're on the onboarding page
@@ -40,13 +40,13 @@ export default async function PortalLayout({
   const pathname = headersList.get('x-pathname') ?? ''
   const isOnboarding = pathname.startsWith('/portal/onboarding')
 
-  // If the user has no constructora and is not on onboarding, redirect them there
-  if (!constructora && !isOnboarding) {
+  // If the user has no marca and is not on onboarding, redirect them there
+  if (!marca && !isOnboarding) {
     redirect('/portal/onboarding')
   }
 
   const displayName = profile?.full_name ?? user.email ?? 'Usuario'
-  const constructoraStatus = constructora?.status
+  const marcaStatus = marca?.status
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -73,16 +73,16 @@ export default async function PortalLayout({
         </div>
       </header>
 
-      {/* Constructora status banner */}
-      {constructora && constructoraStatus === 'pending' && (
+      {/* Marca status banner */}
+      {marca && marcaStatus === 'pending' && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3 text-sm text-yellow-800">
-          Tu constructora está pendiente de aprobación. Podrás publicar modelos una vez que sea aprobada.
+          Tu marca está pendiente de aprobación. Podrás publicar modelos una vez que sea aprobada.
         </div>
       )}
-      {constructora && constructoraStatus === 'rejected' && (
+      {marca && marcaStatus === 'rejected' && (
         <div className="bg-red-50 border-b border-red-200 px-6 py-3 text-sm text-red-800">
           Tu solicitud fue rechazada.
-          {constructora.rejection_reason && ` Motivo: ${constructora.rejection_reason}`}
+          {marca.rejection_reason && ` Motivo: ${marca.rejection_reason}`}
         </div>
       )}
 
@@ -95,7 +95,7 @@ export default async function PortalLayout({
           >
             Inicio
           </Link>
-          {constructora && constructoraStatus === 'approved' && (
+          {marca && marcaStatus === 'approved' && (
             <>
               <Link
                 href="/portal/models"
@@ -115,7 +115,7 @@ export default async function PortalLayout({
             href="/portal/settings"
             className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
           >
-            Mi constructora
+            Mi marca
           </Link>
         </nav>
 

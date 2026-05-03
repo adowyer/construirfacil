@@ -1,13 +1,13 @@
 // @ts-nocheck
 /**
  * app/portal/models/page.tsx
- * List all models for the authenticated constructora owner.
+ * List all models for the authenticated marca owner.
  */
 
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getMyConstructora } from '@/lib/supabase/queries/constructoras'
+import { getMyMarca } from '@/lib/supabase/queries/marcas'
 import { getMyModels } from '@/lib/supabase/queries/models'
 import type { HouseModelStatus } from '@/types/database'
 
@@ -33,10 +33,10 @@ export default async function PortalModelsPage() {
 
   if (!user) redirect('/login')
 
-  const constructora = await getMyConstructora(supabase, user.id)
-  if (!constructora) redirect('/portal/onboarding')
+  const marca = await getMyMarca(supabase, user.id)
+  if (!marca) redirect('/portal/onboarding')
 
-  const models = await getMyModels(supabase, constructora.id)
+  const models = await getMyModels(supabase, marca.id)
 
   return (
     <div>
@@ -44,7 +44,7 @@ export default async function PortalModelsPage() {
         <h1 className="text-3xl font-black uppercase tracking-tight">
           Mis modelos
         </h1>
-        {constructora.status === 'approved' && (
+        {marca.status === 'approved' && (
           <Link
             href="/portal/models/new"
             className="bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
@@ -57,11 +57,11 @@ export default async function PortalModelsPage() {
       {models.length === 0 ? (
         <div className="border border-dashed border-neutral-300 p-16 text-center">
           <p className="text-neutral-400 mb-4">
-            {constructora.status === 'approved'
+            {marca.status === 'approved'
               ? 'Todavía no creaste ningún modelo.'
-              : 'Tu constructora está pendiente de aprobación.'}
+              : 'Tu marca está pendiente de aprobación.'}
           </p>
-          {constructora.status === 'approved' && (
+          {marca.status === 'approved' && (
             <Link
               href="/portal/models/new"
               className="inline-block bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"

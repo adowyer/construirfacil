@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: '%s | ConstruirFácil',
   },
   description:
-    'Explorá modelos de casas de constructoras verificadas en Argentina. Steel frame, mampostería, wood frame y más.',
+    'Explorá modelos de casas de marcas verificadas en Argentina. Steel frame, mampostería, wood frame y más.',
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
   ),

@@ -1,61 +1,33 @@
 /**
  * app/admin/page.tsx
- * Admin dashboard — overview counts and last 5 added from house_catalog.
+ * Admin dashboard — overview counts y últimos 5 agregados, todo desde
+ * `house_catalog` vía la query mapeada que ya respeta el schema real.
  */
 
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getAllModelsAdmin } from '@/lib/supabase/queries/models'
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
+  const allModels = await getAllModelsAdmin(supabase)
 
-  // Fetch everything we need in parallel
-  const [totalResult, byStatusResult, bySystemResult, recentResult] =
-    await Promise.all([
-      // Total count
-      supabase
-        .from('house_catalog')
-        .select('*', { count: 'exact', head: true }),
+  const total = allModels.length
 
-      // Count per status
-      supabase
-        .from('house_catalog')
-        .select('status'),
-
-      // Count per construction_system
-      supabase
-        .from('house_catalog')
-        .select('construction_system'),
-
-      // Last 5 added
-      supabase
-        .from('house_catalog')
-        .select('id, name, created_at, status')
-        .order('created_at', { ascending: false })
-        .limit(5),
-    ])
-
-  const total = totalResult.count ?? 0
-
-  // Tally statuses
-  const statusRows = byStatusResult.data ?? []
-  const byStatus = statusRows.reduce<Record<string, number>>((acc, row) => {
-    acc[row.status] = (acc[row.status] ?? 0) + 1
+  const byStatus = allModels.reduce<Record<string, number>>((acc, m) => {
+    acc[m.status] = (acc[m.status] ?? 0) + 1
     return acc
   }, {})
 
-  // Tally construction systems
-  const systemRows = bySystemResult.data ?? []
-  const bySystem = systemRows.reduce<Record<string, number>>((acc, row) => {
-    const key = row.construction_system ?? 'Sin sistema'
+  const bySystem = allModels.reduce<Record<string, number>>((acc, m) => {
+    const key = m.construction_system ?? 'Sin sistema'
     acc[key] = (acc[key] ?? 0) + 1
     return acc
   }, {})
   const systemEntries = Object.entries(bySystem).sort((a, b) => b[1] - a[1])
 
-  const recent = recentResult.data ?? []
+  const recent = allModels.slice(0, 5)
 
-  // Status config
   const STATUS_CONFIG = [
     { key: 'active', label: 'Activos', color: 'text-green-700 bg-green-50 border-green-200' },
     { key: 'inactive', label: 'Inactivos', color: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
@@ -152,15 +124,15 @@ export default async function AdminDashboardPage() {
                       row.status === 'active'
                         ? 'bg-green-100 text-green-700'
                         : row.status === 'inactive'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-neutral-100 text-neutral-500'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-neutral-100 text-neutral-500'
                     }`}
                   >
                     {row.status === 'active'
                       ? 'Activo'
                       : row.status === 'inactive'
-                      ? 'Inactivo'
-                      : 'Archivado'}
+                        ? 'Inactivo'
+                        : 'Archivado'}
                   </span>
                 </div>
               ))}

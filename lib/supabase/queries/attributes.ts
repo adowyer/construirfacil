@@ -50,13 +50,9 @@ export async function getAttributeTypesWithValues(
 ): Promise<AttributeTypeWithValues[]> {
   const { data, error } = await supabase
     .from('attribute_types')
-    .select(
-      `
-      *,
-      attribute_values(* order sort_order.asc)
-    `,
-    )
+    .select('*, attribute_values(*)')
     .order('sort_order', { ascending: true })
+    .order('sort_order', { ascending: true, referencedTable: 'attribute_values' })
 
   if (error) {
     console.error('[getAttributeTypesWithValues]', error.message)
@@ -76,13 +72,9 @@ export async function getAttributeTypeById(
 ): Promise<AttributeTypeWithValues | null> {
   const { data, error } = await supabase
     .from('attribute_types')
-    .select(
-      `
-      *,
-      attribute_values(* order sort_order.asc)
-    `,
-    )
+    .select('*, attribute_values(*)')
     .eq('id', id)
+    .order('sort_order', { ascending: true, referencedTable: 'attribute_values' })
     .single()
 
   if (error || !data) {
@@ -130,4 +122,28 @@ export async function getAttributeValuesByType(
   }
 
   return data ?? []
+}
+
+// ---------------------------------------------------------------------------
+// house_catalog_attributes — admin
+// ---------------------------------------------------------------------------
+
+/**
+ * Trae los attribute_value_ids asignados a una entrada de house_catalog.
+ * Usado por el form admin para precargar checkboxes seleccionados.
+ */
+export async function getAttributesForCatalog(
+  supabase: SupabaseClient,
+  houseCatalogId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('house_catalog_attributes')
+    .select('attribute_value_id')
+    .eq('house_catalog_id', houseCatalogId)
+
+  if (error) {
+    console.error('[getAttributesForCatalog]', error.message)
+    return []
+  }
+  return (data ?? []).map((r: { attribute_value_id: string }) => r.attribute_value_id)
 }

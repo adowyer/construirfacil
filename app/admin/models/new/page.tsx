@@ -1,16 +1,27 @@
 /**
  * app/admin/models/new/page.tsx
- * Create a new house_catalog entry.
+ * Crear una nueva entrada en `house_catalog`.
  */
 
 import Link from 'next/link'
 import { ModelForm } from '@/components/admin/ModelForm'
 import { createModel } from '@/app/admin/models/actions'
+import { createClient } from '@/lib/supabase/server'
+import { getAllMarcas } from '@/lib/supabase/queries/marcas'
+import { getAllLineas } from '@/lib/supabase/queries/lineas'
+import { getAttributeTypesWithValues } from '@/lib/supabase/queries/attributes'
 
-export default function NewModelPage() {
+export default async function NewModelPage() {
+  const supabase = await createClient()
+
+  const [marcas, lineas, attributeTypes] = await Promise.all([
+    getAllMarcas(supabase),
+    getAllLineas(supabase),
+    getAttributeTypesWithValues(supabase),
+  ])
+
   return (
     <div className="max-w-3xl">
-      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-widest mb-8">
         <Link href="/admin/models" className="hover:text-black transition-colors">
           Modelos
@@ -23,7 +34,18 @@ export default function NewModelPage() {
         Nuevo modelo
       </h1>
 
-      <ModelForm action={createModel} submitLabel="Crear modelo" />
+      <ModelForm
+        action={createModel}
+        marcas={marcas.map((m) => ({ id: m.id, name: m.name }))}
+        lineas={lineas.map((l) => ({
+          id: l.id,
+          marca_id: l.marca_id,
+          name: l.name,
+          sort_order: l.sort_order,
+        }))}
+        attributeTypes={attributeTypes}
+        submitLabel="Crear modelo"
+      />
     </div>
   )
 }

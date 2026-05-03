@@ -1,38 +1,38 @@
 // @ts-nocheck
 /**
- * app/(public)/constructoras/[slug]/page.tsx
- * Public constructora profile page.
+ * app/(public)/marcas/[slug]/page.tsx
+ * Public marca profile page.
  */
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getPublicConstructoraBySlug } from '@/lib/supabase/queries/constructoras'
+import { getPublicMarcaBySlug } from '@/lib/supabase/queries/marcas'
 import { getPublishedModels } from '@/lib/supabase/queries/models'
 
-interface ConstructoraPageProps {
+interface MarcaPageProps {
   params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({ params }: ConstructoraPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: MarcaPageProps): Promise<Metadata> {
   const { slug } = await params
   const supabase = await createClient()
-  const constructora = await getPublicConstructoraBySlug(supabase, slug)
+  const marca = await getPublicMarcaBySlug(supabase, slug)
 
-  if (!constructora) return { title: 'Constructora no encontrada' }
+  if (!marca) return { title: 'Marca no encontrada' }
 
   return {
-    title: constructora.name,
-    description: constructora.description ?? undefined,
+    title: marca.name,
+    description: marca.description ?? undefined,
   }
 }
 
-export default async function ConstructoraPage({ params }: ConstructoraPageProps) {
+export default async function MarcaPage({ params }: MarcaPageProps) {
   const { slug } = await params
   const supabase = await createClient()
-  const constructora = await getPublicConstructoraBySlug(supabase, slug)
+  const marca = await getPublicMarcaBySlug(supabase, slug)
 
-  if (!constructora) notFound()
+  if (!marca) notFound()
 
   const { data: models } = await getPublishedModels(
     supabase,
@@ -40,42 +40,42 @@ export default async function ConstructoraPage({ params }: ConstructoraPageProps
     { pageSize: 50 },
   )
 
-  // Filter client-side for this constructora (avoids an extra query — replace
-  // with a dedicated query if constructoras have many models)
-  const ownModels = models.filter((m) => m.constructora_id === constructora.id)
+  // Filter client-side for this marca (avoids an extra query — replace
+  // with a dedicated query if marcas have many models)
+  const ownModels = models.filter((m) => m.marca_id === marca.id)
 
   return (
     <main className="max-w-5xl mx-auto px-6 py-16">
       {/* Header */}
       <div className="flex items-start gap-8 mb-16">
-        {constructora.logo_url && (
+        {marca.logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={constructora.logo_url}
-            alt={`Logo de ${constructora.name}`}
+            src={marca.logo_url}
+            alt={`Logo de ${marca.name}`}
             className="w-20 h-20 object-contain border border-neutral-200 p-3"
           />
         )}
         <div>
           <h1 className="text-5xl font-black uppercase tracking-tight">
-            {constructora.name}
+            {marca.name}
           </h1>
-          {(constructora.city || constructora.province) && (
+          {(marca.city || marca.province) && (
             <p className="text-neutral-500 mt-2">
-              {[constructora.city, constructora.province]
+              {[marca.city, marca.province]
                 .filter(Boolean)
                 .join(', ')}
             </p>
           )}
-          {constructora.description && (
+          {marca.description && (
             <p className="text-neutral-600 mt-4 max-w-2xl leading-relaxed">
-              {constructora.description}
+              {marca.description}
             </p>
           )}
           <div className="flex gap-4 mt-4 text-sm">
-            {constructora.website_url && (
+            {marca.website_url && (
               <a
-                href={constructora.website_url}
+                href={marca.website_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:no-underline"
@@ -83,12 +83,12 @@ export default async function ConstructoraPage({ params }: ConstructoraPageProps
                 Sitio web
               </a>
             )}
-            {constructora.phone && (
+            {marca.phone && (
               <a
-                href={`tel:${constructora.phone}`}
+                href={`tel:${marca.phone}`}
                 className="underline hover:no-underline"
               >
-                {constructora.phone}
+                {marca.phone}
               </a>
             )}
           </div>
@@ -101,7 +101,7 @@ export default async function ConstructoraPage({ params }: ConstructoraPageProps
       </h2>
 
       {ownModels.length === 0 ? (
-        <p className="text-neutral-400">Esta constructora no tiene modelos publicados aún.</p>
+        <p className="text-neutral-400">Esta marca no tiene modelos publicados aún.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {ownModels.map((model) => (

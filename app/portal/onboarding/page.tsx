@@ -1,7 +1,7 @@
 /**
  * app/portal/onboarding/page.tsx
- * New constructora registration form.
- * Only reached when the authenticated user has no constructora yet.
+ * New marca registration form.
+ * Only reached when the authenticated user has no marca yet.
  */
 
 'use client'
@@ -48,7 +48,7 @@ export default function OnboardingPage() {
 
     const slug = slugify(form.name)
 
-    const { error: insertError } = await supabase.from('constructoras').insert({
+    const { error: insertError } = await supabase.from('marcas').insert({
       owner_id: user.id,
       name: form.name.trim(),
       slug,
@@ -63,7 +63,7 @@ export default function OnboardingPage() {
     if (insertError) {
       if (insertError.code === '23505') {
         setError(
-          'Ya existe una constructora con ese nombre. Probá con un nombre diferente.',
+          'Ya existe una marca con ese nombre. Probá con un nombre diferente.',
         )
       } else {
         setError(insertError.message)
@@ -106,7 +106,7 @@ export default function OnboardingPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-3xl font-black uppercase tracking-tight mb-2">
-        Registrá tu constructora
+        Registrá tu marca
       </h1>
       <p className="text-neutral-500 text-sm mb-10">
         Completá los datos de tu empresa. Un administrador revisará tu solicitud antes de que puedas publicar modelos.
@@ -115,7 +115,7 @@ export default function OnboardingPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="name" className="block text-xs uppercase tracking-widest text-neutral-500 mb-2">
-            Nombre de la constructora <span aria-hidden>*</span>
+            Nombre de la marca <span aria-hidden>*</span>
           </label>
           <input
             id="name"
@@ -128,7 +128,7 @@ export default function OnboardingPage() {
           />
           {form.name && (
             <p className="text-xs text-neutral-400 mt-1">
-              URL: /constructoras/{slugify(form.name)}
+              URL: /marcas/{slugify(form.name)}
             </p>
           )}
         </div>

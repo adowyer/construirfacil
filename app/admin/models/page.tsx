@@ -1,25 +1,29 @@
 /**
  * app/admin/models/page.tsx
- * Admin CRUD list for house_catalog.
+ * Admin CRUD list for house_catalog, agrupado por línea.
  */
 
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { CatalogTable } from '@/components/admin/CatalogTable'
+import { getAllModelsAdmin } from '@/lib/supabase/queries/models'
+import { CatalogTable, type LineaInfo } from '@/components/admin/CatalogTable'
 
 export default async function AdminModelsPage() {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('house_catalog')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const [rows, lineasResult] = await Promise.all([
+    getAllModelsAdmin(supabase),
+    supabase
+      .from('lineas')
+      .select('name, sort_order')
+      .order('sort_order', { ascending: true }),
+  ])
 
-  if (error) {
-    console.error('[AdminModelsPage]', error.message)
-  }
-
-  const rows = data ?? []
+  const lineas: LineaInfo[] =
+    (lineasResult.data ?? []).map((l) => ({
+      name: l.name as string,
+      sort_order: (l.sort_order as number) ?? 0,
+    }))
 
   return (
     <div>
@@ -33,7 +37,7 @@ export default async function AdminModelsPage() {
         </Link>
       </div>
 
-      <CatalogTable rows={rows} />
+      <CatalogTable rows={rows} lineas={lineas} />
     </div>
   )
 }

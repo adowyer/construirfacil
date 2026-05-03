@@ -38,9 +38,9 @@ export default function CatalogRow({ house, index }: CatalogRowProps) {
       : house.construction_system?.name ?? ''
 
   const location = [
-    house.constructora?.city,
-    house.constructora?.province,
-  ].filter(Boolean).join(', ') || house.constructora?.name || ''
+    house.marca?.city,
+    house.marca?.province,
+  ].filter(Boolean).join(', ') || house.marca?.name || ''
 
   const statusTag = house.style ?? systemName
   const lqip = house.lqip_color ?? '#2a2620'
@@ -101,7 +101,7 @@ export default function CatalogRow({ house, index }: CatalogRowProps) {
           {house.name}
         </p>
 
-        {/* Location / constructora */}
+        {/* Location / marca */}
         {location && (
           <p style={{
             fontFamily: 'var(--font-geist), sans-serif',

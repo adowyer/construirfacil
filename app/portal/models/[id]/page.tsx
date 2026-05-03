@@ -7,7 +7,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getMyConstructora } from '@/lib/supabase/queries/constructoras'
+import { getMyMarca } from '@/lib/supabase/queries/marcas'
 import { getModelById } from '@/lib/supabase/queries/models'
 import { getConstructionSystems, getAttributeTypesWithValues } from '@/lib/supabase/queries/attributes'
 import ModelForm from '@/components/portal/ModelForm'
@@ -25,8 +25,8 @@ export default async function EditModelPage({ params }: PageProps) {
 
   if (!user) redirect('/login')
 
-  const constructora = await getMyConstructora(supabase, user.id)
-  if (!constructora) redirect('/portal/onboarding')
+  const marca = await getMyMarca(supabase, user.id)
+  if (!marca) redirect('/portal/onboarding')
 
   const [model, constructionSystems, attributeTypes] = await Promise.all([
     getModelById(supabase, id),
@@ -34,7 +34,7 @@ export default async function EditModelPage({ params }: PageProps) {
     getAttributeTypesWithValues(supabase),
   ])
 
-  if (!model || model.constructora_id !== constructora.id) notFound()
+  if (!model || model.marca_id !== marca.id) notFound()
 
   // Selected attribute value IDs
   const selectedAttributeValueIds = model.attributes.map(
@@ -71,7 +71,7 @@ export default async function EditModelPage({ params }: PageProps) {
       </div>
 
       <ModelForm
-        constructoraId={constructora.id}
+        marcaId={marca.id}
         constructionSystems={constructionSystems}
         attributeTypes={attributeTypes}
         model={model}

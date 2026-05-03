@@ -64,7 +64,7 @@ export default function CatalogHero({ totalCount }: { totalCount: number }) {
         >
           {[
             `${totalCount}+ modelos`,
-            '20+ constructoras',
+            '20+ marcas',
             'Wood Frame',
             'Steel Frame',
           ].map((item, i, arr) => (

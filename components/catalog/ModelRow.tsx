@@ -12,12 +12,37 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
-import { StationPortada, StationCamera, StationCompare, StationDatos } from './CatalogPage'
+import type { ModelContentRow } from '@/lib/supabase/queries/models'
+import type {
+  CatalogImage,
+  CatalogAttributeRow,
+} from '@/lib/supabase/queries/catalog_panels'
+import ExpandedPanels from './ExpandedPanels'
+
+interface BrandContentLite {
+  key: string
+  title: string | null
+  body: string | null
+}
+interface LineContentLite {
+  linea: string
+  tipologia_code: string | null
+  title: string | null
+  subtitle: string | null
+  body: string | null
+}
 
 interface ModelRowProps {
   model: CatalogModel
   index: number
   onOpen: (model: CatalogModel) => void
+  // Datos para los paneles del expandido (opcional para compat retro)
+  modelContent?: ModelContentRow | null
+  images?: CatalogImage[]
+  brandContent?: BrandContentLite[]
+  lineContent?: LineContentLite[]
+  attributesForCatalogIds?: CatalogAttributeRow[]
+  otherStyles?: CatalogModel[]
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -36,7 +61,17 @@ function fmtRange(a: number | null, b: number | null) {
   return `${Math.round(a)}–${Math.round(b)}`
 }
 
-export default function ModelRow({ model, index, onOpen }: ModelRowProps) {
+export default function ModelRow({
+  model,
+  index,
+  onOpen,
+  modelContent = null,
+  images = [],
+  brandContent = [],
+  lineContent = [],
+  attributesForCatalogIds = [],
+  otherStyles = [],
+}: ModelRowProps) {
   const [hovered, setHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const shellRef = useRef<HTMLDivElement>(null)
@@ -189,13 +224,13 @@ export default function ModelRow({ model, index, onOpen }: ModelRowProps) {
       <div className="cf-row-info" onClick={e => isExpanded && e.stopPropagation()}>
         {!isExpanded ? (
           /* Collapsed: minimal meta */
-          <div className="cf-meta-collapsed" style={{ textAlign: 'left', alignItems: 'flex-start', display: 'flex', flexDirection: 'column' }}>
+          <div className="cf-meta-collapsed" style={{ textAlign: 'right', alignItems: 'flex-end', display: 'flex', flexDirection: 'column' }}>
             <p className="cf-row-tag">{model.linea} · {model.estilo} · T{model.tipologia_code}</p>
             <h3 className="cf-row-name">{model.display_name}</h3>
             <p className="cf-row-subtitle">
               {model.variantes_count} variante{model.variantes_count !== 1 ? 's' : ''} · {model.floors_options} planta{model.floors_options === '1' ? '' : 's'}
             </p>
-            <div className="cf-row-stats" style={{ justifyContent: 'flex-start' }}>
+            <div className="cf-row-stats" style={{ justifyContent: 'flex-end' }}>
               <div>
                 <p className="cf-stat-num">{fmtRange(model.area_min, model.area_max)} m²</p>
                 <p className="cf-stat-lbl">Superficie</p>
@@ -205,7 +240,7 @@ export default function ModelRow({ model, index, onOpen }: ModelRowProps) {
                 <p className="cf-stat-lbl">Dormitorios</p>
               </div>
             </div>
-            <div className="cf-row-systems" style={{ justifyContent: 'flex-start' }}>
+            <div className="cf-row-systems" style={{ justifyContent: 'flex-end' }}>
               {model.systems.map(s => (
                 <span key={s} className="cf-sys-badge">{s.replace(' PLUS', '')}</span>
               ))}
@@ -282,25 +317,17 @@ export default function ModelRow({ model, index, onOpen }: ModelRowProps) {
             />
           )}
 
-          {/* Estaciones de contenido (solo cuando expandido) */}
+          {/* 9 paneles del expandido (data real desde Supabase) */}
           {isExpanded && (
-            <>
-              <div className="cf-station-slide">
-                <StationPortada model={model} />
-              </div>
-              <div className="cf-station-slide">
-                <StationCamera label="Exteriores" model={model} isExterior={true} />
-              </div>
-              <div className="cf-station-slide">
-                <StationCamera label="Interiores" model={model} isExterior={false} />
-              </div>
-              <div className="cf-station-slide">
-                <StationCompare model={model} />
-              </div>
-              <div className="cf-station-slide">
-                <StationDatos model={model} />
-              </div>
-            </>
+            <ExpandedPanels
+              model={model}
+              modelContent={modelContent}
+              images={images}
+              brandContent={brandContent}
+              lineContent={lineContent}
+              attributesForCatalogIds={attributesForCatalogIds}
+              otherStyles={otherStyles}
+            />
           )}
         </div>
 

@@ -68,16 +68,31 @@ export default async function AdminLayout({
             Moderación
           </div>
           <Link
-            href="/admin/constructoras"
+            href="/admin/marcas"
             className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
           >
-            Constructoras
+            Marcas
+          </Link>
+          <Link
+            href="/admin/lineas"
+            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
+          >
+            Líneas
           </Link>
           <Link
             href="/admin/models"
             className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
           >
             Modelos
+          </Link>
+          <div className="mt-4 mb-1 px-3 text-xs text-neutral-400 uppercase tracking-widest">
+            Contenido
+          </div>
+          <Link
+            href="/admin/brand"
+            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
+          >
+            Contenido del sitio
           </Link>
           <div className="mt-4 mb-1 px-3 text-xs text-neutral-400 uppercase tracking-widest">
             Configuración
@@ -91,7 +106,7 @@ export default async function AdminLayout({
         </nav>
 
         {/* Main */}
-        <main className="flex-1 p-8 max-w-5xl">{children}</main>
+        <main className="flex-1 p-8 min-w-0">{children}</main>
       </div>
     </div>
   )

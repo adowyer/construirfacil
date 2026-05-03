@@ -12,8 +12,14 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
 import { createClient } from '@/lib/supabase/server'
-import { getModelByVariantCode } from '@/lib/supabase/queries/models'
-import type { HouseCatalogRow } from '@/lib/supabase/queries/models'
+import {
+  getModelByVariantCode,
+  getModelContent,
+} from '@/lib/supabase/queries/models'
+import type {
+  HouseCatalogRow,
+  ModelContentRow,
+} from '@/lib/supabase/queries/models'
 import { getMockHouseDetail } from '@/lib/supabase/mock-data'
 import ModelPlaceholder from '@/components/catalog/ModelPlaceholder'
 
@@ -67,15 +73,36 @@ const GALLERY_MAP: Record<string, string[]> = {
 }
 
 // ── Normalize real Supabase row → detail page shape ───────────────────────────
-function normalizeDbHouse(h: HouseCatalogRow): any {
+function normalizeDbHouse(
+  h: HouseCatalogRow,
+  content: ModelContentRow | null,
+): any {
   const imgUrl = COVER_IMAGE_MAP[h.variant_code] ?? null
   const publicPrice = h.public_price_usd ?? 0
   const discount = h.presale_discount_pct ?? 0
+
+  // Editorial copy — preferimos model_content sobre el fallback de house_catalog.
+  const body = content?.body ?? h.recommended_use ?? null
+  const tagline = content?.tagline ?? null
+  const estiloLabel = content?.estilo_label ?? h.variant_style ?? null
+  const recommendedUse = content?.recommended_use ?? null
+
+  // Tags: combinamos lifestyle_tags + style + recommended_use, dedup.
+  const tagSet = new Set<string>()
+  for (const t of content?.lifestyle_tags ?? []) tagSet.add(t)
+  if (h.variant_style) tagSet.add(h.variant_style)
+  if (recommendedUse) tagSet.add(recommendedUse)
+
   return {
     id: h.id,
     name: h.name,
     slug: h.variant_code,
-    description: h.recommended_use ?? null,
+    tagline,
+    description: body,
+    estilo_label: estiloLabel,
+    recommended_use: recommendedUse,
+    family_size_min: content?.family_size_min ?? null,
+    family_size_max: content?.family_size_max ?? null,
     total_area_m2: h.area_m2 ?? 0,
     covered_area_m2: h.area_m2 ?? 0,
     bedrooms: h.min_bedrooms ?? null,
@@ -87,7 +114,7 @@ function normalizeDbHouse(h: HouseCatalogRow): any {
       name: h.construction_system ?? 'HAUSIND',
       slug: (h.construction_system ?? '').toLowerCase(),
     },
-    constructora: {
+    marca: {
       name: 'HAUSIND',
       slug: 'hausind',
       city: 'Posadas',
@@ -99,7 +126,7 @@ function normalizeDbHouse(h: HouseCatalogRow): any {
     price_lista_usd: publicPrice,
     price_contado_usd: Math.round(publicPrice * 0.95),
     price_pozo_usd: Math.round(publicPrice * (1 - discount / 100)),
-    tags: [h.variant_style, h.recommended_use].filter(Boolean) as string[],
+    tags: Array.from(tagSet),
     attributes: [] as { group: string; value: string }[],
     style: h.variant_style ?? null,
   }
@@ -110,7 +137,15 @@ async function getHouseForSlug(slug: string): Promise<any | null> {
   try {
     const supabase = await createClient()
     const dbRow = await getModelByVariantCode(supabase, slug)
-    if (dbRow) return normalizeDbHouse(dbRow)
+    if (dbRow) {
+      const styleName = dbRow.style_name ?? null
+      const linea = dbRow.linea ?? null
+      const content =
+        styleName && linea
+          ? await getModelContent(supabase, styleName, linea)
+          : null
+      return normalizeDbHouse(dbRow, content)
+    }
   } catch { /* no Supabase */ }
   return getMockHouseDetail(slug) ?? null
 }
@@ -130,7 +165,7 @@ export async function generateMetadata({
     title: `${house.name} — ${house.total_area_m2} m²`,
     description:
       house.description ??
-      `Modelo ${house.name} en ${house.construction_system?.name ?? 'construcción en seco'} por ${house.constructora.name}.`,
+      `Modelo ${house.name} en ${house.construction_system?.name ?? 'construcción en seco'} por ${house.marca.name}.`,
   }
 }
 
@@ -277,11 +312,16 @@ export default async function ModelDetailPage({
               {house.construction_system?.name ?? 'HAUSIND'}
             </Badge>
             <Badge bg="#F0F0EE" color="#888">
-              {house.constructora.name}
+              {house.marca.name}
             </Badge>
-            {(house.constructora.city ?? house.constructora.province) && (
+            {house.estilo_label && (
               <Badge bg="#F0F0EE" color="#888">
-                {house.constructora.city ?? house.constructora.province}
+                {house.estilo_label}
+              </Badge>
+            )}
+            {(house.marca.city ?? house.marca.province) && (
+              <Badge bg="#F0F0EE" color="#888">
+                {house.marca.city ?? house.marca.province}
               </Badge>
             )}
           </div>
@@ -299,16 +339,52 @@ export default async function ModelDetailPage({
             {house.name}
           </h1>
 
-          {/* Description */}
+          {/* Tagline (model_content) */}
+          {house.tagline && (
+            <p style={{
+              fontFamily: 'var(--font-geist), sans-serif',
+              fontSize: '17px',
+              fontWeight: 500,
+              lineHeight: 1.4,
+              color: '#0a0a0a',
+              marginBottom: 16,
+              maxWidth: '36em',
+              letterSpacing: '-0.01em',
+            }}>
+              {house.tagline}
+            </p>
+          )}
+
+          {/* Description / Body editorial (model_content.body o fallback) */}
           {house.description && (
             <p style={{
               fontSize: '14px',
               lineHeight: 1.75,
               color: '#555',
-              marginBottom: 32,
+              marginBottom: 24,
               maxWidth: '36em',
+              whiteSpace: 'pre-wrap',
             }}>
               {house.description}
+            </p>
+          )}
+
+          {/* Family size (model_content) */}
+          {(house.family_size_min || house.family_size_max) && (
+            <p style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#888',
+              marginBottom: 32,
+              letterSpacing: '0.02em',
+            }}>
+              Ideal para{' '}
+              {house.family_size_min && house.family_size_max
+                ? `${house.family_size_min}–${house.family_size_max} personas`
+                : house.family_size_min
+                  ? `${house.family_size_min}+ personas`
+                  : `hasta ${house.family_size_max} personas`}
+              {house.recommended_use && ` · ${house.recommended_use}`}
             </p>
           )}
 
@@ -423,7 +499,7 @@ export default async function ModelDetailPage({
                 letterSpacing: '0.04em',
               }}
             >
-              Consultar con {house.constructora.name} →
+              Consultar con {house.marca.name} →
             </a>
 
             <Link
@@ -448,7 +524,7 @@ export default async function ModelDetailPage({
           <p style={{ fontSize: '11px', color: '#bbb', lineHeight: 1.65 }}>
             Precios en USD. Valores orientativos al pozo. El precio final depende
             del terreno, terminaciones elegidas y ubicación de la obra. Consultá
-            directamente con la constructora para una cotización personalizada.
+            directamente con la marca para una cotización personalizada.
           </p>
         </div>
       </div>

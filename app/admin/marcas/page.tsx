@@ -1,39 +1,48 @@
 /**
- * app/admin/constructoras/page.tsx
- * Admin list of all constructoras, pending first.
+ * app/admin/marcas/page.tsx
+ * Admin list of all marcas, pending first.
  */
 
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getAllConstructoras } from '@/lib/supabase/queries/constructoras'
-import type { ConstructoraStatus } from '@/types/database'
+import { getAllMarcas } from '@/lib/supabase/queries/marcas'
+import type { MarcaStatus } from '@/types/database'
 
-const STATUS_LABELS: Record<ConstructoraStatus, string> = {
+const STATUS_LABELS: Record<MarcaStatus, string> = {
   pending: 'Pendiente',
   approved: 'Aprobada',
   rejected: 'Rechazada',
 }
 
-const STATUS_CLASSES: Record<ConstructoraStatus, string> = {
+const STATUS_CLASSES: Record<MarcaStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
 }
 
-export default async function AdminConstructorasPage() {
+export default async function AdminMarcasPage() {
   const supabase = await createClient()
-  const constructoras = await getAllConstructoras(supabase)
+  const marcas = await getAllMarcas(supabase)
 
   return (
     <div>
-      <h1 className="text-3xl font-black uppercase tracking-tight mb-10">
-        Constructoras ({constructoras.length})
-      </h1>
+      <div className="flex items-center justify-between mb-10">
+        <h1 className="text-3xl font-black uppercase tracking-tight">
+          Marcas ({marcas.length})
+        </h1>
+        <Link
+          href="/admin/marcas/new"
+          className="bg-black text-white px-6 py-3 rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+        >
+          Nueva marca
+        </Link>
+      </div>
 
-      {constructoras.length === 0 ? (
-        <p className="text-neutral-400">No hay constructoras registradas.</p>
+      {marcas.length === 0 ? (
+        <p className="text-neutral-400">No hay marcas registradas.</p>
       ) : (
         <div className="border border-neutral-200 divide-y divide-neutral-200">
-          {constructoras.map((c) => (
+          {marcas.map((c) => (
             <div key={c.id} className="flex items-center justify-between px-6 py-4">
               <div>
                 <p className="font-semibold">{c.name}</p>
@@ -54,12 +63,12 @@ export default async function AdminConstructorasPage() {
                 >
                   {STATUS_LABELS[c.status]}
                 </span>
-                <a
-                  href={`/admin/constructoras/${c.id}`}
+                <Link
+                  href={`/admin/marcas/${c.id}`}
                   className="text-xs underline hover:no-underline"
                 >
-                  Revisar
-                </a>
+                  Editar
+                </Link>
               </div>
             </div>
           ))}

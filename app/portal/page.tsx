@@ -1,12 +1,12 @@
 // @ts-nocheck
 /**
  * app/portal/page.tsx
- * Constructora portal dashboard.
+ * Marca portal dashboard.
  */
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { getMyConstructora } from '@/lib/supabase/queries/constructoras'
+import { getMyMarca } from '@/lib/supabase/queries/marcas'
 import { getMyModels } from '@/lib/supabase/queries/models'
 import { redirect } from 'next/navigation'
 
@@ -18,11 +18,11 @@ export default async function PortalDashboardPage() {
 
   if (!user) redirect('/login')
 
-  const constructora = await getMyConstructora(supabase, user.id)
+  const marca = await getMyMarca(supabase, user.id)
 
-  if (!constructora) redirect('/portal/onboarding')
+  if (!marca) redirect('/portal/onboarding')
 
-  const models = await getMyModels(supabase, constructora.id)
+  const models = await getMyModels(supabase, marca.id)
 
   const counts = {
     draft: models.filter((m) => m.status === 'draft').length,
@@ -34,22 +34,22 @@ export default async function PortalDashboardPage() {
   return (
     <div>
       <h1 className="text-3xl font-black uppercase tracking-tight mb-2">
-        {constructora.name}
+        {marca.name}
       </h1>
       <p className="text-neutral-500 text-sm mb-10 capitalize">
         Estado:{' '}
         <span
           className={
-            constructora.status === 'approved'
+            marca.status === 'approved'
               ? 'text-green-600 font-semibold'
-              : constructora.status === 'pending'
+              : marca.status === 'pending'
               ? 'text-yellow-600 font-semibold'
               : 'text-red-600 font-semibold'
           }
         >
-          {constructora.status === 'approved'
+          {marca.status === 'approved'
             ? 'Aprobada'
-            : constructora.status === 'pending'
+            : marca.status === 'pending'
             ? 'Pendiente'
             : 'Rechazada'}
         </span>
@@ -128,7 +128,7 @@ export default async function PortalDashboardPage() {
         </div>
       )}
 
-      {constructora.status === 'approved' && models.length === 0 && (
+      {marca.status === 'approved' && models.length === 0 && (
         <div className="border border-dashed border-neutral-300 p-12 text-center">
           <p className="text-neutral-400 mb-4">
             Todavía no publicaste ningún modelo.

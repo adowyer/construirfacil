@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env
+
+# Local artifacts del trabajo (screenshots, documentos fuente, planillas, videos)
+*.jpg
+*.jpeg
+*.png
+*.docx
+*.xlsx
+*.mov
+*.mp4
+/Users/
+/data/
+/atributos.csv
+debug_collisions.mjs
+CATALOG_AUDIT.md

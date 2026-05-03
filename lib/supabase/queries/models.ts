@@ -50,6 +50,9 @@ export type HouseCatalogRow = {
 
   // Campos nuevos del schema
   sku: string
+  brand: string | null
+  marca_id: string | null
+  linea_id: string | null
   linea: string | null
   segmento: string | null
   tipologia_code: string | null
@@ -57,14 +60,17 @@ export type HouseCatalogRow = {
   style_name: string | null
   estilo: string | null
   sistema_constructivo: string | null
+  area_semicubierta_m2: number | null
   bedrooms_label: string | null
   bathrooms: number | null
   toilette: boolean | null
+  lavadero: string | null
   parrilla: boolean | null
   precio_lista_usd: number | null
   precio_contado_usd: number | null
   precio_pozo_usd: number | null
   costo_plano_usd: number | null
+  description: string | null
   pdf_url: string | null
 }
 
@@ -125,6 +131,9 @@ function mapRow(r: any): HouseCatalogRow {
 
     // Campos nuevos completos
     sku: r.sku,
+    brand: r.brand,
+    marca_id: r.marca_id,
+    linea_id: r.linea_id,
     linea: r.linea,
     segmento: r.segmento,
     tipologia_code: r.tipologia_code,
@@ -132,14 +141,17 @@ function mapRow(r: any): HouseCatalogRow {
     style_name: r.style_name,
     estilo: r.estilo,
     sistema_constructivo: r.sistema_constructivo,
+    area_semicubierta_m2: r.area_semicubierta_m2,
     bedrooms_label: r.bedrooms_label,
     bathrooms: r.bathrooms,
     toilette: r.toilette,
+    lavadero: r.lavadero,
     parrilla: r.parrilla,
     precio_lista_usd: r.precio_lista_usd,
     precio_contado_usd: r.precio_contado_usd,
     precio_pozo_usd: r.precio_pozo_usd,
     costo_plano_usd: r.costo_plano_usd,
+    description: r.description,
     pdf_url: r.pdf_url,
   }
 }
@@ -247,3 +259,45 @@ export async function getAllModelsAdmin(
 // Backward-compat aliases used by portal + admin pages
 export const getMyModels = getAllModelsAdmin
 export const getModerationQueue = getAllModelsAdmin
+
+// ─────────────────────────────────────────────────────────────────────────────
+// model_content (editorial — consumido por catálogo público + Ximia)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ModelContentRow {
+  id: string
+  style_name: string
+  linea: string
+  tagline: string | null
+  body: string | null
+  estilo_label: string | null
+  lifestyle_tags: string[] | null
+  recommended_use: string | null
+  family_size_min: number | null
+  family_size_max: number | null
+  agent_notes: string | null
+  updated_at: string
+}
+
+/**
+ * Trae model_content por (style_name, linea). Devuelve null si todavía no
+ * fue creado (el form admin permitirá crearlo en el primer guardado).
+ */
+export async function getModelContent(
+  supabase: SupabaseClient,
+  styleName: string,
+  linea: string,
+): Promise<ModelContentRow | null> {
+  const { data, error } = await supabase
+    .from('model_content')
+    .select('*')
+    .eq('style_name', styleName)
+    .eq('linea', linea)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[getModelContent]', error.message)
+    return null
+  }
+  return (data ?? null) as ModelContentRow | null
+}

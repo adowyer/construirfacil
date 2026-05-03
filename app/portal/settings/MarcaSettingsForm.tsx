@@ -1,6 +1,6 @@
 /**
- * app/portal/settings/ConstructoraSettingsForm.tsx
- * Client component — constructora brand settings form.
+ * app/portal/settings/MarcaSettingsForm.tsx
+ * Client component — marca brand settings form.
  */
 
 'use client'
@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Constructora } from '@/types/database'
+import type { Marca } from '@/types/database'
 
 const PROVINCES = [
   'Buenos Aires', 'CABA', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba',
@@ -19,17 +19,17 @@ const PROVINCES = [
 ]
 
 interface Props {
-  constructora: Constructora
+  marca: Marca
 }
 
-export default function ConstructoraSettingsForm({ constructora }: Props) {
+export default function MarcaSettingsForm({ marca }: Props) {
   const router = useRouter()
   const [form, setForm] = useState({
-    description: constructora.description ?? '',
-    city: constructora.city ?? '',
-    province: constructora.province ?? '',
-    phone: constructora.phone ?? '',
-    website_url: constructora.website_url ?? '',
+    description: marca.description ?? '',
+    city: marca.city ?? '',
+    province: marca.province ?? '',
+    phone: marca.phone ?? '',
+    website_url: marca.website_url ?? '',
   })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -49,7 +49,7 @@ export default function ConstructoraSettingsForm({ constructora }: Props) {
 
     const supabase = createClient()
     const { error: updateError } = await supabase
-      .from('constructoras')
+      .from('marcas')
       .update({
         description: form.description.trim() || null,
         city: form.city.trim() || null,
@@ -57,7 +57,7 @@ export default function ConstructoraSettingsForm({ constructora }: Props) {
         phone: form.phone.trim() || null,
         website_url: form.website_url.trim() || null,
       })
-      .eq('id', constructora.id)
+      .eq('id', marca.id)
 
     if (updateError) {
       setError(updateError.message)
@@ -78,7 +78,7 @@ export default function ConstructoraSettingsForm({ constructora }: Props) {
           Nombre
         </p>
         <p className="text-sm font-semibold border border-neutral-100 bg-neutral-50 px-4 py-3">
-          {constructora.name}
+          {marca.name}
         </p>
         <p className="text-xs text-neutral-400 mt-1">
           Para cambiar el nombre contactá con soporte.

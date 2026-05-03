@@ -8,7 +8,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getMyConstructora } from '@/lib/supabase/queries/constructoras'
+import { getMyMarca } from '@/lib/supabase/queries/marcas'
 import { getModelById } from '@/lib/supabase/queries/models'
 
 interface PageProps {
@@ -24,11 +24,11 @@ export default async function ModelImagesPage({ params }: PageProps) {
 
   if (!user) redirect('/login')
 
-  const constructora = await getMyConstructora(supabase, user.id)
-  if (!constructora) redirect('/portal/onboarding')
+  const marca = await getMyMarca(supabase, user.id)
+  if (!marca) redirect('/portal/onboarding')
 
   const model = await getModelById(supabase, id)
-  if (!model || model.constructora_id !== constructora.id) notFound()
+  if (!model || model.marca_id !== marca.id) notFound()
 
   return (
     <div className="max-w-2xl">

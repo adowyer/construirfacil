@@ -1,27 +1,28 @@
-/**
- * app/(public)/catalog/page.tsx
- *
- * Página pública del catálogo Hausind.
- * Carga modelos agrupados de Supabase y pasa al componente CatalogPage.
- */
-
-import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
+import { getAllLineas } from '@/lib/supabase/queries/lineas'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Catálogo — HAUSIND',
-  description: 'Explorá los modelos de casas HAUSIND: Bosque, Atlas y Terra. Encontrá la casa que querés al precio que necesitás.',
-}
-
-export default async function CatalogRoute() {
+export default async function HomePage() {
   const supabase = await createClient()
-  const models = await getGroupedCatalog(supabase)
 
-  console.log('models count:', models.length, models[0])
+  const [models, { data: brandContent }, { data: lineContent }, lineas] = await Promise.all([
+    getGroupedCatalog(supabase),
+    supabase.from('brand_content').select('*').eq('status', 'active').order('sort_order'),
+    supabase.from('line_content').select('*').eq('status', 'active').order('sort_order'),
+    getAllLineas(supabase),
+  ])
 
-  return <CatalogPage models={models} />
+  console.log('brandContent:', brandContent?.length, 'lineContent:', lineContent?.length, 'lineas:', lineas.length)
+
+  return (
+    <CatalogPage
+      models={models}
+      brandContent={brandContent ?? []}
+      lineContent={lineContent ?? []}
+      lineas={lineas}
+    />
+  )
 }

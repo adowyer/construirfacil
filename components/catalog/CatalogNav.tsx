@@ -129,7 +129,7 @@ export default function CatalogNav({ activeFilter, onFilterChange }: CatalogNavP
         onMouseEnter={e => (e.currentTarget.style.color = '#0a0a0a')}
         onMouseLeave={e => (e.currentTarget.style.color = '#aaa')}
       >
-        Constructoras
+        Marcas
       </a>
 
       {/* Mobile menu overlay */}
@@ -198,7 +198,7 @@ export default function CatalogNav({ activeFilter, onFilterChange }: CatalogNavP
             }}
             onClick={() => setMenuOpen(false)}
           >
-            Portal Constructoras
+            Portal Marcas
           </Link>
         </div>
       )}

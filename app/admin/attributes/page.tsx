@@ -68,7 +68,7 @@ export default async function AdminAttributesPage() {
                       key={val.id}
                       className="bg-neutral-100 text-neutral-600 px-3 py-1 text-xs"
                     >
-                      {val.label}
+                      {val.name}
                     </span>
                   ))}
                 </div>

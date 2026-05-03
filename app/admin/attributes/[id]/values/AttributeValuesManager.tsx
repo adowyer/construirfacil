@@ -35,7 +35,14 @@ export default function AttributeValuesManager({ type }: Props) {
       .from('attribute_values')
       .insert({
         attribute_type_id: type.id,
-        label: newLabel.trim(),
+        name: newLabel.trim(),
+        slug: newLabel
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, ''),
         sort_order: maxOrder + 10,
       })
       .select()
@@ -88,12 +95,12 @@ export default function AttributeValuesManager({ type }: Props) {
               key={val.id}
               className="flex items-center justify-between px-4 py-3"
             >
-              <span className="text-sm">{val.label}</span>
+              <span className="text-sm">{val.name}</span>
               <button
                 onClick={() => handleDelete(val.id)}
                 disabled={deletingId === val.id}
                 className="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
-                aria-label={`Eliminar ${val.label}`}
+                aria-label={`Eliminar ${val.name}`}
               >
                 {deletingId === val.id ? 'Eliminando...' : 'Eliminar'}
               </button>

@@ -4,9 +4,9 @@
 // For full type safety, run: npx supabase gen types typescript --local > types/supabase.ts
 // =============================================================================
 
-export type UserRole = 'admin' | 'constructora_owner' | 'buyer'
+export type UserRole = 'admin' | 'marca_owner' | 'buyer'
 
-export type ConstructoraStatus = 'pending' | 'approved' | 'rejected'
+export type MarcaStatus = 'pending' | 'approved' | 'rejected'
 
 export type HouseModelStatus = 'draft' | 'pending_review' | 'published' | 'rejected'
 
@@ -29,7 +29,7 @@ export interface ConstructionSystem {
   created_at: string
 }
 
-export interface Constructora {
+export interface Marca {
   id: string
   owner_id: string
   name: string
@@ -40,7 +40,7 @@ export interface Constructora {
   phone: string | null
   city: string | null
   province: string | null
-  status: ConstructoraStatus
+  status: MarcaStatus
   rejection_reason: string | null
   approved_at: string | null
   approved_by: string | null
@@ -60,14 +60,19 @@ export interface AttributeType {
 export interface AttributeValue {
   id: string
   attribute_type_id: string
-  label: string
+  name: string
+  slug: string
+  description: string | null
   sort_order: number
+  pending_review: boolean
+  created_by: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface HouseModel {
   id: string
-  constructora_id: string
+  marca_id: string
   name: string
   slug: string
   description: string | null
@@ -117,11 +122,11 @@ export interface HouseModelFloorPlan {
 // Insert types (what you send to the DB)
 // ---------------------------------------------------------------------------
 
-export type InsertConstructora = Omit<
-  Constructora,
+export type InsertMarca = Omit<
+  Marca,
   'id' | 'created_at' | 'updated_at' | 'approved_at' | 'approved_by' | 'rejection_reason'
 > & {
-  status?: ConstructoraStatus
+  status?: MarcaStatus
 }
 
 export type InsertHouseModel = Omit<
@@ -135,8 +140,8 @@ export type InsertHouseModel = Omit<
 // Joined / enriched types used in the UI
 // ---------------------------------------------------------------------------
 
-export interface HouseModelWithConstructora extends HouseModel {
-  constructora: Pick<Constructora, 'id' | 'name' | 'slug' | 'logo_url' | 'city' | 'province'>
+export interface HouseModelWithMarca extends HouseModel {
+  marca: Pick<Marca, 'id' | 'name' | 'slug' | 'logo_url' | 'city' | 'province'>
   construction_system: Pick<ConstructionSystem, 'id' | 'name' | 'slug'> | null
   cover_image: Pick<HouseModelImage, 'storage_url' | 'alt_text'> | null
 }
@@ -149,7 +154,7 @@ export interface HouseModelAttributeWithValue {
 }
 
 export interface HouseModelDetail extends HouseModel {
-  constructora: Constructora
+  marca: Marca
   construction_system: ConstructionSystem | null
   images: HouseModelImage[]
   floor_plans: HouseModelFloorPlan[]

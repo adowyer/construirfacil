@@ -18,6 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ModelVariant = {
+  id: string                              // uuid del row en house_catalog
   sku: string
   variante: string
   area_m2: number | null
@@ -90,7 +91,11 @@ const DISPLAY_NAMES: Record<string, string> = {
 }
 
 function displayName(style_name: string): string {
-  return DISPLAY_NAMES[style_name] ?? style_name
+  if (DISPLAY_NAMES[style_name]) return DISPLAY_NAMES[style_name]
+  // Fallback: title-case (ANCHICO → Anchico, AMBA'Y → Amba'y, ALECRÍN → Alecrín).
+  // El style_name ya viene con acentos correctos en la DB tras el rename.
+  if (!style_name) return style_name
+  return style_name[0].toUpperCase() + style_name.slice(1).toLowerCase()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,6 +150,7 @@ export async function getGroupedCatalog(
       })
     }
     groupMap.get(key)!.push({
+      id: row.id,
       sku: row.sku,
       variante: row.variante,
       area_m2: row.area_m2,

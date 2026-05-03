@@ -17,9 +17,16 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import type { BrandContent, LineContent } from './HeroSlider'
 import HeroSlider from './HeroSlider'
 import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
+import type { LineaRow } from '@/lib/supabase/queries/lineas'
+import type { ModelContentRow } from '@/lib/supabase/queries/models'
+import type {
+  CatalogImage,
+  CatalogAttributeRow,
+} from '@/lib/supabase/queries/catalog_panels'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -27,6 +34,15 @@ import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 
 interface PageProps {
   models: CatalogModel[]
+  brandContent?: BrandContent[]
+  lineContent?: LineContent[]
+  lineas?: LineaRow[]
+  /** Map indexado por `${linea}::${style_name}` → fila de model_content. */
+  modelContentMap?: Record<string, ModelContentRow>
+  /** Todas las imágenes del catálogo. ModelRow filtra las que aplican al modelo. */
+  catalogImages?: CatalogImage[]
+  /** Todos los pairs (catalog × attribute_value). ModelRow filtra por house_catalog_id de sus SKUs. */
+  catalogAttributes?: CatalogAttributeRow[]
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -56,13 +72,21 @@ function fmtUSD(n: number | null) {
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function CatalogPage({ models = [] }: PageProps) {
+export default function CatalogPage({
+  models = [],
+  brandContent = [],
+  lineContent = [],
+  lineas = [],
+  modelContentMap = {},
+  catalogImages = [],
+  catalogAttributes = [],
+}: PageProps) {
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
-  const [lineFilter, setLineFilter] = useState<string>('ALL')
+  const [lineFilter, setLineFilter] = useState<string>('BOSQUE')
   const [bedFilter, setBedFilter] = useState<string>('ALL')
   const [sizeFilter, setSizeFilter] = useState<string>('ALL')
-  const [sortOrder, setSortOrder] = useState<string>('recommended')
+  const [sortOrder] = useState<string>('recommended')
 
   const detailRef = useRef<HTMLDivElement>(null)
   const detailTrackRef = useRef<HTMLDivElement>(null)
@@ -185,6 +209,10 @@ export default function CatalogPage({ models = [] }: PageProps) {
     }
   }, [activeModel])
 
+  const heroBg = models.find(m => m.linea === lineFilter)?.cover_url
+  ?? models[0]?.cover_url
+  ?? 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1600'
+
   return (
     <>
       {/* ── Hero educativo ── */}
@@ -193,44 +221,14 @@ export default function CatalogPage({ models = [] }: PageProps) {
         bedFilter={bedFilter}
         sizeFilter={sizeFilter}
         resultCount={filtered.length}
+        heroBg={heroBg}
+        brandContent={brandContent}
+        lineContent={lineContent}
+        lineas={lineas}
         onLineChange={setLineFilter}
         onBedChange={setBedFilter}
         onSizeChange={setSizeFilter}
       />
-
-      {/* ── Filtros ── */}
-      <div className="cf-filters">
-        <FilterGroup label="Línea">
-          {['ALL', 'ATLAS', 'BOSQUE', 'TERRA'].map(v => (
-            <Chip key={v} active={lineFilter === v} onClick={() => setLineFilter(v)}>
-              {v === 'ALL' ? 'Todas' : v.charAt(0) + v.slice(1).toLowerCase()}
-            </Chip>
-          ))}
-        </FilterGroup>
-        <FilterGroup label="Dorm.">
-          {(['ALL', '1-2', '3', '4+'] as const).map(v => (
-            <Chip key={v} active={bedFilter === v} onClick={() => setBedFilter(v)}>
-              {v === 'ALL' ? 'todos' : v}
-            </Chip>
-          ))}
-        </FilterGroup>
-        <FilterGroup label="Tamaño" style={{ marginLeft: 0 }}>
-          {(['ALL', 'S', 'M', 'L'] as const).map(v => (
-            <Chip key={v} active={sizeFilter === v} onClick={() => setSizeFilter(v)}>
-              {v === 'ALL' ? 'todos' : v === 'S' ? '–80m²' : v === 'M' ? '80–160m²' : '+160m²'}
-            </Chip>
-          ))}
-        </FilterGroup>
-        <FilterGroup label="Orden" style={{ marginLeft: 'auto' }}>
-          {[
-            { v: 'recommended', l: 'Sugeridos' },
-            { v: 'price-asc', l: 'Precio ↑' },
-            { v: 'price-desc', l: 'Precio ↓' },
-          ].map(({ v, l }) => (
-            <Chip key={v} active={sortOrder === v} onClick={() => setSortOrder(v)}>{l}</Chip>
-          ))}
-        </FilterGroup>
-      </div>
 
       {/* ── Grilla agrupada por línea ── */}
       <div className="cf-grid">
@@ -244,14 +242,48 @@ export default function CatalogPage({ models = [] }: PageProps) {
             </div>
 
             {/* Filas */}
-            {items.map((model, i) => (
-              <ModelRow
-                key={model.group_slug}
-                model={model}
-                index={i}
-                onOpen={openDetail}
-              />
-            ))}
+            {items.map((model, i) => {
+              const mcKey = `${model.linea}::${model.style_name}`
+              const mc = modelContentMap[mcKey] ?? null
+
+              // Imágenes que aplican a este modelo (todos los SKUs)
+              const skuIds = new Set(model.skus.map((s) => s.id))
+              const modelImages = catalogImages.filter(
+                (img) =>
+                  img.linea === model.linea &&
+                  img.tipologia_code === model.tipologia_code &&
+                  // El style match: específico del modelo o tipológico (style null)
+                  (img.style_name === model.style_name || img.style_name == null),
+              )
+
+              // Attributes filtrados por house_catalog_id ∈ skus del modelo
+              const modelAttributes = catalogAttributes.filter((a) =>
+                skuIds.has(a.house_catalog_id),
+              )
+
+              // Otros modelos en la misma (linea, tipologia_code) — para panel 5
+              const otherStyles = filtered.filter(
+                (m) =>
+                  m.linea === model.linea &&
+                  m.tipologia_code === model.tipologia_code &&
+                  m.group_slug !== model.group_slug,
+              )
+
+              return (
+                <ModelRow
+                  key={model.group_slug}
+                  model={model}
+                  index={i}
+                  onOpen={openDetail}
+                  modelContent={mc}
+                  images={modelImages}
+                  brandContent={brandContent}
+                  lineContent={lineContent}
+                  attributesForCatalogIds={modelAttributes}
+                  otherStyles={otherStyles}
+                />
+              )
+            })}
 
             {/* CTA entre Atlas y Bosque */}
             {gi === 0 && (
@@ -334,25 +366,6 @@ export default function CatalogPage({ models = [] }: PageProps) {
       </div>
 
     </>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Filtros helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FilterGroup({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div className="cf-filter-group" style={style}>
-      <span className="cf-filter-label">{label}</span>
-      {children}
-    </div>
-  )
-}
-
-function Chip({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
-  return (
-    <button className={`cf-chip ${active ? 'active' : ''}`} onClick={onClick}>{children}</button>
   )
 }
 

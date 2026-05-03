@@ -10,11 +10,15 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.104.0",
+    "@supabase/supabase-js": "^2.105.0",
     "csv-parse": "^6.2.1",
+    "googleapis": "^171.4.0",
+    "mime-types": "^3.0.2",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.34.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

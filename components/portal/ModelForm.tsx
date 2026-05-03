@@ -11,7 +11,7 @@
  *   - Save as draft: status stays 'draft'
  *   - Submit for review: status → 'pending_review'
  *   - Once in pending_review/published, only an admin can change status
- *     (constructora can only edit content fields, not submit again until rejected)
+ *     (marca can only edit content fields, not submit again until rejected)
  */
 
 'use client'
@@ -27,7 +27,7 @@ import type {
 } from '@/types/database'
 
 interface Props {
-  constructoraId: string
+  marcaId: string
   constructionSystems: ConstructionSystem[]
   attributeTypes: AttributeTypeWithValues[]
   model?: HouseModelDetail               // undefined = new model
@@ -49,7 +49,7 @@ type FormData = {
 }
 
 export default function ModelForm({
-  constructoraId,
+  marcaId,
   constructionSystems,
   attributeTypes,
   model,
@@ -186,7 +186,7 @@ export default function ModelForm({
 
       const { data: inserted, error: insertError } = await supabase
         .from('house_models')
-        .insert({ ...modelData, constructora_id: constructoraId, slug, status })
+        .insert({ ...modelData, marca_id: marcaId, slug, status })
         .select('id')
         .single()
 
@@ -357,7 +357,7 @@ export default function ModelForm({
                           } disabled:opacity-50 disabled:cursor-default`}
                           aria-pressed={isSelected}
                         >
-                          {val.label}
+                          {val.name}
                         </button>
                       )
                     })}

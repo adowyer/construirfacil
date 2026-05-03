@@ -6,13 +6,13 @@
  * without a live Supabase instance.
  */
 
-import type { HouseModelWithConstructora, HouseModelDetail } from '@/types/database'
+import type { HouseModelWithMarca, HouseModelDetail } from '@/types/database'
 
 // ---------------------------------------------------------------------------
 // Shared mock entities
 // ---------------------------------------------------------------------------
 
-const CONSTRUCTORA_MADERAS = {
+const MARCA_MADERAS = {
   id: 'cst-maderas',
   name: 'Maderas del Sur',
   slug: 'maderas-del-sur',
@@ -21,7 +21,7 @@ const CONSTRUCTORA_MADERAS = {
   province: 'Santa Fe',
 }
 
-const CONSTRUCTORA_STEELWORKS = {
+const MARCA_STEELWORKS = {
   id: 'cst-steelworks',
   name: 'SteelWorks AR',
   slug: 'steelworks-ar',
@@ -30,7 +30,7 @@ const CONSTRUCTORA_STEELWORKS = {
   province: 'Buenos Aires',
 }
 
-const CONSTRUCTORA_BIOCASA = {
+const MARCA_BIOCASA = {
   id: 'cst-biocasa',
   name: 'BioCasa',
   slug: 'biocasa',
@@ -39,13 +39,13 @@ const CONSTRUCTORA_BIOCASA = {
   province: 'Córdoba',
 }
 
-const SYSTEM_WOOD: HouseModelWithConstructora['construction_system'] = {
+const SYSTEM_WOOD: HouseModelWithMarca['construction_system'] = {
   id: 'sys-wood',
   name: 'Wood Framing Plus',
   slug: 'wood-frame',
 }
 
-const SYSTEM_STEEL: HouseModelWithConstructora['construction_system'] = {
+const SYSTEM_STEEL: HouseModelWithMarca['construction_system'] = {
   id: 'sys-steel',
   name: 'Steel Frame',
   slug: 'steel-frame',
@@ -85,7 +85,7 @@ export type GradientKey =
 // Extended mock type — adds price tiers and gradient key
 // ---------------------------------------------------------------------------
 
-export interface MockHouseModel extends HouseModelWithConstructora {
+export interface MockHouseModel extends HouseModelWithMarca {
   price_lista_usd: number
   price_contado_usd: number
   price_pozo_usd: number
@@ -103,7 +103,7 @@ export interface MockHouseModel extends HouseModelWithConstructora {
 export const MOCK_HOUSES: MockHouseModel[] = [
   {
     id: 'hm-01',
-    constructora_id: 'cst-maderas',
+    marca_id: 'cst-maderas',
     name: 'TIMBÓ II',
     slug: 'timbo-ii',
     description: 'Casa de 2 plantas con diseño moderno, parrilla y lavadero. Ideal para familias que buscan amplitud y confort.',
@@ -122,7 +122,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-08T00:00:00Z',
     updated_at: '2026-01-10T00:00:00Z',
-    constructora: CONSTRUCTORA_MADERAS,
+    marca: MARCA_MADERAS,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[0],
     price_lista_usd: 471213,
@@ -136,7 +136,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-02',
-    constructora_id: 'cst-maderas',
+    marca_id: 'cst-maderas',
     name: 'CEDRO I',
     slug: 'cedro-i',
     description: 'Casa de planta baja compacta con deck exterior. Perfecta para lotes estrechos o como primera vivienda.',
@@ -155,7 +155,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-11T00:00:00Z',
     updated_at: '2026-01-12T00:00:00Z',
-    constructora: CONSTRUCTORA_MADERAS,
+    marca: MARCA_MADERAS,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[1],
     price_lista_usd: 201016,
@@ -169,7 +169,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-03',
-    constructora_id: 'cst-maderas',
+    marca_id: 'cst-maderas',
     name: 'CEDRO II',
     slug: 'cedro-ii',
     description: 'Versión ampliada del Cedro con diseño versátil de 2 plantas. Admite entre 2 y 4 dormitorios según distribución.',
@@ -188,7 +188,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-13T00:00:00Z',
     updated_at: '2026-01-15T00:00:00Z',
-    constructora: CONSTRUCTORA_MADERAS,
+    marca: MARCA_MADERAS,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[2],
     price_lista_usd: 348560,
@@ -202,7 +202,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-04',
-    constructora_id: 'cst-steelworks',
+    marca_id: 'cst-steelworks',
     name: 'ROBLE III',
     slug: 'roble-iii',
     description: 'Diseño contemporáneo en 2 plantas. La estructura de Steel Frame permite grandes ventanales y espacios diáfanos.',
@@ -221,7 +221,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-16T00:00:00Z',
     updated_at: '2026-01-18T00:00:00Z',
-    constructora: CONSTRUCTORA_STEELWORKS,
+    marca: MARCA_STEELWORKS,
     construction_system: SYSTEM_STEEL,
     cover_image: MOCK_COVER_IMAGES[3],
     price_lista_usd: 293650,
@@ -235,7 +235,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-05',
-    constructora_id: 'cst-steelworks',
+    marca_id: 'cst-steelworks',
     name: 'ÁLAMO I',
     slug: 'alamo-i',
     description: 'Diseño minimalista de planta única. Eficiencia máxima en 96 m²: cocina integrada, dormitorio principal en suite.',
@@ -254,7 +254,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-19T00:00:00Z',
     updated_at: '2026-01-20T00:00:00Z',
-    constructora: CONSTRUCTORA_STEELWORKS,
+    marca: MARCA_STEELWORKS,
     construction_system: SYSTEM_STEEL,
     cover_image: MOCK_COVER_IMAGES[4],
     price_lista_usd: 152064,
@@ -268,7 +268,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-06',
-    constructora_id: 'cst-maderas',
+    marca_id: 'cst-maderas',
     name: 'PINO IV',
     slug: 'pino-iv',
     description: 'Casa premium de 2 plantas con piscina, terraza y SUM. El modelo más completo de la línea Maderas del Sur.',
@@ -287,7 +287,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-21T00:00:00Z',
     updated_at: '2026-01-22T00:00:00Z',
-    constructora: CONSTRUCTORA_MADERAS,
+    marca: MARCA_MADERAS,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[5],
     price_lista_usd: 538950,
@@ -301,7 +301,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-07',
-    constructora_id: 'cst-steelworks',
+    marca_id: 'cst-steelworks',
     name: 'SAUCE I',
     slug: 'sauce-i',
     description: 'La opción starter en Steel Frame. 78 m² bien resueltos para quienes priorizan la calidad constructiva sin exceso.',
@@ -320,7 +320,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-23T00:00:00Z',
     updated_at: '2026-01-25T00:00:00Z',
-    constructora: CONSTRUCTORA_STEELWORKS,
+    marca: MARCA_STEELWORKS,
     construction_system: SYSTEM_STEEL,
     cover_image: MOCK_COVER_IMAGES[6],
     price_lista_usd: 123370,
@@ -334,7 +334,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-08',
-    constructora_id: 'cst-maderas',
+    marca_id: 'cst-maderas',
     name: 'NOGAL II',
     slug: 'nogal-ii',
     description: 'Planta baja con doble altura en living. Estética nórdica, terminaciones de madera vista y amplia luz natural.',
@@ -353,7 +353,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-27T00:00:00Z',
     updated_at: '2026-01-28T00:00:00Z',
-    constructora: CONSTRUCTORA_MADERAS,
+    marca: MARCA_MADERAS,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[7],
     price_lista_usd: 256716,
@@ -367,7 +367,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-09',
-    constructora_id: 'cst-steelworks',
+    marca_id: 'cst-steelworks',
     name: 'EUCALIPTUS III',
     slug: 'eucaliptus-iii',
     description: 'Diseño industrial de 2 plantas con mezzanine. Grandes aberturas metálicas y acabados en hormigón visto.',
@@ -386,7 +386,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-01-30T00:00:00Z',
     updated_at: '2026-02-01T00:00:00Z',
-    constructora: CONSTRUCTORA_STEELWORKS,
+    marca: MARCA_STEELWORKS,
     construction_system: SYSTEM_STEEL,
     cover_image: MOCK_COVER_IMAGES[8],
     price_lista_usd: 420050,
@@ -400,7 +400,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-10',
-    constructora_id: 'cst-biocasa',
+    marca_id: 'cst-biocasa',
     name: 'JACARANDÁ I',
     slug: 'jacaranda-i',
     description: 'Casa de campo con galería perimetral y estética provenzal. Planta única luminosa con 2 dormitorios en suite.',
@@ -419,7 +419,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-02-03T00:00:00Z',
     updated_at: '2026-02-05T00:00:00Z',
-    constructora: CONSTRUCTORA_BIOCASA,
+    marca: MARCA_BIOCASA,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[9],
     price_lista_usd: 177408,
@@ -433,7 +433,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-11',
-    constructora_id: 'cst-steelworks',
+    marca_id: 'cst-steelworks',
     name: 'QUEBRACHO II',
     slug: 'quebracho-ii',
     description: 'El modelo más ambicioso del catálogo. 3 plantas, 5+ dormitorios, ascensor y SUM de 80 m² independiente.',
@@ -452,7 +452,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-02-06T00:00:00Z',
     updated_at: '2026-02-08T00:00:00Z',
-    constructora: CONSTRUCTORA_STEELWORKS,
+    marca: MARCA_STEELWORKS,
     construction_system: SYSTEM_STEEL,
     cover_image: MOCK_COVER_IMAGES[10],
     price_lista_usd: 665700,
@@ -466,7 +466,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
   },
   {
     id: 'hm-12',
-    constructora_id: 'cst-biocasa',
+    marca_id: 'cst-biocasa',
     name: 'LAPACHO I',
     slug: 'lapacho-i',
     description: 'Diseño bioclimático con paneles solares integrados. Orientación norte optimizada y aislación térmica superior.',
@@ -485,7 +485,7 @@ export const MOCK_HOUSES: MockHouseModel[] = [
     reviewed_by: null,
     created_at: '2026-02-09T00:00:00Z',
     updated_at: '2026-02-10T00:00:00Z',
-    constructora: CONSTRUCTORA_BIOCASA,
+    marca: MARCA_BIOCASA,
     construction_system: SYSTEM_WOOD,
     cover_image: MOCK_COVER_IMAGES[11],
     price_lista_usd: 229825,

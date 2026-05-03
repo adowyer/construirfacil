@@ -6,7 +6,7 @@
  * NEVER import this in Client Components or expose to the browser.
  *
  * Typical use cases:
- *   - Admin approving / rejecting a constructora (status change requires
+ *   - Admin approving / rejecting a marca (status change requires
  *     writing fields the owner RLS policy doesn't allow)
  *   - Admin approving / rejecting a house model
  *   - Sending transactional emails triggered by status changes

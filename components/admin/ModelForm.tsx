@@ -3,13 +3,20 @@
 /**
  * components/admin/ModelForm.tsx
  *
- * Shared form component for create and edit house_catalog entries.
- * Handles presale price live computation client-side.
- * Works with useFormState / useActionState to surface Server Action errors.
+ * Form admin para crear/editar entradas en `house_catalog`.
+ * Refleja el schema real (sku, style_name, variante, tipologia_code, precios
+ * lista/contado/pozo, costo_plano_usd, etc.) e incluye selectores de Marca y
+ * Línea. La línea se filtra por la marca elegida.
+ *
+ * El trigger sync_house_catalog_denorm sincroniza las columnas TEXT `brand`
+ * y `linea` desde marca_id / linea_id, así que el form solo persiste las FKs.
  */
 
-import { useActionState, useState, useEffect } from 'react'
+import { useActionState, useMemo, useState } from 'react'
 import type { HouseCatalogRow } from '@/lib/supabase/queries/models'
+import type { AttributeTypeWithValues, Marca } from '@/types/database'
+import type { LineaRow } from '@/lib/supabase/queries/lineas'
+import { AttributeSelector } from '@/components/admin/AttributeSelector'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,6 +29,10 @@ type ActionFn = (
 
 interface ModelFormProps {
   action: ActionFn
+  marcas: Pick<Marca, 'id' | 'name'>[]
+  lineas: Pick<LineaRow, 'id' | 'marca_id' | 'name' | 'sort_order'>[]
+  attributeTypes?: AttributeTypeWithValues[]
+  selectedAttributeValueIds?: string[]
   defaultValues?: Partial<HouseCatalogRow>
   submitLabel?: string
 }
@@ -30,13 +41,14 @@ interface ModelFormProps {
 // Field helpers
 // ---------------------------------------------------------------------------
 
-function Label({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.ReactNode; hint?: string }) {
   return (
     <label
       htmlFor={htmlFor}
       className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-1"
     >
       {children}
+      {hint && <span className="ml-2 normal-case tracking-normal text-neutral-300">{hint}</span>}
     </label>
   )
 }
@@ -73,14 +85,14 @@ function NumberInput({
   defaultValue,
   step,
   min,
-  onChange,
+  placeholder,
 }: {
   id: string
   name: string
   defaultValue?: number | null
   step?: string
   min?: string
-  onChange?: (value: string) => void
+  placeholder?: string
 }) {
   return (
     <input
@@ -89,181 +101,213 @@ function NumberInput({
       name={name}
       defaultValue={defaultValue ?? ''}
       step={step ?? 'any'}
-      min={min ?? '0'}
-      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+      min={min}
+      placeholder={placeholder}
       className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors"
     />
   )
 }
 
-const CONSTRUCTION_SYSTEMS = ['HAUSIND', 'STEEL FRAME', 'WOOD FRAME', 'MAMPOSTERIA'] as const
+function Checkbox({
+  id,
+  name,
+  defaultChecked,
+  label,
+}: {
+  id: string
+  name: string
+  defaultChecked?: boolean | null
+  label: string
+}) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-sm text-neutral-700 select-none cursor-pointer">
+      <input
+        type="checkbox"
+        id={id}
+        name={name}
+        value="true"
+        defaultChecked={!!defaultChecked}
+        className="h-4 w-4 rounded border-neutral-300"
+      />
+      {label}
+    </label>
+  )
+}
+
+const SISTEMAS_CONSTRUCTIVOS = ['SF', 'WF', 'STEEL FRAME', 'WOOD FRAME', 'MAMPOSTERIA'] as const
+const ESTILOS = ['', 'Moderno', 'Campestre', 'Nórdico', 'Industrial', 'Chalet', 'Mediterráneo', 'Clásico'] as const
 
 // ---------------------------------------------------------------------------
 // Main form
 // ---------------------------------------------------------------------------
 
-export function ModelForm({ action, defaultValues, submitLabel = 'Guardar' }: ModelFormProps) {
+export function ModelForm({
+  action,
+  marcas,
+  lineas,
+  attributeTypes = [],
+  selectedAttributeValueIds = [],
+  defaultValues,
+  submitLabel = 'Guardar',
+}: ModelFormProps) {
   const [state, formAction, isPending] = useActionState(action, { error: null })
 
-  // Live presale price
-  const [publicPrice, setPublicPrice] = useState<string>(
-    defaultValues?.public_price_usd != null
-      ? String(defaultValues.public_price_usd)
-      : '',
+  // Marca/Línea selección controlada (Línea depende de Marca)
+  const [selectedMarcaId, setSelectedMarcaId] = useState<string>(
+    defaultValues?.marca_id ?? marcas[0]?.id ?? '',
   )
-  const [discountPct, setDiscountPct] = useState<string>(
-    defaultValues?.presale_discount_pct != null
-      ? String(defaultValues.presale_discount_pct)
-      : '',
-  )
-  const [presalePrice, setPresalePrice] = useState<string>('')
 
-  useEffect(() => {
-    const price = parseFloat(publicPrice)
-    const discount = parseFloat(discountPct)
-    if (!isNaN(price) && !isNaN(discount) && discount >= 0 && discount <= 100) {
-      const computed = price * (1 - discount / 100)
-      setPresalePrice(
-        computed.toLocaleString('es-AR', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }),
-      )
-    } else {
-      setPresalePrice('')
-    }
-  }, [publicPrice, discountPct])
+  const lineasForMarca = useMemo(
+    () =>
+      lineas
+        .filter((l) => l.marca_id === selectedMarcaId)
+        .sort((a, b) => a.sort_order - b.sort_order),
+    [lineas, selectedMarcaId],
+  )
 
   return (
     <form action={formAction} className="space-y-8">
-      {/* Error banner */}
       {state.error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
           {state.error}
         </div>
       )}
 
-      {/* Section: Identity */}
+      {/* ── Marca y Línea ─────────────────────────────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Marca y línea
+        </legend>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="marca_id">Marca *</Label>
+            <select
+              id="marca_id"
+              name="marca_id"
+              required
+              value={selectedMarcaId}
+              onChange={(e) => setSelectedMarcaId(e.target.value)}
+              className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+            >
+              {marcas.length === 0 && <option value="">— sin marcas cargadas —</option>}
+              {marcas.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="linea_id">Línea</Label>
+            <select
+              id="linea_id"
+              name="linea_id"
+              defaultValue={defaultValues?.linea_id ?? ''}
+              key={selectedMarcaId /* fuerza re-render del select al cambiar marca */}
+              className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+            >
+              <option value="">— sin línea —</option>
+              {lineasForMarca.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      {/* ── Identificación ────────────────────────────────────────────── */}
       <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
         <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
           Identificación
         </legend>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="model_id">Model ID *</Label>
+            <Label htmlFor="sku" hint="único">
+              SKU *
+            </Label>
             <TextInput
-              id="model_id"
-              name="model_id"
-              defaultValue={defaultValues?.model_id}
+              id="sku"
+              name="sku"
+              defaultValue={defaultValues?.sku}
               required
-              placeholder="ej. TIMBO"
+              placeholder="ej. BOSQUE-T2-V1-AMBAY-WF-72"
             />
           </div>
           <div>
-            <Label htmlFor="variant_code">Variant Code * (único)</Label>
+            <Label htmlFor="style_name">Style name *</Label>
             <TextInput
-              id="variant_code"
-              name="variant_code"
-              defaultValue={defaultValues?.variant_code}
+              id="style_name"
+              name="style_name"
+              defaultValue={defaultValues?.style_name}
               required
-              placeholder="ej. TIMBO-2-A"
+              placeholder="ej. AMBAY"
             />
           </div>
           <div>
-            <Label htmlFor="name">Nombre *</Label>
+            <Label htmlFor="variante">Variante</Label>
             <TextInput
-              id="name"
-              name="name"
-              defaultValue={defaultValues?.name}
-              required
-              placeholder="ej. Timbo 2 Dormitorios"
+              id="variante"
+              name="variante"
+              defaultValue={defaultValues?.variante}
+              placeholder="ej. 1"
             />
           </div>
         </div>
-      </fieldset>
-
-      {/* Section: Characteristics */}
-      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
-        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
-          Características
-        </legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div>
-            <Label htmlFor="variant_style">Estilo de variante</Label>
+            <Label htmlFor="tipologia_code">Tipología</Label>
             <TextInput
-              id="variant_style"
-              name="variant_style"
-              defaultValue={defaultValues?.variant_style}
-              placeholder="ej. Moderno"
+              id="tipologia_code"
+              name="tipologia_code"
+              defaultValue={defaultValues?.tipologia_code}
+              placeholder="ej. 2"
             />
           </div>
           <div>
-            <Label htmlFor="recommended_use">Uso recomendado</Label>
+            <Label htmlFor="segmento">Segmento</Label>
             <TextInput
-              id="recommended_use"
-              name="recommended_use"
-              defaultValue={defaultValues?.recommended_use}
-              placeholder="ej. Vivienda familiar"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <Label htmlFor="area_m2">Superficie (m²)</Label>
-            <NumberInput id="area_m2" name="area_m2" defaultValue={defaultValues?.area_m2} step="0.01" />
-          </div>
-          <div>
-            <Label htmlFor="floors">Pisos</Label>
-            <NumberInput id="floors" name="floors" defaultValue={defaultValues?.floors} step="1" />
-          </div>
-          <div>
-            <Label htmlFor="min_bedrooms">Dorm. mín.</Label>
-            <NumberInput id="min_bedrooms" name="min_bedrooms" defaultValue={defaultValues?.min_bedrooms} step="1" />
-          </div>
-          <div>
-            <Label htmlFor="max_bedrooms">Dorm. máx.</Label>
-            <NumberInput id="max_bedrooms" name="max_bedrooms" defaultValue={defaultValues?.max_bedrooms} step="1" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <Label htmlFor="recommended_family_size_min">Familia mín. (personas)</Label>
-            <NumberInput
-              id="recommended_family_size_min"
-              name="recommended_family_size_min"
-              defaultValue={defaultValues?.recommended_family_size_min}
-              step="1"
+              id="segmento"
+              name="segmento"
+              defaultValue={defaultValues?.segmento}
+              placeholder="ej. PREMIUM"
             />
           </div>
           <div>
-            <Label htmlFor="recommended_family_size_max">Familia máx. (personas)</Label>
-            <NumberInput
-              id="recommended_family_size_max"
-              name="recommended_family_size_max"
-              defaultValue={defaultValues?.recommended_family_size_max}
-              step="1"
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      {/* Section: Construction */}
-      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
-        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
-          Sistema constructivo
-        </legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="construction_system">Sistema</Label>
+            <Label htmlFor="estilo">Estilo</Label>
             <select
-              id="construction_system"
-              name="construction_system"
-              defaultValue={defaultValues?.construction_system ?? 'HAUSIND'}
+              id="estilo"
+              name="estilo"
+              defaultValue={defaultValues?.estilo ?? ''}
               className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-white"
             >
-              {CONSTRUCTION_SYSTEMS.map((s) => (
+              {ESTILOS.map((s) => (
+                <option key={s || '__empty'} value={s}>
+                  {s || '— sin estilo —'}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      {/* ── Sistema constructivo + superficies ───────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Sistema y superficies
+        </legend>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="sistema_constructivo">Sistema constructivo</Label>
+            <select
+              id="sistema_constructivo"
+              name="sistema_constructivo"
+              defaultValue={defaultValues?.sistema_constructivo ?? ''}
+              className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+            >
+              <option value="">— sin sistema —</option>
+              {SISTEMAS_CONSTRUCTIVOS.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -271,82 +315,211 @@ export function ModelForm({ action, defaultValues, submitLabel = 'Guardar' }: Mo
             </select>
           </div>
           <div>
-            <Label htmlFor="brochure_url">URL del brochure</Label>
-            <TextInput
-              id="brochure_url"
-              name="brochure_url"
-              defaultValue={defaultValues?.brochure_url}
-              placeholder="https://..."
+            <Label htmlFor="area_m2">Sup. cubierta (m²)</Label>
+            <NumberInput
+              id="area_m2"
+              name="area_m2"
+              defaultValue={defaultValues?.area_m2}
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor="area_semicubierta_m2">Sup. semicubierta (m²)</Label>
+            <NumberInput
+              id="area_semicubierta_m2"
+              name="area_semicubierta_m2"
+              defaultValue={defaultValues?.area_semicubierta_m2}
+              step="0.01"
+              min="0"
             />
           </div>
         </div>
       </fieldset>
 
-      {/* Section: Pricing */}
+      {/* ── Programa funcional ───────────────────────────────────────── */}
       <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
         <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
-          Precios
+          Programa
         </legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <Label htmlFor="construction_cost_usd">Costo de construcción (USD)</Label>
+            <Label htmlFor="floors">Plantas</Label>
             <NumberInput
-              id="construction_cost_usd"
-              name="construction_cost_usd"
-              defaultValue={defaultValues?.construction_cost_usd}
-              step="0.01"
-            />
-          </div>
-          <div>
-            <Label htmlFor="public_price_usd">Precio público (USD)</Label>
-            <NumberInput
-              id="public_price_usd"
-              name="public_price_usd"
-              defaultValue={defaultValues?.public_price_usd}
-              step="0.01"
-              onChange={setPublicPrice}
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <Label htmlFor="construction_cost_pct">% costo de construcción</Label>
-            <NumberInput
-              id="construction_cost_pct"
-              name="construction_cost_pct"
-              defaultValue={defaultValues?.construction_cost_pct}
-              step="0.01"
+              id="floors"
+              name="floors"
+              defaultValue={defaultValues?.floors}
+              step="1"
               min="0"
             />
           </div>
           <div>
-            <Label htmlFor="presale_discount_pct">% descuento preventa</Label>
+            <Label htmlFor="bedrooms_label">Dorm. (label)</Label>
+            <TextInput
+              id="bedrooms_label"
+              name="bedrooms_label"
+              defaultValue={defaultValues?.bedrooms_label}
+              placeholder="ej. 2-3"
+            />
+          </div>
+          <div>
+            <Label htmlFor="min_bedrooms">Dorm. mín.</Label>
             <NumberInput
-              id="presale_discount_pct"
-              name="presale_discount_pct"
-              defaultValue={defaultValues?.presale_discount_pct}
-              step="0.01"
+              id="min_bedrooms"
+              name="min_bedrooms"
+              defaultValue={defaultValues?.min_bedrooms}
+              step="1"
               min="0"
-              onChange={setDiscountPct}
+            />
+          </div>
+          <div>
+            <Label htmlFor="max_bedrooms">Dorm. máx.</Label>
+            <NumberInput
+              id="max_bedrooms"
+              name="max_bedrooms"
+              defaultValue={defaultValues?.max_bedrooms}
+              step="1"
+              min="0"
             />
           </div>
         </div>
-
-        {/* Live presale price */}
-        {presalePrice && (
-          <div className="bg-[#F7F7F5] border border-[#E8E8E5] rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-[11px] uppercase tracking-widest text-neutral-400">
-              Precio preventa calculado
-            </span>
-            <span className="text-lg font-black text-black">{presalePrice}</span>
-            {discountPct && (
-              <span className="text-xs text-neutral-400">({discountPct}% dto.)</span>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div>
+            <Label htmlFor="bathrooms">Baños</Label>
+            <NumberInput
+              id="bathrooms"
+              name="bathrooms"
+              defaultValue={defaultValues?.bathrooms}
+              step="1"
+              min="0"
+            />
           </div>
-        )}
+          <div>
+            <Label htmlFor="lavadero">Lavadero</Label>
+            <TextInput
+              id="lavadero"
+              name="lavadero"
+              defaultValue={defaultValues?.lavadero}
+              placeholder="ej. Sí / No / Integrado"
+            />
+          </div>
+          <div className="flex items-end gap-6 pb-2">
+            <Checkbox
+              id="toilette"
+              name="toilette"
+              defaultChecked={defaultValues?.toilette}
+              label="Toilette"
+            />
+            <Checkbox
+              id="parrilla"
+              name="parrilla"
+              defaultChecked={defaultValues?.parrilla}
+              label="Parrilla"
+            />
+          </div>
+        </div>
       </fieldset>
 
-      {/* Section: Status */}
+      {/* ── Precios ──────────────────────────────────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Precios (USD)
+        </legend>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="precio_lista_usd">Precio lista</Label>
+            <NumberInput
+              id="precio_lista_usd"
+              name="precio_lista_usd"
+              defaultValue={defaultValues?.precio_lista_usd}
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor="precio_contado_usd">Precio contado</Label>
+            <NumberInput
+              id="precio_contado_usd"
+              name="precio_contado_usd"
+              defaultValue={defaultValues?.precio_contado_usd}
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor="precio_pozo_usd">Precio en pozo</Label>
+            <NumberInput
+              id="precio_pozo_usd"
+              name="precio_pozo_usd"
+              defaultValue={defaultValues?.precio_pozo_usd}
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor="costo_plano_usd">Costo de plano</Label>
+            <NumberInput
+              id="costo_plano_usd"
+              name="costo_plano_usd"
+              defaultValue={defaultValues?.costo_plano_usd}
+              step="0.01"
+              min="0"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      {/* ── Contenido ────────────────────────────────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Contenido
+        </legend>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="description">Descripción</Label>
+            <textarea
+              id="description"
+              name="description"
+              defaultValue={defaultValues?.description ?? ''}
+              rows={3}
+              className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors resize-none"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="brochure_url">Brochure URL</Label>
+              <TextInput
+                id="brochure_url"
+                name="brochure_url"
+                defaultValue={defaultValues?.brochure_url}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="pdf_url">PDF URL</Label>
+              <TextInput
+                id="pdf_url"
+                name="pdf_url"
+                defaultValue={defaultValues?.pdf_url}
+                placeholder="https://..."
+              />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      {/* ── Atributos ───────────────────────────────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Atributos
+        </legend>
+        <AttributeSelector
+          attributeTypes={attributeTypes}
+          selectedValueIds={selectedAttributeValueIds}
+        />
+      </fieldset>
+
+      {/* ── Estado ──────────────────────────────────────────────────── */}
       <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
         <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
           Estado
@@ -361,11 +534,11 @@ export function ModelForm({ action, defaultValues, submitLabel = 'Guardar' }: Mo
           >
             <option value="active">Activo</option>
             <option value="inactive">Inactivo</option>
+            <option value="archived">Archivado</option>
           </select>
         </div>
       </fieldset>
 
-      {/* Submit */}
       <div className="flex justify-end">
         <button
           type="submit"

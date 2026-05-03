@@ -6,7 +6,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getMyConstructora } from '@/lib/supabase/queries/constructoras'
+import { getMyMarca } from '@/lib/supabase/queries/marcas'
 import { getConstructionSystems, getAttributeTypesWithValues } from '@/lib/supabase/queries/attributes'
 import ModelForm from '@/components/portal/ModelForm'
 
@@ -18,10 +18,10 @@ export default async function NewModelPage() {
 
   if (!user) redirect('/login')
 
-  const constructora = await getMyConstructora(supabase, user.id)
+  const marca = await getMyMarca(supabase, user.id)
 
-  if (!constructora) redirect('/portal/onboarding')
-  if (constructora.status !== 'approved') redirect('/portal')
+  if (!marca) redirect('/portal/onboarding')
+  if (marca.status !== 'approved') redirect('/portal')
 
   const [constructionSystems, attributeTypes] = await Promise.all([
     getConstructionSystems(supabase),
@@ -43,7 +43,7 @@ export default async function NewModelPage() {
       </h1>
 
       <ModelForm
-        constructoraId={constructora.id}
+        marcaId={marca.id}
         constructionSystems={constructionSystems}
         attributeTypes={attributeTypes}
       />
