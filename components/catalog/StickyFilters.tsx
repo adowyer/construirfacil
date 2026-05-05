@@ -3,62 +3,52 @@
 /**
  * components/catalog/StickyFilters.tsx
  *
- * Barra de filtros en color CF amarillo, position: sticky debajo del
- * SiteHeader. Cuando el usuario scrollea más allá del HeroRow, queda pegada
- * al top con efecto glass blur.
+ * Pill amarilla CF sticky con los filtros del catálogo público:
+ *   - Estilo (select; los estilos vienen de los modelos disponibles)
+ *   - Dormitorios (pills 1 / 2 / 3 / 4+)
+ *   - Superficie (pills S / SM / M / L / XL / XXL — buckets en m²)
+ *   - Orden (pills: Relevante / Precio↑ / Precio↓)
  *
- * Pills horizontales: Línea / Dormitorios / Tamaño + sort por precio.
+ * Sin opción "Todos": el filtro vacío equivale a no filtrar. El componente
+ * no muestra el count de modelos para mantener la barra compacta.
  */
 
 interface StickyFiltersProps {
-  lineFilter: string
+  estiloFilter: string
   bedFilter: string
   sizeFilter: string
   sortOrder: string
-  resultCount: number
-  onLineChange: (v: string) => void
+  availableEstilos: string[]
+  onEstiloChange: (v: string) => void
   onBedChange: (v: string) => void
   onSizeChange: (v: string) => void
   onSortChange: (v: string) => void
 }
 
-const LINE_OPTIONS = ['ALL', 'ATLAS', 'BOSQUE', 'TERRA']
-const LINE_LABELS: Record<string, string> = {
-  ALL: 'Todas',
-  ATLAS: 'Atlas',
-  BOSQUE: 'Bosque',
-  TERRA: 'Terra',
-}
+const BED_OPTIONS = ['1', '2', '3', '4+'] as const
 
-const BED_OPTIONS = ['ALL', '1-2', '3', '4+']
-const BED_LABELS: Record<string, string> = {
-  ALL: 'todos',
-  '1-2': '1-2',
-  '3': '3',
-  '4+': '4+',
-}
-
-const SIZE_OPTIONS = ['ALL', 'S', 'M', 'L']
-const SIZE_LABELS: Record<string, string> = {
-  ALL: 'todos',
-  S: '–80m²',
-  M: '80–160m²',
-  L: '+160m²',
-}
+const SIZE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'S', label: '–60m²' },
+  { value: 'SM', label: '60–90m²' },
+  { value: 'M', label: '90–130m²' },
+  { value: 'L', label: '130–180m²' },
+  { value: 'XL', label: '180–240m²' },
+  { value: 'XXL', label: '+240m²' },
+]
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'recommended', label: 'Sugeridos' },
+  { value: 'recommended', label: '+ Relevante' },
   { value: 'price-asc', label: 'Precio ↑' },
   { value: 'price-desc', label: 'Precio ↓' },
 ]
 
 export default function StickyFilters({
-  lineFilter,
+  estiloFilter,
   bedFilter,
   sizeFilter,
   sortOrder,
-  resultCount,
-  onLineChange,
+  availableEstilos,
+  onEstiloChange,
   onBedChange,
   onSizeChange,
   onSortChange,
@@ -66,22 +56,25 @@ export default function StickyFilters({
   return (
     <div className="cf-sticky-filters">
       <div className="cf-sticky-filters-inner">
-        {/* LÍNEA */}
+        {/* ESTILO — select */}
         <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Línea</span>
-          {LINE_OPTIONS.map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={`cf-stf-pill ${lineFilter === v ? 'active' : ''}`}
-              onClick={() => onLineChange(v)}
-            >
-              {LINE_LABELS[v]}
-            </button>
-          ))}
+          <span className="cf-stf-lbl">Estilo</span>
+          <select
+            className={`cf-stf-select ${estiloFilter ? 'active' : ''}`}
+            value={estiloFilter}
+            onChange={(e) => onEstiloChange(e.target.value)}
+            aria-label="Filtrar por estilo"
+          >
+            <option value="">Cualquiera</option>
+            {availableEstilos.map((e) => (
+              <option key={e} value={e}>
+                {e}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* DORMITORIOS */}
+        {/* DORMITORIOS — pills */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Dorm.</span>
           {BED_OPTIONS.map((v) => (
@@ -89,37 +82,31 @@ export default function StickyFilters({
               key={v}
               type="button"
               className={`cf-stf-pill ${bedFilter === v ? 'active' : ''}`}
-              onClick={() => onBedChange(v)}
+              onClick={() => onBedChange(bedFilter === v ? '' : v)}
             >
-              {BED_LABELS[v]}
+              {v}
             </button>
           ))}
         </div>
 
-        {/* TAMAÑO */}
+        {/* SUPERFICIE — pills */}
         <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Tamaño</span>
-          {SIZE_OPTIONS.map((v) => (
+          <span className="cf-stf-lbl">Superficie</span>
+          {SIZE_OPTIONS.map((s) => (
             <button
-              key={v}
+              key={s.value}
               type="button"
-              className={`cf-stf-pill ${sizeFilter === v ? 'active' : ''}`}
-              onClick={() => onSizeChange(v)}
+              className={`cf-stf-pill ${sizeFilter === s.value ? 'active' : ''}`}
+              onClick={() => onSizeChange(sizeFilter === s.value ? '' : s.value)}
             >
-              {SIZE_LABELS[v]}
+              {s.label}
             </button>
           ))}
         </div>
 
-        {/* SPACER */}
         <div className="cf-stf-spacer" />
 
-        {/* COUNT */}
-        <span className="cf-stf-count">
-          {resultCount} {resultCount === 1 ? 'modelo' : 'modelos'}
-        </span>
-
-        {/* ORDEN */}
+        {/* ORDEN — pills */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Orden</span>
           {SORT_OPTIONS.map((s) => (

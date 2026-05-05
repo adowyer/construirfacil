@@ -25,7 +25,7 @@ import type {
   CatalogAttributeRow,
 } from '@/lib/supabase/queries/catalog_panels'
 import {
-  matchImagesForModel,
+  imagesForSkus,
   groupAttributesByType,
 } from '@/lib/supabase/queries/catalog_panels'
 
@@ -550,14 +550,9 @@ export function Panel7Comparativo({
   const [active, setActive] = useState(0)
   const currentVar = uniqueVars[active] ?? uniqueVars[0]
 
-  // Para cada variante, busca la imagen más específica.
+  // Para cada variante, primer match por SKU (la imagen más específica).
   const variantImages = uniqueVars.map((v) => {
-    const matched = matchImagesForModel(images, {
-      linea: model.linea,
-      tipologia_code: model.tipologia_code,
-      style_name: model.style_name,
-      variante: v.variante,
-    })
+    const matched = imagesForSkus(images, [v.id])
     return matched[0] ?? null
   })
   const currentImg = variantImages[active] ?? null

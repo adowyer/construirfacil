@@ -85,6 +85,17 @@ export default function ModelRow({
   const rowRef = useRef<HTMLDivElement>(null)
   const galleryRef = useRef<HTMLDivElement>(null)
 
+  // Precarga de imágenes al expandir: evita el flash blanco al cambiar de pill.
+  // Los PDFs (planos) no se precargan — solo se renderizan como link.
+  useEffect(() => {
+    if (!isExpanded || images.length === 0) return
+    for (const img of images) {
+      if (!/\.(png|jpe?g|webp)$/i.test(img.storage_url)) continue
+      const preloader = new window.Image()
+      preloader.src = img.storage_url
+    }
+  }, [isExpanded, images])
+
   // --- BIG-like focus physics: cierre por scroll ---
   // El RAF anima --expand-progress según la distancia al centro del viewport,
   // y dispara el cierre cuando la fila salió casi por completo del viewport.

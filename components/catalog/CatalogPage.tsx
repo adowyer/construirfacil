@@ -79,26 +79,44 @@ export default function CatalogPage({
 }: PageProps) {
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
-  const [lineFilter, setLineFilter] = useState<string>('ALL')
-  const [bedFilter, setBedFilter] = useState<string>('ALL')
-  const [sizeFilter, setSizeFilter] = useState<string>('ALL')
+  // '' significa "sin filtrar" (mostrar todos). Antes había un valor 'ALL'
+  // explícito; lo eliminamos para que la barra no muestre la opción "todos".
+  const [estiloFilter, setEstiloFilter] = useState<string>('')
+  const [bedFilter, setBedFilter] = useState<string>('')
+  const [sizeFilter, setSizeFilter] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<string>('recommended')
 
   const detailRef = useRef<HTMLDivElement>(null)
   const detailTrackRef = useRef<HTMLDivElement>(null)
 
   // ── Filter models ──
+  // Convención: filtro vacío ('') = "sin filtrar". Se aceptan estos valores:
+  //   estiloFilter: '' | <nombre exacto del estilo>
+  //   bedFilter:    '' | '1' | '2' | '3' | '4+'
+  //   sizeFilter:   '' | 'S' | 'SM' | 'M' | 'L' | 'XL' | 'XXL'
   const filtered = models.filter(m => {
-    if (lineFilter !== 'ALL' && m.linea !== lineFilter) return false
-    if (bedFilter !== 'ALL') {
-      if (bedFilter === '1-2' && (m.beds_min ?? 0) > 2) return false
-      if (bedFilter === '3' && !((m.beds_min ?? 0) <= 3 && (m.beds_max ?? 0) >= 3)) return false
-      if (bedFilter === '4+' && (m.beds_max ?? 0) < 4) return false
+    if (estiloFilter && m.estilo !== estiloFilter) return false
+    if (bedFilter) {
+      const bMin = m.beds_min ?? 0
+      const bMax = m.beds_max ?? bMin
+      if (bedFilter === '4+') {
+        if (bMax < 4) return false
+      } else {
+        const n = Number(bedFilter)
+        if (bMax < n || bMin > n) return false
+      }
     }
-    if (sizeFilter !== 'ALL') {
-      if (sizeFilter === 'S' && (m.area_min ?? 0) > 80) return false
-      if (sizeFilter === 'M' && ((m.area_max ?? 0) < 80 || (m.area_min ?? 0) > 160)) return false
-      if (sizeFilter === 'L' && (m.area_max ?? 0) < 160) return false
+    if (sizeFilter) {
+      const aMin = m.area_min ?? 0
+      const aMax = m.area_max ?? aMin
+      const overlaps = (lo: number, hi: number) =>
+        !(aMax < lo || (hi !== Infinity && aMin > hi))
+      if (sizeFilter === 'S' && !overlaps(0, 60)) return false
+      if (sizeFilter === 'SM' && !overlaps(60, 90)) return false
+      if (sizeFilter === 'M' && !overlaps(90, 130)) return false
+      if (sizeFilter === 'L' && !overlaps(130, 180)) return false
+      if (sizeFilter === 'XL' && !overlaps(180, 240)) return false
+      if (sizeFilter === 'XXL' && !overlaps(240, Infinity)) return false
     }
     return true
   }).sort((a, b) => {
@@ -106,6 +124,11 @@ export default function CatalogPage({
     if (sortOrder === 'price-desc') return (b.price_from ?? 0) - (a.price_from ?? 0)
     return 0
   })
+
+  // Lista única de estilos disponibles, ordenada alfabéticamente. Alimenta
+  // el dropdown de Estilo en la barra sticky.
+  const availableEstilos = Array.from(new Set(models.map((m) => m.estilo).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'es'))
 
   // ── Group by line ──
   const grouped = LINE_ORDER.reduce((acc, line) => {
@@ -146,23 +169,15 @@ export default function CatalogPage({
     const bosque = models.filter((m) => m.linea === 'BOSQUE')
     const pairs: GrowthPair[] = []
 
-    const findExteriorForVariante = (
-      modelLinea: string,
-      modelStyle: string,
-      variante: string,
-    ): string | undefined => {
-      // Match más específico → menos específico (mismo patrón que ModelRow).
+    const findExteriorForSku = (skuId: string): string | undefined => {
+      // Imágenes exteriores (no planos) linkeadas a ese SKU vía model_image_skus.
       const candidates = catalogImages.filter(
         (img) =>
-          img.linea === modelLinea &&
           img.is_exterior === true &&
           img.image_type !== 'plano' &&
-          img.style_name === modelStyle &&
-          (img.variante === variante || img.variante == null),
+          img.sku_ids.includes(skuId),
       )
-      // Priorizar la que tenga variante exacta.
-      const exact = candidates.find((img) => img.variante === variante)
-      return (exact ?? candidates[0])?.storage_url
+      return candidates[0]?.storage_url
     }
 
     for (const model of bosque) {
@@ -170,8 +185,8 @@ export default function CatalogPage({
       const sku2 = model.skus.find((s) => s.floors === 2)
       if (!sku1 || !sku2) continue
 
-      const imgOfSku1 = findExteriorForVariante(model.linea, model.style_name, sku1.variante)
-      const imgOfSku2 = findExteriorForVariante(model.linea, model.style_name, sku2.variante)
+      const imgOfSku1 = findExteriorForSku(sku1.id)
+      const imgOfSku2 = findExteriorForSku(sku2.id)
 
       if (imgOfSku1 && imgOfSku2 && imgOfSku1 !== imgOfSku2) {
         pairs.push({
@@ -291,12 +306,12 @@ export default function CatalogPage({
 
       {/* ── Filtros sticky en color CF ── */}
       <StickyFilters
-        lineFilter={lineFilter}
+        estiloFilter={estiloFilter}
         bedFilter={bedFilter}
         sizeFilter={sizeFilter}
         sortOrder={sortOrder}
-        resultCount={filtered.length}
-        onLineChange={setLineFilter}
+        availableEstilos={availableEstilos}
+        onEstiloChange={setEstiloFilter}
         onBedChange={setBedFilter}
         onSizeChange={setSizeFilter}
         onSortChange={setSortOrder}
@@ -311,14 +326,10 @@ export default function CatalogPage({
               const mcKey = `${model.linea}::${model.style_name}`
               const mc = modelContentMap[mcKey] ?? null
 
-              // Imágenes que aplican a este modelo (todos los SKUs)
+              // Imágenes linkeadas a alguno de los SKUs del modelo (vía model_image_skus).
               const skuIds = new Set(model.skus.map((s) => s.id))
-              const modelImages = catalogImages.filter(
-                (img) =>
-                  img.linea === model.linea &&
-                  img.tipologia_code === model.tipologia_code &&
-                  // El style match: específico del modelo o tipológico (style null)
-                  (img.style_name === model.style_name || img.style_name == null),
+              const modelImages = catalogImages.filter((img) =>
+                img.sku_ids.some((id) => skuIds.has(id)),
               )
 
               // Attributes filtrados por house_catalog_id ∈ skus del modelo

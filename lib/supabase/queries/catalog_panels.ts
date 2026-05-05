@@ -41,18 +41,22 @@ export interface CatalogImage {
   is_exterior: boolean | null
   image_type: string | null
   view_label: string | null
+  sort_order: number
+  /** house_catalog_ids a los que aplica esta imagen (resuelto vía model_image_skus). */
+  sku_ids: string[]
+  // Columnas legacy denormalizadas — el sync las sigue populando como ayuda
+  // de búsqueda para admin. Las queries del catálogo público ya no las usan
+  // para resolver scope (eso ahora va vía sku_ids).
   style_name: string | null
   variante: string | null
   linea: string | null
   tipologia_code: string | null
-  sort_order: number
 }
 
 /**
- * Devuelve todas las imágenes activas del catálogo. La indexación por modelo
- * la hace el caller con un helper (matchImagesForModel) — el mismo set de
- * imágenes se reutiliza para varias estaciones por modelo (exteriores,
- * interiores, comparativo).
+ * Devuelve todas las imágenes activas del catálogo, cada una con la lista
+ * de `house_catalog_id` a los que aplica (vía model_image_skus). El caller
+ * filtra usando `imagesForSkus(images, skuIds)`.
  */
 export async function getAllCatalogImages(
   supabase: SupabaseClient,
@@ -60,7 +64,9 @@ export async function getAllCatalogImages(
   const { data, error } = await supabase
     .from('model_images')
     .select(
-      'id, storage_url, is_exterior, image_type, view_label, style_name, variante, linea, tipologia_code, sort_order',
+      `id, storage_url, is_exterior, image_type, view_label, sort_order,
+       style_name, variante, linea, tipologia_code,
+       links:model_image_skus(house_catalog_id)`,
     )
     .neq('status', 'archived')
     .order('sort_order', { ascending: true })
@@ -69,29 +75,41 @@ export async function getAllCatalogImages(
     console.error('[getAllCatalogImages]', error.message)
     return []
   }
-  return (data ?? []) as CatalogImage[]
+
+  type RawRow = Omit<CatalogImage, 'sku_ids'> & {
+    links: { house_catalog_id: string }[] | null
+  }
+  return ((data ?? []) as unknown as RawRow[]).map((r) => ({
+    id: r.id,
+    storage_url: r.storage_url,
+    is_exterior: r.is_exterior,
+    image_type: r.image_type,
+    view_label: r.view_label,
+    sort_order: r.sort_order,
+    style_name: r.style_name,
+    variante: r.variante,
+    linea: r.linea,
+    tipologia_code: r.tipologia_code,
+    sku_ids: (r.links ?? []).map((l) => l.house_catalog_id),
+  }))
 }
 
 /**
- * Filtra imágenes que aplican a un modelo específico. Match en 3 niveles
- * de scope: variante específica → modelo (variante NULL) → tipología (style NULL).
+ * Devuelve las imágenes que aplican a alguno de los SKUs dados.
+ *
+ * Casos típicos:
+ *   • Todas las imágenes de un modelo:  imagesForSkus(images, model.skus.map(s => s.id))
+ *   • Imágenes específicas de UNA variante:  imagesForSkus(images, [variant.id])
+ *
+ * La specificity la decide el caller con qué SKUs pasa.
  */
-export function matchImagesForModel(
+export function imagesForSkus(
   images: CatalogImage[],
-  args: { linea: string; tipologia_code: string; style_name: string; variante?: string | null },
+  skuIds: string[],
 ): CatalogImage[] {
-  const { linea, tipologia_code, style_name, variante } = args
-  return images.filter((img) => {
-    if (img.linea !== linea) return false
-    if (img.tipologia_code !== tipologia_code) return false
-    // Variante específica: imágenes con (style, variante) exactos
-    if (variante != null && img.style_name === style_name && img.variante === variante) return true
-    // Modelo: (style, variante=null)
-    if (img.style_name === style_name && img.variante == null) return true
-    // Tipología: (style=null, variante=null)
-    if (img.style_name == null && img.variante == null) return true
-    return false
-  })
+  if (skuIds.length === 0) return []
+  const wanted = new Set(skuIds)
+  return images.filter((img) => img.sku_ids.some((id) => wanted.has(id)))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

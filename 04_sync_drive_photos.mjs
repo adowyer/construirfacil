@@ -1,48 +1,50 @@
 /**
- * 04_sync_drive_photos.mjs
+ * 04_sync_drive_photos.mjs   (reescrito 2026-05-05)
  * ----------------------------------------------------------------------------
- * Sincroniza fotos de Google Drive → Supabase Storage + tabla model_images.
+ * Sincroniza el Catálogo HAUSIND® del Google Drive → Supabase Storage +
+ * tablas `model_images` y `model_image_skus` (ver migración 0010).
  *
- * Recorre la estructura del Drive (que vos definís) y aplica reglas para
- * detectar línea, tipología, estilo, variante, sistema constructivo, ambiente.
+ * Estructura esperada del Drive (ver Catálogo HAUSIND® local):
  *
- * Estructura esperada (todos los niveles intermedios son opcionales):
+ *   Catálogo HAUSIND®/
+ *     LINEA <X>/                    X = ATLAS | BOSQUE | TERRA
+ *       Tipologia <N>/              N = 1 | 2 | 3 | O | U | Z
+ *         AXONOMETRIAS/             PNGs scoped a tipología (image_type=plano)
+ *         Planos/                   PDFs scoped a tipología (image_type=plano)
+ *         Renders/
+ *           EXTERIORES/
+ *             Casa <NOMBRE>/        scoped a casa (style_name)
+ *           INTERIORES/
+ *             Casa <NOMBRE>/        scoped a casa, O
+ *             <file directo>        scoped a tipología (caso BOSQUE: interior común)
  *
- *   Casas Hausind/
- *     Línea Bosque/
- *       [Wood Plus/]               ← opcional: sistema constructivo
- *         Tipología 1/
- *           Renders/
- *             Exteriores/          ← o "Interiores"
- *               Amba'y/            ← estilo (nombre comercial)
- *                 Variante 1/
- *                   foto_001.jpg
- *                   foto_002.jpg
- *               [Cocina/]          ← opcional: room_type (interiores)
- *                 foto_003.jpg
+ * Filename:  ^(\d+)\s+(.+?)(?:\s+V([\d.\-]+))?\.(png|jpg|jpeg|pdf)$
  *
- * El script:
- *   1. Lista recursivamente la carpeta raíz indicada
- *   2. Por cada imagen, infiere los campos del path
- *   3. Descarga, sube a Supabase Storage, registra en model_images
- *   4. Idempotente: usa drive_file_id + drive_modified_time
- *   5. Si una foto fue borrada de Drive, marca el registro como archived
+ *   01 Frente V1.png         → orden=01, view="Frente",        variantes=[V1]
+ *   05 Lateral V3-4.png      → orden=05, view="Lateral",       variantes=[V3, V4]
+ *   01 Living Madera.png     → orden=01, view="Living Madera", variantes=null (todas)
  *
- * REQUIERE:
- *   • Service Account de Google Cloud con permisos en la carpeta raíz
- *   • npm install googleapis @supabase/supabase-js mime-types sharp
+ * Resolución de SKUs (linkea image_id → house_catalog_id en model_image_skus):
+ *   • Casa <X> con tag V<lista>:  SKUs (style_name=X, variante ∈ lista)
+ *   • Casa <X> sin tag V:         SKUs (style_name=X, cualquier variante)
+ *   • INTERIORES sin Casa X:      SKUs de toda la tipología, filtrado por tag V
+ *   • AXONOMETRIAS / Planos:      SKUs de toda la tipología, filtrado por tag V
  *
- * USO:
- *   export GOOGLE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+ * Idempotente:
+ *   • Match por drive_file_id; saltea si drive_modified_time no cambió.
+ *   • Re-syncs reemplazan los model_image_skus (delete + insert).
+ *   • Archivos que ya no aparecen en Drive → status='archived'.
+ *
+ * Uso:
+ *   export GOOGLE_SERVICE_ACCOUNT_JSON='{...}'
  *   export DRIVE_ROOT_FOLDER_ID='1AbCdEf...'
  *   export SUPABASE_URL=...
  *   export SUPABASE_SERVICE_KEY=...
- *   node 04_sync_drive_photos.mjs
+ *   node 04_sync_drive_photos.mjs --dry-run
+ *   node 04_sync_drive_photos.mjs --line=BOSQUE
+ *   node 04_sync_drive_photos.mjs --verbose
  *
- * Modos:
- *   --dry-run        : lista lo que sincronizaría sin escribir
- *   --line=BOSQUE    : sincroniza solo una línea
- *   --verbose
+ * Lee `.env.local` si existe.
  * ----------------------------------------------------------------------------
  */
 
@@ -50,135 +52,302 @@ import { createClient } from '@supabase/supabase-js'
 import { google } from 'googleapis'
 import mime from 'mime-types'
 import sharp from 'sharp'
+import { readFileSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 
-const SUPABASE_URL         = process.env.SUPABASE_URL
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
-const GOOGLE_SA_JSON       = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-const ROOT_FOLDER_ID       = process.env.DRIVE_ROOT_FOLDER_ID
+// ── Cargar .env.local manualmente ───────────────────────────────────────
+function loadDotenv(filename) {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const path = join(here, filename)
+  if (!existsSync(path)) return
+  const content = readFileSync(path, 'utf8')
+  for (const raw of content.split('\n')) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const eq = line.indexOf('=')
+    if (eq === -1) continue
+    const key = line.slice(0, eq).trim()
+    let value = line.slice(eq + 1).trim()
+    if ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1)
+    }
+    if (!(key in process.env)) process.env[key] = value
+  }
+}
+loadDotenv('.env.local')
+loadDotenv('.env')
 
-const DRY_RUN  = process.argv.includes('--dry-run')
-const VERBOSE  = process.argv.includes('--verbose')
-const LINE_FILTER = (process.argv.find(a => a.startsWith('--line=')) || '').split('=')[1]
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+const GOOGLE_SA_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+const ROOT_FOLDER_ID = process.env.DRIVE_ROOT_FOLDER_ID
+
+const DRY_RUN = process.argv.includes('--dry-run')
+const VERBOSE = process.argv.includes('--verbose')
+const LINE_FILTER =
+  (process.argv.find((a) => a.startsWith('--line=')) || '').split('=')[1] || null
 
 if (!ROOT_FOLDER_ID) {
-  console.error('❌ Configurá DRIVE_ROOT_FOLDER_ID')
+  console.error('❌ Falta DRIVE_ROOT_FOLDER_ID')
   process.exit(1)
 }
-if (!DRY_RUN && (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !GOOGLE_SA_JSON)) {
-  console.error('❌ Configurá SUPABASE_URL, SUPABASE_SERVICE_KEY y GOOGLE_SERVICE_ACCOUNT_JSON')
+if (!DRY_RUN && (!SUPABASE_URL || !SUPABASE_KEY || !GOOGLE_SA_JSON)) {
+  console.error('❌ Faltan SUPABASE_URL / SUPABASE_SERVICE_KEY / GOOGLE_SERVICE_ACCOUNT_JSON')
   process.exit(1)
 }
 
 const BUCKET = 'house-photos'
+const FILENAME_RE = /^(\d+)\s+(.+?)(?:\s+V([\d.\-]+))?\.(png|jpg|jpeg|pdf)$/i
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Reglas de mapeo: nombres de carpeta → campos
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// Normalización
+// ─────────────────────────────────────────────────────────────────────────
 
-const LINEA_PATTERNS = [
-  { pattern: /\b(bosque)\b/i,  value: 'BOSQUE' },
-  { pattern: /\b(atlas)\b/i,   value: 'ATLAS' },
-  { pattern: /\b(terra)\b/i,   value: 'TERRA' },
-]
-
-const SISTEMA_PATTERNS = [
-  { pattern: /\bwood\s*plus\b/i,     value: 'WOOD PLUS' },
-  { pattern: /\bsteel\s*plus\b/i,    value: 'STEEL PLUS' },
-  { pattern: /\bhormig[oó]n\s*plus\b/i, value: 'HORMIGÓN PLUS' },
-]
-
-const TIPOLOGIA_PATTERNS = [
-  { pattern: /tipolog[ií]a\s*1\b/i, value: '1' },
-  { pattern: /tipolog[ií]a\s*2\b/i, value: '2' },
-  { pattern: /tipolog[ií]a\s*3\b/i, value: '3' },
-  { pattern: /tipolog[ií]a\s*([uoz])\b/i, group: 1, transform: s => s.toUpperCase() },
-  { pattern: /^t([123])$/i, group: 1 },
-  { pattern: /^t([uoz])$/i, group: 1, transform: s => s.toUpperCase() },
-]
-
-const VARIANTE_PATTERN = /\bvariante\s*(\d+)\b/i
-
-const ROOM_PATTERNS = [
-  { pattern: /^cocina/i,       value: 'cocina' },
-  { pattern: /^ba[ñn]o/i,      value: 'baño' },
-  { pattern: /^dormitor/i,     value: 'dormitorio' },
-  { pattern: /^living/i,       value: 'living' },
-  { pattern: /^comedor/i,      value: 'comedor' },
-  { pattern: /^toilette/i,     value: 'toilette' },
-  { pattern: /^lavader/i,      value: 'lavadero' },
-  { pattern: /^parrilla/i,     value: 'parrilla' },
-  { pattern: /^galer[ií]a/i,   value: 'galeria' },
-  { pattern: /^escritorio/i,   value: 'escritorio' },
-]
-
-const NORMALIZED_KNOWN_STYLES = [
-  // Atlas
-  'PAMPA','ESCANDINAVIA','LANCASTER','PATAGONIA','CALIFORNIA',
-  // Bosque
-  'AMBAY','LAPACHO','CAMBOATA','ALECRIN','GUAYUBIRA','TIMBO','CEDRO','INGA','ANCHICO',
-  // Terra
-  'COPAHUE','DOMUYO','LANIN','MAHUIDA','TROMEN',
-]
-
-function normalizeFolderToStyle(name) {
-  const norm = String(name)
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/['’`´]/g, '').replace(/\s+/g, '').toUpperCase()
-  return NORMALIZED_KNOWN_STYLES.includes(norm) ? norm : null
+/** "Casa AMBA’Y" → "AMBA'Y"   |   "Casa CALIFORNIA (moderno)" → "CALIFORNIA" */
+function casaToStyleName(folderName) {
+  if (!folderName) return null
+  let s = String(folderName).normalize('NFC')
+  // Strip prefijo "Casa "
+  s = s.replace(/^casa\s+/i, '')
+  // Strip suffijo " (estilo)"  (ATLAS folder names traen el estilo entre paréntesis)
+  s = s.replace(/\s*\([^)]*\)\s*$/, '')
+  // Normalizar curly quotes a ASCII
+  s = s.replace(/[’‘`´]/g, "'")
+  return s.trim()
 }
 
-function matchPattern(name, patterns) {
-  for (const p of patterns) {
-    const m = name.match(p.pattern)
-    if (m) {
-      let v = p.group != null ? m[p.group] : p.value
-      if (p.transform) v = p.transform(v)
-      return v
+/** "Tipologia 1" → "1"   |   "Tipologia O" → "O" */
+function folderToTipologiaCode(folderName) {
+  const m = String(folderName).match(/^tipolog[ií]a\s+(\S+)/i)
+  return m ? m[1].toUpperCase() : null
+}
+
+/** "LINEA BOSQUE" → "BOSQUE" */
+function folderToLinea(folderName) {
+  const m = String(folderName).match(/^l[ií]nea\s+(\w+)/i)
+  return m ? m[1].toUpperCase() : null
+}
+
+/** "V2-3-4" → ["V2","V3","V4"]   |   "V3.1" → ["V3.1"]   |   null → null */
+function parseVariantTag(tag) {
+  if (!tag) return null
+  return tag
+    .split('-')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => `V${s}`)
+}
+
+/** Para matching: "V2" → "2", "V3.1" → "3.1". Null si nulo. */
+function stripV(v) {
+  if (v == null) return null
+  return String(v).replace(/^V/i, '').trim()
+}
+
+/** Slug seguro para path en Storage. "Casa AMBA’Y" → "casa-amba-y" excepto que
+ *  borramos los caracteres de apóstrofo (queda "casa-ambay"). */
+function slug(s) {
+  return String(s)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/['’`´]/g, '')
+    .replace(/[^\w\s.-]/g, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase()
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Resolución de path → contexto semántico
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Dado un pathParts del Drive (sin incluir el root) y el filename,
+ * devuelve el contexto que necesita el sync para crear la fila + linkear SKUs.
+ *
+ * Returns null si el path no matchea la estructura esperada (skip).
+ */
+function inferContext(pathParts, fileName) {
+  // Esperamos al mínimo: LINEA X / Tipologia N / <section> / ...
+  if (pathParts.length < 3) return null
+
+  const linea = folderToLinea(pathParts[0])
+  const tipologia_code = folderToTipologiaCode(pathParts[1])
+  if (!linea || !tipologia_code) return null
+
+  const section = pathParts[2] // AXONOMETRIAS | Planos | Renders
+
+  // Parse filename
+  const m = fileName.match(FILENAME_RE)
+  if (!m) return null
+
+  const sort_order = parseInt(m[1], 10)
+  const view_label = m[2].trim()
+  const variant_tag = m[3] || null
+  const ext = m[4].toLowerCase()
+  const variants = parseVariantTag(variant_tag) // null si no hay tag
+
+  let image_type = 'render'
+  let is_exterior = false
+  let style_name = null  // null = scope tipología
+  let casa_folder = null
+
+  if (/^axonometrias$/i.test(section)) {
+    image_type = 'plano'
+    is_exterior = false
+    // Scope tipología (sin Casa X)
+  } else if (/^planos$/i.test(section)) {
+    image_type = 'plano'
+    is_exterior = false
+    // Scope tipología
+  } else if (/^renders$/i.test(section)) {
+    if (pathParts.length < 4) return null
+    const subsection = pathParts[3] // EXTERIORES | INTERIORES
+    if (/^exteriores$/i.test(subsection)) {
+      is_exterior = true
+    } else if (/^interiores$/i.test(subsection)) {
+      is_exterior = false
+    } else {
+      return null
+    }
+
+    if (pathParts.length === 4) {
+      // Renders/INTERIORES/<file>  — caso BOSQUE: interior común a tipología
+      // (Renders/EXTERIORES/<file> sin Casa X no debería existir; si pasa, scope tipología)
+      style_name = null
+    } else {
+      // Renders/{EXT|INT}/Casa X/<file>
+      casa_folder = pathParts[4]
+      style_name = casaToStyleName(casa_folder)
+      if (!style_name) return null
+    }
+  } else {
+    return null
+  }
+
+  return {
+    linea,
+    tipologia_code,
+    image_type,           // 'render' | 'plano'
+    is_exterior,
+    style_name,           // null = aplica a toda la tipología
+    casa_folder,          // para construir el path de storage
+    sort_order,
+    view_label,
+    variants,             // ['V2','V3'] | null
+    ext,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Index de SKUs en memoria
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Construye un index de house_catalog para resolver rápidamente:
+ *   → SKUs por (linea, tipologia_code)
+ *   → SKUs por (linea, tipologia_code, style_name)
+ *   → SKU concreto por (linea, tipologia_code, style_name, variante)
+ *
+ * El matching de style_name es case-insensitive y normaliza apóstrofos.
+ * El matching de variante ignora el prefijo `V` (DB puede tener "V1" o "1").
+ */
+async function loadSkuIndex(supabase) {
+  const { data, error } = await supabase
+    .from('house_catalog')
+    .select('id, linea, tipologia_code, style_name, variante')
+
+  if (error) throw new Error(`house_catalog load: ${error.message}`)
+
+  const byTipologia = new Map() // key: linea::tipologia_code  → [skus]
+  const byStyle = new Map()     // key: linea::tipologia_code::style_name → [skus]
+  const byVariant = new Map()   // key: linea::tipologia_code::style_name::variante → [skus]
+
+  // Normaliza style_name y demás strings para matching:
+  //   - strip de tildes (LANÍN ≡ LANIN, CAMBOATÁ ≡ CAMBOATA)
+  //   - apóstrofos curly → ASCII (AMBA’Y ≡ AMBA'Y)
+  //   - UPPERCASE + trim
+  // El style_name original (con/sin acento) se conserva en los rows de DB; esto
+  // es solo la KEY del index para que el folder del Drive matchee con DB sin
+  // depender de la consistencia exacta de acentos.
+  function norm(s) {
+    if (s == null) return ''
+    return String(s)
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[’‘`´]/g, "'")
+      .trim()
+      .toUpperCase()
+  }
+
+  for (const r of data || []) {
+    if (!r.linea || !r.tipologia_code) continue
+    const linea = norm(r.linea)
+    const tip = norm(r.tipologia_code)
+    const style = norm(r.style_name)
+    const variant = stripV(r.variante)
+
+    const tipKey = `${linea}::${tip}`
+    if (!byTipologia.has(tipKey)) byTipologia.set(tipKey, [])
+    byTipologia.get(tipKey).push(r)
+
+    if (style) {
+      const styleKey = `${tipKey}::${style}`
+      if (!byStyle.has(styleKey)) byStyle.set(styleKey, [])
+      byStyle.get(styleKey).push(r)
+
+      if (variant != null) {
+        const vKey = `${styleKey}::${variant}`
+        if (!byVariant.has(vKey)) byVariant.set(vKey, [])
+        byVariant.get(vKey).push(r)
+      }
     }
   }
-  return null
+
+  return {
+    byTipologia,
+    byStyle,
+    byVariant,
+    norm,
+  }
 }
 
 /**
- * Infiere los campos a partir de la lista de carpetas en el path
- * (de raíz a inmediato padre del archivo).
+ * Resuelve los house_catalog_id que matchean el contexto de una imagen.
+ * Devuelve [] si no hay matches (la imagen se inserta de todos modos en
+ * model_images, pero sin links en model_image_skus).
  */
-function inferFromPath(pathParts, fileName) {
-  const ctx = {
-    linea: null,
-    sistema_constructivo: null,
-    tipologia_code: null,
-    style_name: null,
-    variante: null,
-    is_exterior: true,
-    room_type: null,
+function resolveSkus(idx, ctx) {
+  const linea = idx.norm(ctx.linea)
+  const tip = idx.norm(ctx.tipologia_code)
+  const style = ctx.style_name ? idx.norm(ctx.style_name) : null
+
+  let candidates = []
+  if (style) {
+    const styleKey = `${linea}::${tip}::${style}`
+    candidates = idx.byStyle.get(styleKey) || []
+  } else {
+    const tipKey = `${linea}::${tip}`
+    candidates = idx.byTipologia.get(tipKey) || []
   }
 
-  for (const part of pathParts) {
-    if (!ctx.linea)    ctx.linea = matchPattern(part, LINEA_PATTERNS)
-    if (!ctx.sistema_constructivo) ctx.sistema_constructivo = matchPattern(part, SISTEMA_PATTERNS)
-    if (!ctx.tipologia_code) ctx.tipologia_code = matchPattern(part, TIPOLOGIA_PATTERNS)
-
-    const vmatch = part.match(VARIANTE_PATTERN)
-    if (vmatch) ctx.variante = vmatch[1]
-
-    if (/^exteriores?$/i.test(part)) ctx.is_exterior = true
-    if (/^interiores?$/i.test(part)) ctx.is_exterior = false
-
-    if (!ctx.room_type) ctx.room_type = matchPattern(part, ROOM_PATTERNS)
-
-    if (!ctx.style_name) {
-      const s = normalizeFolderToStyle(part)
-      if (s) ctx.style_name = s
-    }
+  if (!ctx.variants) {
+    // Sin tag V: aplica a TODOS los candidatos
+    return candidates.map((c) => c.id)
   }
 
-  return ctx
+  // Con tag V: filtrar por variantes (matching ignora prefijo "V")
+  const wantedSet = new Set(ctx.variants.map((v) => stripV(v)))
+  return candidates
+    .filter((c) => wantedSet.has(stripV(c.variante)))
+    .map((c) => c.id)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
 // Drive helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
 
 async function getDrive() {
   const credentials = JSON.parse(GOOGLE_SA_JSON)
@@ -208,7 +377,9 @@ async function listChildren(drive, folderId) {
   return all
 }
 
-/** Walk recursivo, devuelve [{file, pathParts}] solo de imágenes */
+const ACCEPTED_MIME = (m) =>
+  (m && m.startsWith('image/')) || m === 'application/pdf'
+
 async function walkDrive(drive, folderId, pathParts = []) {
   const entries = await listChildren(drive, folderId)
   const results = []
@@ -216,7 +387,7 @@ async function walkDrive(drive, folderId, pathParts = []) {
     if (entry.mimeType === 'application/vnd.google-apps.folder') {
       const child = await walkDrive(drive, entry.id, [...pathParts, entry.name])
       results.push(...child)
-    } else if (entry.mimeType?.startsWith('image/')) {
+    } else if (ACCEPTED_MIME(entry.mimeType)) {
       results.push({ file: entry, pathParts })
     }
   }
@@ -226,14 +397,29 @@ async function walkDrive(drive, folderId, pathParts = []) {
 async function downloadFile(drive, fileId) {
   const res = await drive.files.get(
     { fileId, alt: 'media', supportsAllDrives: true },
-    { responseType: 'arraybuffer' }
+    { responseType: 'arraybuffer' },
   )
   return Buffer.from(res.data)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Supabase helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// Storage + DB writes
+// ─────────────────────────────────────────────────────────────────────────
+
+function storagePathFor(ctx, fileName) {
+  const parts = [ctx.linea.toLowerCase()]
+  parts.push(`t${ctx.tipologia_code.toLowerCase()}`)
+  if (ctx.image_type === 'plano') {
+    // axonometrias o planos: scope tipología
+    // Distinguir AXONOMETRIAS vs Planos por extensión es ambiguo; usamos un solo bucket.
+    parts.push('planos')
+  } else {
+    parts.push(ctx.is_exterior ? 'exteriores' : 'interiores')
+    if (ctx.casa_folder) parts.push(slug(ctx.casa_folder))
+  }
+  parts.push(slug(fileName))
+  return parts.join('/')
+}
 
 async function uploadToStorage(supabase, storagePath, buffer, mimeType) {
   const { error } = await supabase.storage
@@ -244,115 +430,171 @@ async function uploadToStorage(supabase, storagePath, buffer, mimeType) {
   return pub.publicUrl
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+async function replaceSkuLinks(supabase, imageId, skuIds) {
+  // delete-then-insert (más simple y robusto que upsert por composite)
+  const { error: delErr } = await supabase
+    .from('model_image_skus')
+    .delete()
+    .eq('image_id', imageId)
+  if (delErr) throw new Error(`delete model_image_skus: ${delErr.message}`)
+
+  if (skuIds.length === 0) return
+  const rows = skuIds.map((id) => ({ image_id: imageId, house_catalog_id: id }))
+  const { error: insErr } = await supabase.from('model_image_skus').insert(rows)
+  if (insErr) throw new Error(`insert model_image_skus: ${insErr.message}`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Main
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log('  Sync Drive → Supabase Storage')
+  console.log('  Sync Drive → Supabase Storage + model_images + model_image_skus')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log(`  Modo:        ${DRY_RUN ? 'DRY RUN' : 'PROD'}`)
+  console.log(`  Modo:         ${DRY_RUN ? 'DRY RUN (no escribe)' : 'EJECUTAR'}`)
   console.log(`  Filtro línea: ${LINE_FILTER || 'todas'}`)
-  console.log('')
+  console.log()
 
   const drive = await getDrive()
   const supabase = !DRY_RUN
-    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } })
+    ? createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
     : null
 
+  // ── 1. Walk Drive ────────────────────────────────────────────────────
   console.log('▸ Recorriendo Drive…')
   const allFiles = await walkDrive(drive, ROOT_FOLDER_ID)
-  console.log(`  ✓ ${allFiles.length} imágenes encontradas`)
+  console.log(`  ✓ ${allFiles.length} archivos aceptados`)
 
-  // Cargar registros existentes para detectar borrados
+  // ── 2. Cargar index de SKUs ───────────────────────────────────────────
+  let skuIndex = null
+  if (!DRY_RUN || VERBOSE) {
+    const sb = supabase || createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
+    skuIndex = await loadSkuIndex(sb)
+    const totalSkus = [...skuIndex.byTipologia.values()].reduce((a, b) => a + b.length, 0)
+    console.log(`  ✓ ${totalSkus} SKUs cargados de house_catalog`)
+  }
+
+  // ── 3. Cargar registros existentes (para idempotencia + archive) ──────
   const existingByDriveId = new Map()
   if (!DRY_RUN) {
     const { data, error } = await supabase
       .from('model_images')
-      .select('id, drive_file_id, drive_modified_time')
+      .select('id, drive_file_id, drive_modified_time, status')
     if (error) {
-      console.error('❌ Error cargando model_images:', error.message)
+      console.error(`❌ load model_images: ${error.message}`)
       process.exit(1)
     }
-    for (const r of (data || [])) {
+    for (const r of data || []) {
       if (r.drive_file_id) existingByDriveId.set(r.drive_file_id, r)
     }
-    console.log(`  ✓ ${existingByDriveId.size} registros en DB`)
+    console.log(`  ✓ ${existingByDriveId.size} registros previos en DB`)
   }
+  console.log()
 
-  let processed = 0, uploaded = 0, skipped = 0, archived = 0, unmatched = 0
+  // ── 4. Procesar archivos ──────────────────────────────────────────────
+  const counters = {
+    processed: 0,
+    uploaded: 0,
+    updated: 0,
+    skipped: 0,
+    archived: 0,
+    unmatched_path: 0,
+    unmatched_sku: 0,
+    errored: 0,
+  }
   const seenInDrive = new Set()
 
   for (const { file, pathParts } of allFiles) {
-    const ctx = inferFromPath(pathParts, file.name)
     seenInDrive.add(file.id)
 
-    if (!ctx.linea) {
-      unmatched++
-      if (VERBOSE) console.log(`  ⚠ Sin línea: ${pathParts.join('/')}/${file.name}`)
-      continue
-    }
-
-    if (LINE_FILTER && ctx.linea !== LINE_FILTER) continue
-
-    const exists = existingByDriveId.get(file.id)
-    if (exists && exists.drive_modified_time === file.modifiedTime) {
-      skipped++
-      continue
-    }
-
-    if (DRY_RUN) {
-      processed++
-      if (VERBOSE || processed <= 10) {
-        console.log(`  → ${ctx.linea}/T${ctx.tipologia_code || '*'}/V${ctx.variante || '*'}/${ctx.style_name || '*'}/${ctx.sistema_constructivo || '*'} ${ctx.is_exterior ? 'EXT' : 'INT'}${ctx.room_type ? '/'+ctx.room_type : ''}: ${file.name}`)
+    const ctx = inferContext(pathParts, file.name)
+    if (!ctx) {
+      counters.unmatched_path++
+      if (VERBOSE) {
+        console.log(`  ⚠ path/filename no matchea: ${pathParts.join('/')}/${file.name}`)
       }
       continue
     }
 
-    // ── Descarga + procesa imagen ─────────────────────────────────
+    if (LINE_FILTER && ctx.linea !== LINE_FILTER.toUpperCase()) continue
+
+    const skuIds = skuIndex ? resolveSkus(skuIndex, ctx) : []
+    if (skuIndex && skuIds.length === 0) {
+      counters.unmatched_sku++
+      if (VERBOSE) {
+        console.log(
+          `  ⚠ sin SKUs:  ${ctx.linea}/T${ctx.tipologia_code} ${ctx.style_name || '(tipología)'} V[${(ctx.variants || []).join(',')}]  ${file.name}`,
+        )
+      }
+      // seguimos: insertamos la imagen en model_images aunque no linkee a nada
+    }
+
+    const exists = existingByDriveId.get(file.id)
+    // drive_modified_time se guarda en timestamptz: Drive lo manda como ISO con `Z`,
+    // PostgreSQL lo devuelve como ISO con `+00:00`. Comparar como Date para evitar
+    // re-uploads espurios.
+    const driveTs = file.modifiedTime ? new Date(file.modifiedTime).getTime() : null
+    const dbTs = exists?.drive_modified_time ? new Date(exists.drive_modified_time).getTime() : null
+    if (exists && dbTs != null && dbTs === driveTs && exists.status === 'active') {
+      counters.skipped++
+      continue
+    }
+
+    if (DRY_RUN) {
+      counters.processed++
+      if (VERBOSE || counters.processed <= 15) {
+        const variantStr = ctx.variants ? `[${ctx.variants.join(',')}]` : '[*]'
+        console.log(
+          `  → ${ctx.linea}/T${ctx.tipologia_code}/${ctx.image_type === 'plano' ? 'PLANOS' : ctx.is_exterior ? 'EXT' : 'INT'}/${ctx.style_name || '(tipología)'} V${variantStr}  ${file.name}  →  ${skuIds.length} SKUs`,
+        )
+      }
+      continue
+    }
+
+    // ── Descarga + sube + escribe DB ───────────────────────────────────
     try {
       const buffer = await downloadFile(drive, file.id)
 
-      // Storage path organizado
-      const ext = mime.extension(file.mimeType) || 'jpg'
-      const storagePath = [
-        ctx.linea.toLowerCase(),
-        ctx.tipologia_code ? `t${ctx.tipologia_code}` : 'all',
-        ctx.style_name ? ctx.style_name.toLowerCase() : 'all',
-        ctx.variante ? `v${ctx.variante}` : 'all',
-        ctx.is_exterior ? 'ext' : 'int',
-        ctx.room_type || '',
-        `${file.id}.${ext}`,
-      ].filter(Boolean).join('/')
-
-      // Metadata + LQIP
-      let width = null, height = null, lqipColor = '#e5e5e5'
-      try {
-        const meta = await sharp(buffer).metadata()
-        width = meta.width
-        height = meta.height
-        // Color promedio del 1×1 downsample
-        const tiny = await sharp(buffer).resize(1, 1).raw().toBuffer()
-        if (tiny.length >= 3) {
-          lqipColor = `#${tiny[0].toString(16).padStart(2,'0')}${tiny[1].toString(16).padStart(2,'0')}${tiny[2].toString(16).padStart(2,'0')}`
+      // Metadata (solo si es imagen)
+      let width = null,
+        height = null,
+        lqipColor = '#e5e5e5'
+      if (file.mimeType?.startsWith('image/')) {
+        try {
+          const meta = await sharp(buffer).metadata()
+          width = meta.width || null
+          height = meta.height || null
+          const tiny = await sharp(buffer).resize(1, 1).raw().toBuffer()
+          if (tiny.length >= 3) {
+            lqipColor = `#${tiny[0].toString(16).padStart(2, '0')}${tiny[1].toString(16).padStart(2, '0')}${tiny[2].toString(16).padStart(2, '0')}`
+          }
+        } catch {
+          /* swallow */
         }
-      } catch {}
+      }
 
-      const publicUrl = await uploadToStorage(supabase, storagePath, buffer, file.mimeType)
+      const sPath = storagePathFor(ctx, file.name)
+      const publicUrl = await uploadToStorage(supabase, sPath, buffer, file.mimeType)
+
+      // Para columnas legacy: solo populamos `variante` cuando es UNA variante exacta.
+      const legacyVariant =
+        ctx.variants && ctx.variants.length === 1 ? ctx.variants[0] : null
 
       const record = {
         linea: ctx.linea,
         tipologia_code: ctx.tipologia_code,
         style_name: ctx.style_name,
-        variante: ctx.variante,
-        sistema_constructivo: ctx.sistema_constructivo,
+        variante: legacyVariant,
         is_exterior: ctx.is_exterior,
-        room_type: ctx.room_type,
-        sort_order: 0,
-        storage_path: storagePath,
+        image_type: ctx.image_type,
+        view_label: ctx.view_label,
+        sort_order: ctx.sort_order,
+        storage_path: sPath,
         storage_url: publicUrl,
-        width, height, lqip_color: lqipColor,
+        width,
+        height,
+        lqip_color: lqipColor,
         drive_file_id: file.id,
         drive_modified_time: file.modifiedTime,
         drive_path: pathParts.join('/'),
@@ -360,45 +602,57 @@ async function main() {
         updated_at: new Date().toISOString(),
       }
 
-      const { error } = await supabase
+      const { data: upserted, error: upErr } = await supabase
         .from('model_images')
         .upsert(record, { onConflict: 'drive_file_id' })
+        .select('id')
+        .single()
+      if (upErr) throw new Error(`upsert model_images: ${upErr.message}`)
 
-      if (error) throw error
-      uploaded++
-      if (VERBOSE) console.log(`  ✓ ${storagePath}`)
+      await replaceSkuLinks(supabase, upserted.id, skuIds)
+
+      if (exists) counters.updated++
+      else counters.uploaded++
+      if (VERBOSE) console.log(`  ✓ ${sPath}  (${skuIds.length} SKUs)`)
     } catch (err) {
+      counters.errored++
       console.error(`  ❌ ${file.name}: ${err.message}`)
     }
 
-    processed++
-    if (processed % 20 === 0) console.log(`  … ${processed} procesados`)
+    counters.processed++
+    if (counters.processed % 25 === 0) {
+      console.log(`  … ${counters.processed} procesados`)
+    }
   }
 
-  // Archivar fotos que ya no están en Drive
+  // ── 5. Archivar fotos que ya no están en Drive ────────────────────────
   if (!DRY_RUN) {
     for (const [driveId, row] of existingByDriveId) {
-      if (!seenInDrive.has(driveId)) {
+      if (!seenInDrive.has(driveId) && row.status !== 'archived') {
         await supabase
           .from('model_images')
           .update({ status: 'archived', updated_at: new Date().toISOString() })
           .eq('id', row.id)
-        archived++
+        counters.archived++
       }
     }
   }
 
-  console.log('')
+  // ── Resumen ────────────────────────────────────────────────────────────
+  console.log()
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log(`  ✓ Procesadas:   ${processed}`)
-  console.log(`  ✓ Subidas:      ${uploaded}`)
-  console.log(`  ⊙ Sin cambios:  ${skipped}`)
-  console.log(`  ⊙ Archivadas:   ${archived}`)
-  console.log(`  ⚠ Sin match:    ${unmatched}`)
+  console.log(`  Procesadas:        ${counters.processed}`)
+  console.log(`  Subidas (nuevas):  ${counters.uploaded}`)
+  console.log(`  Actualizadas:      ${counters.updated}`)
+  console.log(`  Sin cambios:       ${counters.skipped}`)
+  console.log(`  Archivadas:        ${counters.archived}`)
+  console.log(`  ⚠ Path no matchea: ${counters.unmatched_path}`)
+  console.log(`  ⚠ Sin SKUs:        ${counters.unmatched_sku}`)
+  console.log(`  ❌ Errores:         ${counters.errored}`)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('💥 Error fatal:', err)
   process.exit(1)
 })

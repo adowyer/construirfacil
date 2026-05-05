@@ -2571,11 +2571,11 @@ body:has(.cf-row.cf-expanded) {
   scrollbar-width: none;
   max-width: 1800px;
   margin: 0 auto;
-  background: rgba(245, 197, 24, 0.55);
+  background: rgba(255, 0, 61, 1);
   -webkit-backdrop-filter: saturate(160%) blur(24px);
   backdrop-filter: saturate(160%) blur(24px);
   border: 0;
-  border-radius: 999px;
+  border-radius: 15px;
 }
 
 .cf-sticky-filters-inner::-webkit-scrollbar {
@@ -2593,12 +2593,12 @@ body:has(.cf-row.cf-expanded) {
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 1);
   margin-right: 6px;
 }
 
 .cf-stf-pill {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.80);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: 0;
@@ -2608,7 +2608,7 @@ body:has(.cf-row.cf-expanded) {
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  border-radius: 100px;
+  border-radius: 10px;
   transition: background 0.2s, color 0.2s;
   white-space: nowrap;
 }
@@ -2630,10 +2630,34 @@ body:has(.cf-row.cf-expanded) {
   flex: 1 1 auto;
 }
 
-.cf-stf-count {
-  font-size: 13px;
+/* Select de Estilo: looks como un pill, comportamiento select nativo */
+.cf-stf-select {
+  background: rgba(255, 255, 255, 0.90);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 0;
+  color: rgba(0, 0, 0, 0.78);
+  padding: 5px 28px 5px 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.7);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: inherit;
+  border-radius: 10px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* Caret SVG inline (negro semi-transparente) a la derecha */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' stroke='%23000' stroke-opacity='0.55' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.cf-stf-select:hover {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.cf-stf-select.active {
+  background-color: #0a0a0a;
+  color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' stroke='%23fff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 }

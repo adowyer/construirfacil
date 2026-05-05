@@ -45,6 +45,8 @@ next-env.d.ts
 *.jpg
 *.jpeg
 *.png
+*.pdf
+*.dwg
 *.docx
 *.xlsx
 *.mov
@@ -54,6 +56,11 @@ next-env.d.ts
 /atributos.csv
 debug_collisions.mjs
 CATALOG_AUDIT.md
+
+# Catálogo HAUSIND® — assets fuente del catálogo (sincronizados al Drive +
+# bucket de Supabase Storage, no van al repo).
+/Cat[a-z0-9-]logo HAUSIND*/
+/Catálogo HAUSIND*/
 
 # …pero los assets servidos por Next desde /public sí van al repo.
 !/public/**/*.png
