@@ -166,48 +166,65 @@ export async function getGroupedCatalog(
     })
   }
 
-  // 3) Traer fotos (cover) por grupo — best specificity por SKU usando la vista
-  const allSkus = (rows ?? []).map(r => r.sku)
+  // 3) Cover por grupo: linkear via model_image_skus → model_images.
+  // (Antes usaba la vista house_images_resolved que joinea por columnas
+  // denormalizadas style_name/linea/tipologia_code/variante. Eso falla para
+  // imágenes con scope tipología — sin Casa X — y por mismatchs de acentos.
+  // El nuevo flow consulta model_image_skus directamente y resuelve por
+  // house_catalog_id, igual que el resto del catálogo público.)
   const coversByGroup = new Map<string, { url: string; lqip: string }>()
 
-  if (allSkus.length > 0) {
-    // PostgREST tiene cap server-side (~1000 filas) que ignora .limit().
-    // La vista hace fallback por specificity → varias filas por SKU.
-    // Batcheamos en chunks para que cada query quede bajo el cap.
-    const CHUNK = 50
-    const coverBySku = new Map<string, { url: string; lqip: string }>()
+  const [linksRes, imgsRes] = await Promise.all([
+    supabase
+      .from('model_image_skus')
+      .select('image_id, house_catalog_id'),
+    supabase
+      .from('model_images')
+      .select('id, storage_url, lqip_color, sort_order')
+      .neq('status', 'archived')
+      .eq('is_exterior', true)
+      .eq('image_type', 'render')
+      .order('sort_order', { ascending: true }),
+  ])
 
-    for (let i = 0; i < allSkus.length; i += CHUNK) {
-      const chunk = allSkus.slice(i, i + CHUNK)
-      const { data: imgs, error: imgsError } = await supabase
-        .from('house_images_resolved')
-        .select('sku, storage_url, lqip_color, specificity, is_exterior, sort_order, image_type')
-        .in('sku', chunk)
-        .eq('is_exterior', true)
-        .eq('image_type', 'render')
-        .order('specificity', { ascending: false })
-        .order('sort_order', { ascending: true })
+  if (linksRes.error) console.error('[getGroupedCatalog] links:', linksRes.error.message)
+  if (imgsRes.error) console.error('[getGroupedCatalog] imgs:', imgsRes.error.message)
 
-      if (imgsError) {
-        console.error('[imgs ERROR]', imgsError.message, imgsError.details, imgsError.hint)
-        continue
-      }
+  // Index image_id → image (solo exteriores tipo render).
+  const imgById = new Map<
+    string,
+    { url: string; lqip: string; sort_order: number }
+  >()
+  for (const img of imgsRes.data ?? []) {
+    imgById.set(img.id, {
+      url: img.storage_url,
+      lqip: img.lqip_color ?? '#d4d4cc',
+      sort_order: img.sort_order,
+    })
+  }
 
-      for (const img of (imgs ?? [])) {
-        if (!coverBySku.has(img.sku)) {
-          coverBySku.set(img.sku, { url: img.storage_url, lqip: img.lqip_color ?? '#d4d4cc' })
-        }
-      }
+  // Para cada SKU (house_catalog_id), tomar la primera imagen exterior por
+  // sort_order. Una imagen puede aplicar a múltiples SKUs vía model_image_skus.
+  const coverByHouseCatalogId = new Map<
+    string,
+    { url: string; lqip: string; sort_order: number }
+  >()
+  for (const link of linksRes.data ?? []) {
+    const img = imgById.get(link.image_id)
+    if (!img) continue
+    const existing = coverByHouseCatalogId.get(link.house_catalog_id)
+    if (!existing || img.sort_order < existing.sort_order) {
+      coverByHouseCatalogId.set(link.house_catalog_id, img)
     }
+  }
 
-    // Para cada grupo, usar la foto del primer SKU que tenga
-    for (const [key, skus] of groupMap) {
-      for (const s of skus) {
-        const cover = coverBySku.get(s.sku)
-        if (cover) {
-          coversByGroup.set(key, cover)
-          break
-        }
+  // Para cada grupo, usar la foto del primer SKU del grupo que tenga cover.
+  for (const [key, skus] of groupMap) {
+    for (const s of skus) {
+      const cover = coverByHouseCatalogId.get(s.id)
+      if (cover) {
+        coversByGroup.set(key, { url: cover.url, lqip: cover.lqip })
+        break
       }
     }
   }
