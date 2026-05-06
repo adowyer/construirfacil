@@ -15,19 +15,20 @@
 
 interface StickyFiltersProps {
   estiloFilter: string
-  bedFilter: string
-  sizeFilter: string
+  /** Multi-select: arrays de valores activos. Click en pill → toggle. */
+  bedFilters: string[]
+  sizeFilters: string[]
   sortOrder: string
   availableEstilos: string[]
   /** Sets de opciones que SÍ tienen resultados con los otros filtros activos.
-   *  Si una opción no está en el set, se renderiza disabled. La opción ya
-   *  activa siempre queda habilitada (para poder destildarla). */
+   *  Si una opción no está en el set, se renderiza disabled. Las ya activas
+   *  siempre quedan habilitadas (para poder destildarlas). */
   enabledBeds?: Set<string>
   enabledSizes?: Set<string>
   enabledEstilos?: Set<string>
   onEstiloChange: (v: string) => void
-  onBedChange: (v: string) => void
-  onSizeChange: (v: string) => void
+  onBedToggle: (v: string) => void
+  onSizeToggle: (v: string) => void
   onSortChange: (v: string) => void
 }
 
@@ -42,6 +43,9 @@ const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: 'XXL', label: '+240m²' },
 ]
 
+// "+ Relevante" hoy es no-op (queda como placeholder para item 3d cuando
+// agreguemos featured_rank). Precio asc/desc usa price_from interno aunque
+// los precios no sean visibles al público — sigue siendo info útil para ordenar.
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'recommended', label: '+ Relevante' },
   { value: 'price-asc', label: 'Precio ↑' },
@@ -50,26 +54,26 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
 
 export default function StickyFilters({
   estiloFilter,
-  bedFilter,
-  sizeFilter,
+  bedFilters,
+  sizeFilters,
   sortOrder,
   availableEstilos,
   enabledBeds,
   enabledSizes,
   enabledEstilos,
   onEstiloChange,
-  onBedChange,
-  onSizeChange,
+  onBedToggle,
+  onSizeToggle,
   onSortChange,
 }: StickyFiltersProps) {
   // Una opción está habilitada si:
   //   - no le pasamos sets de "enabled" (modo retro-compat / sin filtros activos), o
   //   - está en el set, o
-  //   - es la opción ya activa (para poder destildarla).
+  //   - es una opción ya activa (para poder destildarla).
   const isBedEnabled = (v: string) =>
-    !enabledBeds || enabledBeds.has(v) || bedFilter === v
+    !enabledBeds || enabledBeds.has(v) || bedFilters.includes(v)
   const isSizeEnabled = (v: string) =>
-    !enabledSizes || enabledSizes.has(v) || sizeFilter === v
+    !enabledSizes || enabledSizes.has(v) || sizeFilters.includes(v)
   const isEstiloEnabled = (v: string) =>
     !enabledEstilos || enabledEstilos.has(v) || estiloFilter === v
 
@@ -94,20 +98,21 @@ export default function StickyFilters({
           </select>
         </div>
 
-        {/* DORMITORIOS — pills */}
+        {/* DORMITORIOS — pills (multi-select) */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Dorm.</span>
           {BED_OPTIONS.map((v) => {
             const enabled = isBedEnabled(v)
+            const active = bedFilters.includes(v)
             return (
               <button
                 key={v}
                 type="button"
-                className={`cf-stf-pill ${bedFilter === v ? 'active' : ''} ${
+                className={`cf-stf-pill ${active ? 'active' : ''} ${
                   enabled ? '' : 'cf-stf-pill-disabled'
                 }`}
                 disabled={!enabled}
-                onClick={() => onBedChange(bedFilter === v ? '' : v)}
+                onClick={() => onBedToggle(v)}
               >
                 {v}
               </button>
@@ -115,20 +120,21 @@ export default function StickyFilters({
           })}
         </div>
 
-        {/* SUPERFICIE — pills */}
+        {/* SUPERFICIE — pills (multi-select) */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Superficie</span>
           {SIZE_OPTIONS.map((s) => {
             const enabled = isSizeEnabled(s.value)
+            const active = sizeFilters.includes(s.value)
             return (
               <button
                 key={s.value}
                 type="button"
-                className={`cf-stf-pill ${sizeFilter === s.value ? 'active' : ''} ${
+                className={`cf-stf-pill ${active ? 'active' : ''} ${
                   enabled ? '' : 'cf-stf-pill-disabled'
                 }`}
                 disabled={!enabled}
-                onClick={() => onSizeChange(sizeFilter === s.value ? '' : s.value)}
+                onClick={() => onSizeToggle(s.value)}
               >
                 {s.label}
               </button>

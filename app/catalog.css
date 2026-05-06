@@ -1641,13 +1641,16 @@ body:has(.cf-row.cf-expanded) {
 
 /* ── PDFs (planos arquitectónicos) ──────────────────────────────────── */
 /* El embed se enmarca con margen para que respire dentro del panel y    */
-/* deje espacio al label arriba y los pills abajo.                        */
+/* deje espacio al label arriba y los pills abajo. Algunos browsers no   */
+/* respetan top/right/bottom/left en <embed>, así que usamos width/height */
+/* explícitos con calc().                                                 */
 .cf-pn-pdf-embed {
   position: absolute;
+  display: block;
   top: 90px;
-  right: 80px;
-  bottom: 90px;
   left: 80px;
+  width: calc(100% - 160px);
+  height: calc(100% - 180px);
   border: 0;
   background: #fff;
 }
@@ -1675,6 +1678,62 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-text-inner {
   max-width: 60ch;
   width: 100%;
+}
+
+/* ── ScrollableBody: solo el bloque de texto largo scrollea, no todo ── */
+/* el panel. Botones ↑ ↓ clickeables a la derecha mueven el scroll;       */
+/* overscroll-behavior:contain impide que el wheel propague al slider.    */
+.cf-scrollable-body {
+  position: relative;
+  width: 100%;
+}
+.cf-scrollable-body-content {
+  overflow-y: auto;
+  /* 32vh: balance entre mostrar suficiente texto sin que el botón ↓ quede
+     fuera del viewport cuando hay título + stats + tags arriba. */
+  max-height: 32vh;
+  padding-right: 44px;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  /* Sin scrollbar visible — los botones son el control */
+  scrollbar-width: none;
+}
+.cf-scrollable-body-content::-webkit-scrollbar {
+  display: none;
+}
+.cf-scrollable-body-btn {
+  position: absolute;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a0a0a;
+  border: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+  transition: opacity 0.2s, transform 0.2s, background 0.2s;
+  font-family: inherit;
+  line-height: 1;
+}
+.cf-scrollable-body-btn:hover:not(:disabled) {
+  background: #fff;
+  transform: scale(1.08);
+}
+.cf-scrollable-body-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+.cf-scrollable-body-btn-up {
+  top: 4px;
+}
+.cf-scrollable-body-btn-down {
+  bottom: 4px;
 }
 
 /* ── Panel Comparativa de Estilos: foto full bleed + columna lateral ── */
@@ -2686,11 +2745,11 @@ body:has(.cf-row.cf-expanded) {
   scrollbar-width: none;
   max-width: 1800px;
   margin: 0 auto;
-  background: rgba(255, 0, 61, 1);
+  background: rgba(60, 60, 60, 0.55);
   -webkit-backdrop-filter: saturate(160%) blur(24px);
   backdrop-filter: saturate(160%) blur(24px);
   border: 0;
-  border-radius: 15px;
+  border-radius: 10px;
 }
 
 .cf-sticky-filters-inner::-webkit-scrollbar {
@@ -2708,16 +2767,17 @@ body:has(.cf-row.cf-expanded) {
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 1);
+  color: rgba(255, 255, 255, 0.9);
   margin-right: 6px;
 }
 
+/* Pills: bg rojo CF (era el color de la barra) → activos pasan a gris oscuro. */
 .cf-stf-pill {
-  background: rgba(255, 255, 255, 0.80);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 0, 61, 0.92);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border: 0;
-  color: rgba(0, 0, 0, 0.78);
+  color: #fff;
   padding: 7px 16px;
   font-size: 14px;
   font-weight: 500;
@@ -2729,23 +2789,23 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-stf-pill:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 0, 61, 1);
 }
 
 .cf-stf-pill.active {
-  background: #0a0a0a;
+  background: #2e2e2e;
   color: #fff;
 }
 
 .cf-stf-pill-dark {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 0, 61, 0.92);
 }
 
 /* Disabled: combinaciones que vaciarían el listado. No clickeable. */
 .cf-stf-pill-disabled,
 .cf-stf-pill-disabled:hover {
-  background: rgba(255, 255, 255, 0.25);
-  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.38);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -2756,11 +2816,11 @@ body:has(.cf-row.cf-expanded) {
 
 /* Select de Estilo: looks como un pill, comportamiento select nativo */
 .cf-stf-select {
-  background: rgba(255, 255, 255, 0.90);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 0, 61, 0.92);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border: 0;
-  color: rgba(0, 0, 0, 0.78);
+  color: #fff;
   padding: 5px 28px 5px 13px;
   font-size: 14px;
   font-weight: 500;
@@ -2769,19 +2829,32 @@ body:has(.cf-row.cf-expanded) {
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  /* Caret SVG inline (negro semi-transparente) a la derecha */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' stroke='%23000' stroke-opacity='0.55' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  /* Caret SVG inline (blanco) a la derecha */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' stroke='%23fff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 10px center;
   transition: background-color 0.2s, color 0.2s;
 }
 
 .cf-stf-select:hover {
-  background-color: rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 0, 61, 1);
 }
 
 .cf-stf-select.active {
-  background-color: #0a0a0a;
+  background-color: #2e2e2e;
   color: #fff;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' stroke='%23fff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Border-radius unificado: todas las fotos y cards "cuadradas" llevan    */
+/* 10px de redondeo. Pills y elementos circulares mantienen sus radios.   */
+/* ─────────────────────────────────────────────────────────────────────── */
+.cf-row-img-wrap,
+.cf-row-img,
+.cf-pn-gallery,
+.cf-pn-pdf-embed,
+.cf-pn-estilos-cmp,
+.cf-pn-compare,
+.cf-hero-slide-card {
+  border-radius: 10px;
 }

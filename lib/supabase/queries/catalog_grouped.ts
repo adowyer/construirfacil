@@ -91,11 +91,25 @@ const DISPLAY_NAMES: Record<string, string> = {
 }
 
 function displayName(style_name: string): string {
-  if (DISPLAY_NAMES[style_name]) return DISPLAY_NAMES[style_name]
-  // Fallback: title-case (ANCHICO → Anchico, AMBA'Y → Amba'y, ALECRÍN → Alecrín).
+  if (DISPLAY_NAMES[style_name]) return `Casa ${DISPLAY_NAMES[style_name]}`
+  // Fallback: title-case (ANCHICO → Casa Anchico, AMBA'Y → Casa Amba'y).
   // El style_name ya viene con acentos correctos en la DB tras el rename.
   if (!style_name) return style_name
-  return style_name[0].toUpperCase() + style_name.slice(1).toLowerCase()
+  return `Casa ${style_name[0].toUpperCase()}${style_name.slice(1).toLowerCase()}`
+}
+
+/** Prefijo "Línea " + capitalización: "BOSQUE" → "Línea Bosque". Para tags y
+ *  eyebrows del catálogo público. Si necesitás solo el nombre (en sentencias
+ *  narrativas tipo "de la línea X"), usar `lineaTitleCase`. */
+export function displayLinea(linea: string | null | undefined): string {
+  if (!linea) return ''
+  return `Línea ${lineaTitleCase(linea)}`
+}
+
+/** Solo title-case del nombre, sin prefijo "Línea". "BOSQUE" → "Bosque". */
+export function lineaTitleCase(linea: string | null | undefined): string {
+  if (!linea) return ''
+  return linea[0].toUpperCase() + linea.slice(1).toLowerCase()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

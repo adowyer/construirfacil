@@ -125,7 +125,9 @@ function SlideLinea({
           <img src={linea.icon_url} alt="" className="cf-hero-slide-linea-icon" />
         )}
         <p className="cf-hero-slide-linea-eyebrow">Línea</p>
-        <h3 className="cf-hero-slide-linea-name">{linea.name}</h3>
+        <h3 className="cf-hero-slide-linea-name">
+          {linea.name ? linea.name[0].toUpperCase() + linea.name.slice(1).toLowerCase() : ''}
+        </h3>
         {linea.tagline && (
           <p className="cf-hero-slide-linea-tagline">{linea.tagline}</p>
         )}

@@ -23,6 +23,7 @@ import HeroRow, { type GrowthPair } from './HeroRow'
 import StickyFilters from './StickyFilters'
 import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
+import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type {
@@ -59,11 +60,6 @@ const STATIONS: { id: Station; label: string }[] = [
 
 const LINE_ORDER = ['ATLAS', 'BOSQUE', 'TERRA']
 
-function fmtUSD(n: number | null) {
-  if (!n) return '—'
-  return 'USD ' + Math.round(n).toLocaleString('es-AR')
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,9 +78,16 @@ export default function CatalogPage({
   // '' significa "sin filtrar" (mostrar todos). Antes había un valor 'ALL'
   // explícito; lo eliminamos para que la barra no muestre la opción "todos".
   const [estiloFilter, setEstiloFilter] = useState<string>('')
-  const [bedFilter, setBedFilter] = useState<string>('')
-  const [sizeFilter, setSizeFilter] = useState<string>('')
+  // Multi-select: arrays. '' inicial sería un valor inválido, así que arrays vacíos.
+  const [bedFilters, setBedFilters] = useState<string[]>([])
+  const [sizeFilters, setSizeFilters] = useState<string[]>([])
   const [sortOrder, setSortOrder] = useState<string>('recommended')
+
+  // Helpers de toggle: agregan o quitan un valor del array.
+  const toggleBed = (v: string) =>
+    setBedFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
+  const toggleSize = (v: string) =>
+    setSizeFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
 
 
   const detailRef = useRef<HTMLDivElement>(null)
@@ -96,35 +99,41 @@ export default function CatalogPage({
   //   bedFilter:    '' | '1' | '2' | '3' | '4+'
   //   sizeFilter:   '' | 'S' | 'SM' | 'M' | 'L' | 'XL' | 'XXL'
 
-  // Match a nivel SKU. El estilo es propiedad del modelo, no del SKU, así que
-  // no entra acá; lo evalúa el filter de modelos abajo.
+  // Predicados puros (reusables tanto en filter principal como en cálculo
+  // de "qué opciones están enabled").
+  const skuMatchesBed = (sku: CatalogModel['skus'][number], bf: string): boolean => {
+    const bMin = sku.min_bedrooms ?? 0
+    const bMax = sku.max_bedrooms ?? bMin
+    if (bf === '4+') return bMax >= 4
+    const n = Number(bf)
+    return bMax >= n && bMin <= n
+  }
+  const skuMatchesSize = (sku: CatalogModel['skus'][number], sf: string): boolean => {
+    const a = sku.area_m2 ?? 0
+    if (sf === 'S') return a >= 0 && a < 60
+    if (sf === 'SM') return a >= 60 && a < 90
+    if (sf === 'M') return a >= 90 && a < 130
+    if (sf === 'L') return a >= 130 && a < 180
+    if (sf === 'XL') return a >= 180 && a < 240
+    if (sf === 'XXL') return a >= 240
+    return true
+  }
+
+  // Match contra los arrays de filtros activos. Lógica OR dentro del mismo
+  // filtro (bedFilters=[2,3] → bed=2 OR bed=3), AND entre filtros distintos
+  // (beds=[2] AND sizes=[M] → bed=2 Y size=M).
   const skuMatchesFilters = (sku: CatalogModel['skus'][number]): boolean => {
-    if (bedFilter) {
-      const bMin = sku.min_bedrooms ?? 0
-      const bMax = sku.max_bedrooms ?? bMin
-      if (bedFilter === '4+') {
-        if (bMax < 4) return false
-      } else {
-        const n = Number(bedFilter)
-        if (bMax < n || bMin > n) return false
-      }
-    }
-    if (sizeFilter) {
-      const a = sku.area_m2 ?? 0
-      if (sizeFilter === 'S' && !(a >= 0 && a < 60)) return false
-      if (sizeFilter === 'SM' && !(a >= 60 && a < 90)) return false
-      if (sizeFilter === 'M' && !(a >= 90 && a < 130)) return false
-      if (sizeFilter === 'L' && !(a >= 130 && a < 180)) return false
-      if (sizeFilter === 'XL' && !(a >= 180 && a < 240)) return false
-      if (sizeFilter === 'XXL' && !(a >= 240)) return false
-    }
+    if (bedFilters.length > 0 && !bedFilters.some((b) => skuMatchesBed(sku, b))) return false
+    if (sizeFilters.length > 0 && !sizeFilters.some((s) => skuMatchesSize(sku, s))) return false
     return true
   }
 
   // Modelo visible si está pasa el estilo Y al menos un SKU pasa los filtros.
+  // El sort por precio usa price_from interno (los precios no se muestran al
+  // público pero la data sigue siendo válida para ordenar).
   const filtered = models.filter(m => {
     if (estiloFilter && m.estilo !== estiloFilter) return false
-    if (!bedFilter && !sizeFilter) return true
+    if (bedFilters.length === 0 && sizeFilters.length === 0) return true
     return m.skus.some(skuMatchesFilters)
   }).sort((a, b) => {
     if (sortOrder === 'price-asc') return (a.price_from ?? 0) - (b.price_from ?? 0)
@@ -143,50 +152,38 @@ export default function CatalogPage({
   const BED_OPTIONS = ['1', '2', '3', '4+']
   const SIZE_OPTIONS = ['S', 'SM', 'M', 'L', 'XL', 'XXL']
 
-  // Predicado SKU contra una hipótesis de filtros (no consulta los del estado).
-  const skuMatchesHypothesis = (
-    sku: CatalogModel['skus'][number],
-    bf: string,
-    sf: string,
-  ): boolean => {
-    if (bf) {
-      const bMin = sku.min_bedrooms ?? 0
-      const bMax = sku.max_bedrooms ?? bMin
-      if (bf === '4+') {
-        if (bMax < 4) return false
-      } else {
-        const n = Number(bf)
-        if (bMax < n || bMin > n) return false
-      }
-    }
-    if (sf) {
-      const a = sku.area_m2 ?? 0
-      if (sf === 'S' && !(a >= 0 && a < 60)) return false
-      if (sf === 'SM' && !(a >= 60 && a < 90)) return false
-      if (sf === 'M' && !(a >= 90 && a < 130)) return false
-      if (sf === 'L' && !(a >= 130 && a < 180)) return false
-      if (sf === 'XL' && !(a >= 180 && a < 240)) return false
-      if (sf === 'XXL' && !(a >= 240)) return false
-    }
-    return true
-  }
-
-  // ¿Hay al menos 1 modelo que pase (estilo, bed, size)?
-  const hasResultsFor = (estilo: string, bed: string, size: string): boolean =>
+  // ¿Hay al menos 1 modelo que pase (estilo, beds[], sizes[])?
+  // Misma lógica OR-dentro/AND-entre que skuMatchesFilters, pero con arrays
+  // que el caller controla.
+  const hasResultsFor = (estilo: string, beds: string[], sizes: string[]): boolean =>
     models.some((m) => {
       if (estilo && m.estilo !== estilo) return false
-      if (!bed && !size) return true
-      return m.skus.some((s) => skuMatchesHypothesis(s, bed, size))
+      if (beds.length === 0 && sizes.length === 0) return true
+      return m.skus.some((s) => {
+        if (beds.length > 0 && !beds.some((b) => skuMatchesBed(s, b))) return false
+        if (sizes.length > 0 && !sizes.some((sz) => skuMatchesSize(s, sz))) return false
+        return true
+      })
     })
 
+  // Una opción está enabled si: ya está activa (para destildarla) O el
+  // resultado de tener SOLO esa opción activa (junto con los filtros de
+  // los otros ejes) tiene al menos 1 modelo. En multi-select basta con que
+  // por sí sola haya match — se va a unir vía OR con las ya activas.
   const enabledBeds = new Set(
-    BED_OPTIONS.filter((b) => hasResultsFor(estiloFilter, b, sizeFilter)),
+    BED_OPTIONS.filter(
+      (b) => bedFilters.includes(b) || hasResultsFor(estiloFilter, [b], sizeFilters),
+    ),
   )
   const enabledSizes = new Set(
-    SIZE_OPTIONS.filter((s) => hasResultsFor(estiloFilter, bedFilter, s)),
+    SIZE_OPTIONS.filter(
+      (s) => sizeFilters.includes(s) || hasResultsFor(estiloFilter, bedFilters, [s]),
+    ),
   )
   const enabledEstilos = new Set(
-    availableEstilos.filter((e) => hasResultsFor(e, bedFilter, sizeFilter)),
+    availableEstilos.filter(
+      (e) => estiloFilter === e || hasResultsFor(e, bedFilters, sizeFilters),
+    ),
   )
 
   // ── Group by line ──
@@ -366,16 +363,16 @@ export default function CatalogPage({
       {/* ── Filtros sticky en color CF ── */}
       <StickyFilters
         estiloFilter={estiloFilter}
-        bedFilter={bedFilter}
-        sizeFilter={sizeFilter}
+        bedFilters={bedFilters}
+        sizeFilters={sizeFilters}
         sortOrder={sortOrder}
         availableEstilos={availableEstilos}
         enabledBeds={enabledBeds}
         enabledSizes={enabledSizes}
         enabledEstilos={enabledEstilos}
         onEstiloChange={setEstiloFilter}
-        onBedChange={setBedFilter}
-        onSizeChange={setSizeFilter}
+        onBedToggle={toggleBed}
+        onSizeToggle={toggleSize}
         onSortChange={setSortOrder}
       />
 
@@ -392,7 +389,7 @@ export default function CatalogPage({
               // modelo a los que matchean. Las imágenes y atributos siguen
               // los SKUs filtrados, así el slider del expandido y el panel
               // de variantes solo muestran las que el usuario buscó.
-              const hasSkuFilter = Boolean(bedFilter || sizeFilter)
+              const hasSkuFilter = bedFilters.length > 0 || sizeFilters.length > 0
               const activeSkus = hasSkuFilter
                 ? model.skus.filter(skuMatchesFilters)
                 : model.skus
@@ -531,10 +528,10 @@ export function StationPortada({ model }: { model: CatalogModel }) {
       backgroundPosition: 'center',
     }}>
       <div className="cf-st-portada-content">
-        <p className="cf-st-portada-eyebrow">{model.linea} · {model.estilo}</p>
+        <p className="cf-st-portada-eyebrow">{displayLinea(model.linea)} · {model.estilo}</p>
         <h1 className="cf-st-portada-name">{model.display_name}</h1>
         <p className="cf-st-portada-meta">
-          Desde {fmtUSD(model.price_from)} · {model.area_min && model.area_max ? `${Math.round(model.area_min)}–${Math.round(model.area_max)} m²` : '—'} · {model.variantes_count} variantes
+          {model.area_min && model.area_max ? `${Math.round(model.area_min)}–${Math.round(model.area_max)} m²` : '—'} · {model.variantes_count} variantes
         </p>
       </div>
     </div>
@@ -761,30 +758,9 @@ export function StationDatos({ model }: { model: CatalogModel }) {
         ))}
       </div>
 
-      {/* Precios */}
-      {currentSku && (
-        <>
-          <p className="cf-st-section-label" style={{ marginTop: 28 }}>Precio estimado</p>
-          <div className="cf-price-block">
-            <div className="cf-price-row">
-              <span>Lista</span>
-              <span>{fmtUSD(currentSku.precio_lista_usd)}</span>
-            </div>
-            <div className="cf-price-row">
-              <span>Contado</span>
-              <span>{fmtUSD(currentSku.precio_contado_usd)}</span>
-            </div>
-            <div className="cf-price-row cf-price-featured">
-              <span>Al pozo</span>
-              <span>{fmtUSD(currentSku.precio_pozo_usd)}</span>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* CTA WhatsApp */}
+      {/* CTA cotización */}
       <button className="cf-wa-cta">
-        Consultar por WhatsApp →
+        Pedir Cotización →
       </button>
     </div>
   )

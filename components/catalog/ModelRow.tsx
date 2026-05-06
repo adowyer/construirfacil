@@ -12,6 +12,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
+import { displayLinea, lineaTitleCase } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type {
   CatalogImage,
@@ -58,11 +59,6 @@ const ZOOM_VIEWPORT_CENTER = 0.56
 const ZOOM_CLOSE_DISTANCE = 0.8
 const ZOOM_FOLLOW_CLOSE = 0.34
 const ZOOM_FOLLOW_OPEN = 0.1
-
-function fmtUSD(n: number | null) {
-  if (!n) return '—'
-  return 'USD ' + Math.round(n).toLocaleString('es-AR')
-}
 
 function fmtRange(a: number | null, b: number | null) {
   if (!a) return '—'
@@ -255,7 +251,7 @@ export default function ModelRow({
                 className="cf-row-icon"
               />
             )}
-            <p className="cf-row-tag">{model.linea}</p>
+            <p className="cf-row-tag">{displayLinea(model.linea)}</p>
             <h3 className="cf-row-name cf-row-name-collapsed">{model.display_name}</h3>
             <p className="cf-row-bedrooms">
               {fmtRange(model.beds_min, model.beds_max)} dormitorio
@@ -275,10 +271,14 @@ export default function ModelRow({
                 style={{ marginBottom: 12 }}
               />
             )}
-            <p className="cf-row-tag" style={{ marginBottom: 12 }}>{model.linea}</p>
+            <p className="cf-row-tag" style={{ marginBottom: 12 }}>{displayLinea(model.linea)}</p>
             <h3 className="cf-row-name" style={{ fontSize: 22, marginBottom: 28, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{model.display_name}</h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 32, width: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Tipología</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{model.tipologia_code}</span>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Superficie</span>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtRange(model.area_min, model.area_max)} m²</span>
@@ -292,20 +292,6 @@ export default function ModelRow({
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{model.systems.join(' / ')}</span>
               </div>
             </div>
-
-            <div style={{ width: '100%', marginBottom: 22, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Precio llave en mano</span>
-              <span style={{ fontSize: 18, fontWeight: 500, color: '#0a0a0a' }}>{fmtUSD(model.price_from)}</span>
-            </div>
-
-            <a
-              href={`/models/${model.group_slug}`}
-              className="cf-row-cta"
-              onClick={e => e.stopPropagation()}
-              style={{ alignSelf: 'flex-end' }}
-            >
-              Ver más →
-            </a>
           </div>
         )}
       </div>
@@ -335,7 +321,7 @@ export default function ModelRow({
                 <div className="cf-row-overlay" style={{ opacity: hovered ? 1 : 0 }}>
                   <div className="cf-row-overlay-content">
                     <p className="cf-row-overlay-name">{model.display_name}</p>
-                    <p className="cf-row-overlay-sub">{fmtRange(model.area_min, model.area_max)} m² · desde {fmtUSD(model.price_from)}</p>
+                    <p className="cf-row-overlay-sub">{fmtRange(model.area_min, model.area_max)} m²</p>
                   </div>
                 </div>
               )}
@@ -364,7 +350,7 @@ export default function ModelRow({
         {isExpanded && (
           <div style={{ animation: 'cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
             <p style={{ fontSize: 13, lineHeight: 1.75, color: '#555', margin: 0 }}>
-              {model.display_name} de la línea {model.linea}. Disponible en {model.variantes_count} variante{model.variantes_count !== 1 ? 's' : ''}, con superficies desde {fmtRange(model.area_min, model.area_max)} m² y sistema {model.systems.join(' / ')}.
+              {model.display_name} de la línea {lineaTitleCase(model.linea)}. Disponible en {model.variantes_count} variante{model.variantes_count !== 1 ? 's' : ''}, con superficies desde {fmtRange(model.area_min, model.area_max)} m² y sistema {model.systems.join(' / ')}.
             </p>
           </div>
         )}

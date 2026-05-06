@@ -17,8 +17,9 @@
  *   9. Datos + Precios + CTA WhatsApp (selector de variante + sistema)
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
+import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type {
   CatalogImage,
@@ -66,17 +67,75 @@ interface PanelsProps {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function fmtUSD(n: number | null) {
-  if (!n) return '—'
-  return 'USD ' + Math.round(n).toLocaleString('es-AR')
-}
-
 function paragraphs(s: string | null | undefined): string[] {
   if (!s) return []
   return s
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
+}
+
+/**
+ * Scrollea sólo el bloque interno cuando el contenido excede `max-height: 40vh`.
+ * Botones ↑ ↓ clickeables a la derecha mueven el scroll. `overscroll-behavior:
+ * contain` evita que el wheel/touch propague al slider externo.
+ */
+function ScrollableBody({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = useState(false)
+  const [canUp, setCanUp] = useState(false)
+  const [canDown, setCanDown] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => {
+      const ovf = el.scrollHeight > el.clientHeight + 1
+      setOverflows(ovf)
+      setCanUp(el.scrollTop > 4)
+      setCanDown(el.scrollTop + el.clientHeight < el.scrollHeight - 4)
+    }
+    update()
+    el.addEventListener('scroll', update)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [children])
+
+  const scrollBy = (delta: number) => {
+    const el = ref.current
+    if (!el) return
+    el.scrollBy({ top: delta, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="cf-scrollable-body">
+      <div className="cf-scrollable-body-content" ref={ref}>
+        {children}
+      </div>
+      {overflows && (
+        <>
+          <button
+            type="button"
+            className="cf-scrollable-body-btn cf-scrollable-body-btn-up"
+            disabled={!canUp}
+            onClick={(e) => { e.stopPropagation(); scrollBy(-160) }}
+            aria-label="Subir texto"
+          >↑</button>
+          <button
+            type="button"
+            className="cf-scrollable-body-btn cf-scrollable-body-btn-down"
+            disabled={!canDown}
+            onClick={(e) => { e.stopPropagation(); scrollBy(160) }}
+            aria-label="Bajar texto"
+          >↓</button>
+        </>
+      )}
+    </div>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,7 +160,7 @@ export function Panel1Description({
     <div className="cf-pn cf-pn-desc">
       <div className="cf-pn-desc-grid">
         <div className="cf-pn-desc-left">
-          <p className="cf-pn-eyebrow">{model.linea} · {estilo}</p>
+          <p className="cf-pn-eyebrow">{displayLinea(model.linea)} · {estilo}</p>
           <h2 className="cf-pn-title">{model.display_name}</h2>
           {tagline && <p className="cf-pn-tagline">{tagline}</p>}
 
@@ -152,11 +211,13 @@ export function Panel1Description({
 
         <div className="cf-pn-desc-right">
           {body ? (
-            paragraphs(body).map((p, i) => (
-              <p key={i} className="cf-pn-body-p">
-                {p}
-              </p>
-            ))
+            <ScrollableBody>
+              {paragraphs(body).map((p, i) => (
+                <p key={i} className="cf-pn-body-p">
+                  {p}
+                </p>
+              ))}
+            </ScrollableBody>
           ) : (
             <p className="cf-pn-body-empty">
               Sin descripción cargada todavía.
@@ -296,10 +357,10 @@ function PanelImageSlider({
       }
     >
       {isPdf && (
-        <embed
-          src={`${current.storage_url}#toolbar=0&navpanes=0`}
-          type="application/pdf"
+        <iframe
+          src={`${current.storage_url}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
           className="cf-pn-pdf-embed"
+          title="Plano arquitectónico"
         />
       )}
       <div className="cf-pn-gallery-overlay">
@@ -467,11 +528,13 @@ export function Panel3Tipologia({
         <p className="cf-pn-eyebrow">Tipología {model.tipologia_code}</p>
         <h2 className="cf-pn-title">{row?.subtitle ?? 'Distribución arquitectónica'}</h2>
         {row?.body ? (
-          paragraphs(row.body).map((p, i) => (
-            <p key={i} className="cf-pn-body-p">
-              {p}
-            </p>
-          ))
+          <ScrollableBody>
+            {paragraphs(row.body).map((p, i) => (
+              <p key={i} className="cf-pn-body-p">
+                {p}
+              </p>
+            ))}
+          </ScrollableBody>
         ) : (
           <p className="cf-pn-body-empty">
             Sin descripción de tipología cargada todavía.
@@ -500,14 +563,16 @@ export function PanelEstiloIntro({
   return (
     <div className="cf-pn cf-pn-text">
       <div className="cf-pn-text-inner">
-        <p className="cf-pn-eyebrow">{model.linea} · Estilos</p>
+        <p className="cf-pn-eyebrow">{displayLinea(model.linea)} · Estilos</p>
         <h2 className="cf-pn-title">{intro?.title ?? 'Maneras de habitar'}</h2>
         {intro?.body ? (
-          paragraphs(intro.body).map((p, i) => (
-            <p key={i} className="cf-pn-body-p">
-              {p}
-            </p>
-          ))
+          <ScrollableBody>
+            {paragraphs(intro.body).map((p, i) => (
+              <p key={i} className="cf-pn-body-p">
+                {p}
+              </p>
+            ))}
+          </ScrollableBody>
         ) : (
           <p className="cf-pn-body-empty">Sin texto introductorio cargado.</p>
         )}
@@ -574,7 +639,7 @@ export function PanelEstilosCompare({
 
       {/* Columna lateral con texto del estilo seleccionado, scrolleable */}
       <aside className="cf-pn-estilos-aside">
-        <p className="cf-pn-eyebrow">{current.linea} · Estilo</p>
+        <p className="cf-pn-eyebrow">{displayLinea(current.linea)} · Estilo</p>
         <h3 className="cf-pn-estilos-aside-title">{current.estilo}</h3>
         <p className="cf-pn-estilos-aside-sub">{current.display_name}</p>
         <div className="cf-pn-estilos-aside-body">
@@ -639,11 +704,13 @@ export function Panel6CasaQueCrece({
           <p className="cf-pn-eyebrow">Concepto</p>
           <h2 className="cf-pn-title">{concept?.title ?? 'La Casa que Crece'}</h2>
           {concept?.body ? (
-            paragraphs(concept.body).map((p, i) => (
-              <p key={i} className="cf-pn-body-p">
-                {p}
-              </p>
-            ))
+            <ScrollableBody>
+              {paragraphs(concept.body).map((p, i) => (
+                <p key={i} className="cf-pn-body-p">
+                  {p}
+                </p>
+              ))}
+            </ScrollableBody>
           ) : (
             <p className="cf-pn-body-empty">Sin texto cargado.</p>
           )}
@@ -739,12 +806,6 @@ export function Panel7Comparativo({
                 <span className="cf-pn-stat-lbl">Dormitorios</span>
                 <span className="cf-pn-stat-num">
                   {currentVar.bedrooms_label ?? '—'}
-                </span>
-              </div>
-              <div className="cf-pn-compare-stat">
-                <span className="cf-pn-stat-lbl">Desde</span>
-                <span className="cf-pn-stat-num">
-                  {fmtUSD(currentVar.precio_lista_usd)}
                 </span>
               </div>
             </>
@@ -867,11 +928,13 @@ export function PanelSistemaConstructivo({
         )}
 
         {content?.body ? (
-          paragraphs(content.body).map((p, i) => (
-            <p key={i} className="cf-pn-body-p">
-              {p}
-            </p>
-          ))
+          <ScrollableBody>
+            {paragraphs(content.body).map((p, i) => (
+              <p key={i} className="cf-pn-body-p">
+                {p}
+              </p>
+            ))}
+          </ScrollableBody>
         ) : (
           <p className="cf-pn-body-empty">Sin descripción cargada para este sistema.</p>
         )}
@@ -961,28 +1024,6 @@ export function Panel9Datos({
           </>
         )}
 
-        {currentSku && (
-          <>
-            <p className="cf-pn-equip-sub" style={{ marginTop: 24 }}>
-              Precio estimado
-            </p>
-            <div className="cf-pn-datos-prices">
-              <div className="cf-pn-datos-price">
-                <span>Lista</span>
-                <span>{fmtUSD(currentSku.precio_lista_usd)}</span>
-              </div>
-              <div className="cf-pn-datos-price">
-                <span>Contado</span>
-                <span>{fmtUSD(currentSku.precio_contado_usd)}</span>
-              </div>
-              <div className="cf-pn-datos-price cf-pn-datos-price-feat">
-                <span>Al pozo</span>
-                <span>{fmtUSD(currentSku.precio_pozo_usd)}</span>
-              </div>
-            </div>
-          </>
-        )}
-
         <a
           href={`https://wa.me/${wapNumber}?text=${wapText}`}
           target="_blank"
@@ -990,7 +1031,7 @@ export function Panel9Datos({
           className="cf-pn-datos-cta"
           onClick={(e) => e.stopPropagation()}
         >
-          Consultar por WhatsApp →
+          Pedir Cotización →
         </a>
       </div>
     </div>
