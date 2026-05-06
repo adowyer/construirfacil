@@ -54,6 +54,35 @@ export interface CatalogImage {
 }
 
 /**
+ * Trae TODOS los links de model_image_skus paginando manualmente. PostgREST
+ * tiene un cap server-side (típicamente 1000) que `.range(0, 49999)` no
+ * supera porque depende del setting del proyecto. Paginar en chunks es la
+ * forma robusta — funciona independientemente del cap configurado.
+ */
+async function loadAllImageSkuLinks(
+  supabase: SupabaseClient,
+): Promise<{ image_id: string; house_catalog_id: string }[]> {
+  const all: { image_id: string; house_catalog_id: string }[] = []
+  const PAGE = 1000
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('model_image_skus')
+      .select('image_id, house_catalog_id')
+      .range(from, from + PAGE - 1)
+    if (error) {
+      console.error('[loadAllImageSkuLinks] page error:', error.message)
+      break
+    }
+    if (!data || data.length === 0) break
+    all.push(...(data as { image_id: string; house_catalog_id: string }[]))
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+  return all
+}
+
+/**
  * Devuelve todas las imágenes activas del catálogo, cada una con la lista
  * de `house_catalog_id` a los que aplica (vía model_image_skus). El caller
  * filtra usando `imagesForSkus(images, skuIds)`.
@@ -66,7 +95,7 @@ export interface CatalogImage {
 export async function getAllCatalogImages(
   supabase: SupabaseClient,
 ): Promise<CatalogImage[]> {
-  const [imagesRes, linksRes] = await Promise.all([
+  const [imagesRes, allLinks] = await Promise.all([
     supabase
       .from('model_images')
       .select(
@@ -74,20 +103,16 @@ export async function getAllCatalogImages(
       )
       .neq('status', 'archived')
       .order('sort_order', { ascending: true }),
-    supabase.from('model_image_skus').select('image_id, house_catalog_id'),
+    loadAllImageSkuLinks(supabase),
   ])
 
   if (imagesRes.error) {
     console.error('[getAllCatalogImages] images:', imagesRes.error.message)
     return []
   }
-  if (linksRes.error) {
-    console.error('[getAllCatalogImages] links:', linksRes.error.message)
-    // Seguimos: devolvemos imágenes con sku_ids=[] en lugar de array vacío.
-  }
 
   const linksByImage = new Map<string, string[]>()
-  for (const link of (linksRes.data ?? []) as { image_id: string; house_catalog_id: string }[]) {
+  for (const link of allLinks) {
     const arr = linksByImage.get(link.image_id) ?? []
     arr.push(link.house_catalog_id)
     linksByImage.set(link.image_id, arr)

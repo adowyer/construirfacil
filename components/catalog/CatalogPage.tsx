@@ -86,6 +86,7 @@ export default function CatalogPage({
   const [sizeFilter, setSizeFilter] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<string>('recommended')
 
+
   const detailRef = useRef<HTMLDivElement>(null)
   const detailTrackRef = useRef<HTMLDivElement>(null)
 
@@ -94,11 +95,13 @@ export default function CatalogPage({
   //   estiloFilter: '' | <nombre exacto del estilo>
   //   bedFilter:    '' | '1' | '2' | '3' | '4+'
   //   sizeFilter:   '' | 'S' | 'SM' | 'M' | 'L' | 'XL' | 'XXL'
-  const filtered = models.filter(m => {
-    if (estiloFilter && m.estilo !== estiloFilter) return false
+
+  // Match a nivel SKU. El estilo es propiedad del modelo, no del SKU, así que
+  // no entra acá; lo evalúa el filter de modelos abajo.
+  const skuMatchesFilters = (sku: CatalogModel['skus'][number]): boolean => {
     if (bedFilter) {
-      const bMin = m.beds_min ?? 0
-      const bMax = m.beds_max ?? bMin
+      const bMin = sku.min_bedrooms ?? 0
+      const bMax = sku.max_bedrooms ?? bMin
       if (bedFilter === '4+') {
         if (bMax < 4) return false
       } else {
@@ -107,18 +110,22 @@ export default function CatalogPage({
       }
     }
     if (sizeFilter) {
-      const aMin = m.area_min ?? 0
-      const aMax = m.area_max ?? aMin
-      const overlaps = (lo: number, hi: number) =>
-        !(aMax < lo || (hi !== Infinity && aMin > hi))
-      if (sizeFilter === 'S' && !overlaps(0, 60)) return false
-      if (sizeFilter === 'SM' && !overlaps(60, 90)) return false
-      if (sizeFilter === 'M' && !overlaps(90, 130)) return false
-      if (sizeFilter === 'L' && !overlaps(130, 180)) return false
-      if (sizeFilter === 'XL' && !overlaps(180, 240)) return false
-      if (sizeFilter === 'XXL' && !overlaps(240, Infinity)) return false
+      const a = sku.area_m2 ?? 0
+      if (sizeFilter === 'S' && !(a >= 0 && a < 60)) return false
+      if (sizeFilter === 'SM' && !(a >= 60 && a < 90)) return false
+      if (sizeFilter === 'M' && !(a >= 90 && a < 130)) return false
+      if (sizeFilter === 'L' && !(a >= 130 && a < 180)) return false
+      if (sizeFilter === 'XL' && !(a >= 180 && a < 240)) return false
+      if (sizeFilter === 'XXL' && !(a >= 240)) return false
     }
     return true
+  }
+
+  // Modelo visible si está pasa el estilo Y al menos un SKU pasa los filtros.
+  const filtered = models.filter(m => {
+    if (estiloFilter && m.estilo !== estiloFilter) return false
+    if (!bedFilter && !sizeFilter) return true
+    return m.skus.some(skuMatchesFilters)
   }).sort((a, b) => {
     if (sortOrder === 'price-asc') return (a.price_from ?? 0) - (b.price_from ?? 0)
     if (sortOrder === 'price-desc') return (b.price_from ?? 0) - (a.price_from ?? 0)
@@ -129,6 +136,58 @@ export default function CatalogPage({
   // el dropdown de Estilo en la barra sticky.
   const availableEstilos = Array.from(new Set(models.map((m) => m.estilo).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b, 'es'))
+
+  // ── Filtros dinámicos: qué opciones tendrían al menos 1 modelo si se
+  // combinaran con los OTROS filtros activos. Las que no, van disabled en
+  // la barra sticky para evitar que el usuario llegue a un listado vacío.
+  const BED_OPTIONS = ['1', '2', '3', '4+']
+  const SIZE_OPTIONS = ['S', 'SM', 'M', 'L', 'XL', 'XXL']
+
+  // Predicado SKU contra una hipótesis de filtros (no consulta los del estado).
+  const skuMatchesHypothesis = (
+    sku: CatalogModel['skus'][number],
+    bf: string,
+    sf: string,
+  ): boolean => {
+    if (bf) {
+      const bMin = sku.min_bedrooms ?? 0
+      const bMax = sku.max_bedrooms ?? bMin
+      if (bf === '4+') {
+        if (bMax < 4) return false
+      } else {
+        const n = Number(bf)
+        if (bMax < n || bMin > n) return false
+      }
+    }
+    if (sf) {
+      const a = sku.area_m2 ?? 0
+      if (sf === 'S' && !(a >= 0 && a < 60)) return false
+      if (sf === 'SM' && !(a >= 60 && a < 90)) return false
+      if (sf === 'M' && !(a >= 90 && a < 130)) return false
+      if (sf === 'L' && !(a >= 130 && a < 180)) return false
+      if (sf === 'XL' && !(a >= 180 && a < 240)) return false
+      if (sf === 'XXL' && !(a >= 240)) return false
+    }
+    return true
+  }
+
+  // ¿Hay al menos 1 modelo que pase (estilo, bed, size)?
+  const hasResultsFor = (estilo: string, bed: string, size: string): boolean =>
+    models.some((m) => {
+      if (estilo && m.estilo !== estilo) return false
+      if (!bed && !size) return true
+      return m.skus.some((s) => skuMatchesHypothesis(s, bed, size))
+    })
+
+  const enabledBeds = new Set(
+    BED_OPTIONS.filter((b) => hasResultsFor(estiloFilter, b, sizeFilter)),
+  )
+  const enabledSizes = new Set(
+    SIZE_OPTIONS.filter((s) => hasResultsFor(estiloFilter, bedFilter, s)),
+  )
+  const enabledEstilos = new Set(
+    availableEstilos.filter((e) => hasResultsFor(e, bedFilter, sizeFilter)),
+  )
 
   // ── Group by line ──
   const grouped = LINE_ORDER.reduce((acc, line) => {
@@ -311,6 +370,9 @@ export default function CatalogPage({
         sizeFilter={sizeFilter}
         sortOrder={sortOrder}
         availableEstilos={availableEstilos}
+        enabledBeds={enabledBeds}
+        enabledSizes={enabledSizes}
+        enabledEstilos={enabledEstilos}
         onEstiloChange={setEstiloFilter}
         onBedChange={setBedFilter}
         onSizeChange={setSizeFilter}
@@ -326,15 +388,21 @@ export default function CatalogPage({
               const mcKey = `${model.linea}::${model.style_name}`
               const mc = modelContentMap[mcKey] ?? null
 
-              // Imágenes linkeadas a alguno de los SKUs del modelo (vía model_image_skus).
-              const skuIds = new Set(model.skus.map((s) => s.id))
-              const modelImages = catalogImages.filter((img) =>
-                img.sku_ids.some((id) => skuIds.has(id)),
-              )
+              // Si hay filtros de bed/size activos, filtramos los SKUs del
+              // modelo a los que matchean. Las imágenes y atributos siguen
+              // los SKUs filtrados, así el slider del expandido y el panel
+              // de variantes solo muestran las que el usuario buscó.
+              const hasSkuFilter = Boolean(bedFilter || sizeFilter)
+              const activeSkus = hasSkuFilter
+                ? model.skus.filter(skuMatchesFilters)
+                : model.skus
+              const activeSkuIds = new Set(activeSkus.map((s) => s.id))
 
-              // Attributes filtrados por house_catalog_id ∈ skus del modelo
+              const modelImages = catalogImages.filter((img) =>
+                img.sku_ids.some((id) => activeSkuIds.has(id)),
+              )
               const modelAttributes = catalogAttributes.filter((a) =>
-                skuIds.has(a.house_catalog_id),
+                activeSkuIds.has(a.house_catalog_id),
               )
 
               // Otros modelos en la misma (linea, tipologia_code) — para panel 5
@@ -353,6 +421,7 @@ export default function CatalogPage({
                   onOpen={openDetail}
                   modelContent={mc}
                   images={modelImages}
+                  activeSkus={activeSkus}
                   brandContent={brandContent}
                   lineContent={lineContent}
                   attributesForCatalogIds={modelAttributes}

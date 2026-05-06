@@ -39,6 +39,10 @@ interface ModelRowProps {
   // Datos para los paneles del expandido (opcional para compat retro)
   modelContent?: ModelContentRow | null
   images?: CatalogImage[]
+  /** SKUs del modelo que matchean los filtros activos (bed/size). El panel
+   *  de variantes los usa en lugar de model.skus para no mostrar variantes
+   *  que el usuario filtró fuera. Si no hay filtros activos, viene = model.skus. */
+  activeSkus?: CatalogModel['skus']
   brandContent?: BrandContentLite[]
   lineContent?: LineContentLite[]
   attributesForCatalogIds?: CatalogAttributeRow[]
@@ -72,6 +76,7 @@ export default function ModelRow({
   onOpen,
   modelContent = null,
   images = [],
+  activeSkus,
   brandContent = [],
   lineContent = [],
   attributesForCatalogIds = [],
@@ -343,6 +348,7 @@ export default function ModelRow({
               model={model}
               modelContent={modelContent}
               images={images}
+              activeSkus={activeSkus ?? model.skus}
               brandContent={brandContent}
               lineContent={lineContent}
               attributesForCatalogIds={attributesForCatalogIds}

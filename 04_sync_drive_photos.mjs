@@ -195,7 +195,7 @@ function inferContext(pathParts, fileName) {
   let casa_folder = null
 
   if (/^axonometrias$/i.test(section)) {
-    image_type = 'plano'
+    image_type = 'axo'
     is_exterior = false
     // Scope tipología (sin Casa X)
   } else if (/^planos$/i.test(section)) {

@@ -1547,6 +1547,121 @@ body:has(.cf-row.cf-expanded) {
   color: #fff;
 }
 
+/* ── Tabs verticales por variante (aside left) en paneles galería ── */
+/* Solo se renderean cuando el modelo tiene 2+ variantes en activeSkus.    */
+/* Alineados horizontal y verticalmente con el pill "Exteriores/Interiores" */
+/* del top-left: mismo left que padding del overlay, justo debajo del pill. */
+.cf-pn-variant-tabs {
+  position: absolute;
+  left: 56px;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+}
+
+.cf-pn-variant-tab {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  min-width: 76px;
+  text-align: center;
+}
+
+.cf-pn-variant-tab:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.cf-pn-variant-tab.active {
+  background: #fff;
+  color: #0a0a0a;
+}
+
+/* En paneles con bg claro (Planos/Axos), invertir los tabs */
+.cf-pn-gallery-light .cf-pn-variant-tab {
+  background: rgba(0, 0, 0, 0.08);
+  color: #333;
+}
+.cf-pn-gallery-light .cf-pn-variant-tab:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+.cf-pn-gallery-light .cf-pn-variant-tab.active {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.cf-pn-empty-msg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Paneles galería con bg claro (Planos PDF + Axonometrías PNG) ──── */
+/* Sobre el bg #f7f6f1, el overlay no debe oscurecer (sin gradient) y */
+/* los elementos blancos translúcidos pasan a tono oscuro.            */
+.cf-pn-gallery-light .cf-pn-gallery-overlay {
+  background: none;
+}
+
+.cf-pn-gallery-light .cf-pn-pill {
+  background: rgba(0, 0, 0, 0.08);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #333;
+}
+.cf-pn-gallery-light .cf-pn-pill:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+.cf-pn-gallery-light .cf-pn-pill.active {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.cf-pn-gallery-light .cf-pn-gallery-label {
+  background: rgba(0, 0, 0, 0.08);
+  color: #333;
+}
+
+/* ── PDFs (planos arquitectónicos) ──────────────────────────────────── */
+/* El embed se enmarca con margen para que respire dentro del panel y    */
+/* deje espacio al label arriba y los pills abajo.                        */
+.cf-pn-pdf-embed {
+  position: absolute;
+  top: 90px;
+  right: 80px;
+  bottom: 90px;
+  left: 80px;
+  border: 0;
+  background: #fff;
+}
+
+/* Para que pills/tabs sean clickeables sobre el embed (que captura events) */
+.cf-pn-gallery-pdf .cf-pn-gallery-overlay {
+  pointer-events: none;
+}
+.cf-pn-gallery-pdf .cf-pn-gallery-top,
+.cf-pn-gallery-pdf .cf-pn-pills,
+.cf-pn-gallery-pdf .cf-pn-variant-tabs {
+  pointer-events: auto;
+}
+
 /* ── Panel texto largo (3, sólo texto) ── */
 
 .cf-pn-text {
@@ -2624,6 +2739,15 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-stf-pill-dark {
   background: rgba(0, 0, 0, 0.1);
+}
+
+/* Disabled: combinaciones que vaciarían el listado. No clickeable. */
+.cf-stf-pill-disabled,
+.cf-stf-pill-disabled:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .cf-stf-spacer {

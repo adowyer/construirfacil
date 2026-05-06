@@ -51,6 +51,9 @@ interface PanelsProps {
   model: CatalogModel
   modelContent: ModelContentRow | null
   images: CatalogImage[]
+  /** SKUs filtrados por bed/size; los paneles que muestren variantes deben
+   *  iterar acá en lugar de model.skus para no salir del filtro del usuario. */
+  activeSkus: CatalogModel['skus']
   brandContent: BrandContentLite[]
   lineContent: LineContentLite[]
   attributesForCatalogIds: CatalogAttributeRow[] // todos los attributes de los SKUs del modelo
@@ -166,67 +169,182 @@ export function Panel1Description({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel 2 / 4 — Galería exteriores / interiores
+// Panel galería genérico — base para Exteriores, Interiores, Planos, Axos
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function PanelGallery({
-  model,
+/**
+ * Slider de imágenes con:
+ *   - tabs verticales aside-left por variante (Todas / V1 / V2…) si activeSkus
+ *     tiene 2+ variantes únicas. Default = "Todas".
+ *   - pills de view_label abajo (cambian según el tab activo).
+ *
+ * El caller le pasa `images` ya filtradas por tipo (renders/planos/axos) y por
+ * is_exterior si aplica. Este componente NO chequea vacío — el caller debe
+ * usar `hasImagesFor*()` antes de invocarlo, sino devuelve un slide vacío.
+ */
+function PanelImageSlider({
   images,
-  isExterior,
+  activeSkus,
+  label,
+  bgSize = 'cover',
+  pillFallback,
 }: {
-  model: CatalogModel
   images: CatalogImage[]
-  isExterior: boolean
+  activeSkus: CatalogModel['skus']
+  label: string
+  bgSize?: 'cover' | 'contain'
+  pillFallback: (i: number) => string
 }) {
-  // Excluimos planos/axonométricas: viven en su propio panel.
-  const filtered = images.filter(
-    (img) =>
-      Boolean(img.is_exterior) === isExterior &&
-      img.image_type !== 'plano',
-  )
-  const [active, setActive] = useState(0)
+  // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
+  // y V1.2 (subversiones que solo cambian detalles internos). V3 incluye V3.1.
+  // El tab muestra solo el major; click en V1 filtra fotos de cualquier sku
+  // cuya variante empiece con "1" (1, 1.1, 1.2, …).
+  const variantsByMajor = new Map<string, Set<string>>()
+  for (const sku of activeSkus) {
+    const major = String(sku.variante).split('.')[0]
+    if (!variantsByMajor.has(major)) variantsByMajor.set(major, new Set())
+    variantsByMajor.get(major)!.add(sku.variante)
+  }
+  const majorVariants = Array.from(variantsByMajor.keys()).sort((a, b) => {
+    const na = parseInt(a, 10)
+    const nb = parseInt(b, 10)
+    if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb
+    return a.localeCompare(b)
+  })
+  const hasVariantTabs = majorVariants.length >= 2
+
+  const [activeMajor, setActiveMajor] = useState<string | null>(null)
+  const [activePillIdx, setActivePillIdx] = useState(0)
+
+  const filtered = images.filter((img) => {
+    if (activeMajor === null) return true
+    // Imagen aplica al major si linkea a algún sku con variante del grupo (1, 1.1, …)
+    const minors = variantsByMajor.get(activeMajor) ?? new Set<string>()
+    const variantSkuIds = activeSkus
+      .filter((s) => minors.has(s.variante))
+      .map((s) => s.id)
+    return img.sku_ids.some((id) => variantSkuIds.includes(id))
+  })
 
   if (filtered.length === 0) {
+    // Edge case: el usuario seleccionó una variante que no tiene fotos en este
+    // panel. Resetear a "Todas" via un onClick automático sería confuso —
+    // mejor mostrar un mensaje sutil.
     return (
-      <div className="cf-pn cf-pn-gallery cf-pn-empty">
-        <div className="cf-pn-empty-content">
-          <p className="cf-pn-eyebrow">{isExterior ? 'Exteriores' : 'Interiores'}</p>
-          <h2 className="cf-pn-title">{model.display_name}</h2>
-          <p className="cf-pn-body-empty">
-            Sin {isExterior ? 'exteriores' : 'interiores'} cargados todavía.
-          </p>
+      <div
+        className="cf-pn cf-pn-gallery"
+        style={{ backgroundColor: bgSize === 'contain' ? '#f7f6f1' : '#1a1a1a' }}
+      >
+        <div className="cf-pn-gallery-overlay">
+          <div className="cf-pn-gallery-top">
+            <span className="cf-pn-gallery-label">{label}</span>
+          </div>
+          {hasVariantTabs && (
+            <div className="cf-pn-variant-tabs">
+              <button
+                type="button"
+                className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveMajor(null)
+                  setActivePillIdx(0)
+                }}
+              >
+                Todas
+              </button>
+              {majorVariants.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`cf-pn-variant-tab ${activeMajor === v ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveMajor(v)
+                    setActivePillIdx(0)
+                  }}
+                >
+                  V{v}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="cf-pn-empty-msg">Sin fotos para esta variante.</div>
         </div>
       </div>
     )
   }
 
-  const safeActive = Math.min(active, filtered.length - 1)
-  const current = filtered[safeActive]
+  const safeIdx = Math.min(activePillIdx, filtered.length - 1)
+  const current = filtered[safeIdx]
+  const isPdf = /\.pdf($|\?)/i.test(current.storage_url)
+  // Paneles con bg claro: planos PDF, axonometrías. Cuando el panel es claro,
+  // aplicamos `cf-pn-gallery-light` que apaga el gradient negro del overlay y
+  // ajusta colores de pills/labels para mantener contraste.
+  const isLight = bgSize === 'contain' || isPdf
 
   return (
     <div
-      className="cf-pn cf-pn-gallery"
-      style={{
-        backgroundImage: `url('${current.storage_url}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      className={`cf-pn cf-pn-gallery${isLight ? ' cf-pn-gallery-light' : ''}${isPdf ? ' cf-pn-gallery-pdf' : ''}`}
+      style={
+        isPdf
+          ? { backgroundColor: '#f7f6f1' }
+          : {
+              backgroundImage: `url('${current.storage_url}')`,
+              backgroundSize: bgSize,
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              backgroundColor: bgSize === 'contain' ? '#f7f6f1' : undefined,
+            }
+      }
     >
+      {isPdf && (
+        <embed
+          src={`${current.storage_url}#toolbar=0&navpanes=0`}
+          type="application/pdf"
+          className="cf-pn-pdf-embed"
+        />
+      )}
       <div className="cf-pn-gallery-overlay">
         <div className="cf-pn-gallery-top">
-          <span className="cf-pn-gallery-label">
-            {isExterior ? 'Exteriores' : 'Interiores'}
-          </span>
+          <span className="cf-pn-gallery-label">{label}</span>
         </div>
+
+        {/* Tabs verticales por variante (solo si hay 2+) */}
+        {hasVariantTabs && (
+          <div className="cf-pn-variant-tabs">
+            <button
+              type="button"
+              className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
+              onClick={() => {
+                setActiveMajor(null)
+                setActivePillIdx(0)
+              }}
+            >
+              Todas
+            </button>
+            {majorVariants.map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={`cf-pn-variant-tab ${activeMajor === v ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveMajor(v)
+                  setActivePillIdx(0)
+                }}
+              >
+                V{v}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="cf-pn-pills">
           {filtered.map((img, i) => (
             <button
               key={img.id}
               type="button"
-              className={`cf-pn-pill ${i === safeActive ? 'active' : ''}`}
-              onClick={() => setActive(i)}
+              className={`cf-pn-pill ${i === safeIdx ? 'active' : ''}`}
+              onClick={() => setActivePillIdx(i)}
             >
-              {img.view_label ?? `Foto ${i + 1}`}
+              {img.view_label ?? pillFallback(i)}
             </button>
           ))}
         </div>
@@ -236,67 +354,91 @@ export function PanelGallery({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel Planos — planos arquitectónicos + axonometrías
+// Wrappers tipados: cada uno filtra y devuelve null si no hay fotos para ese
+// slot (el orquestador se basa en hasImagesFor* para decidir si renderear).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function PanelPlanos({
-  model,
+const isExteriorRender = (img: CatalogImage) =>
+  img.is_exterior === true && img.image_type === 'render'
+const isInteriorRender = (img: CatalogImage) =>
+  img.is_exterior === false && img.image_type === 'render'
+const isPlano = (img: CatalogImage) => img.image_type === 'plano'
+const isAxo = (img: CatalogImage) => img.image_type === 'axo'
+
+export const hasExterioresImages = (imgs: CatalogImage[]) => imgs.some(isExteriorRender)
+export const hasInterioresImages = (imgs: CatalogImage[]) => imgs.some(isInteriorRender)
+export const hasPlanosImages = (imgs: CatalogImage[]) => imgs.some(isPlano)
+export const hasAxosImages = (imgs: CatalogImage[]) => imgs.some(isAxo)
+
+export function PanelExteriores({
   images,
+  activeSkus,
 }: {
-  model: CatalogModel
   images: CatalogImage[]
+  activeSkus: CatalogModel['skus']
 }) {
-  // Solo imágenes con image_type='plano' (incluye axonometrías por convención).
-  // Filtramos también por aplicabilidad al modelo (mismo match que el resto).
-  const filtered = images.filter((img) => img.image_type === 'plano')
-  const [active, setActive] = useState(0)
-
-  if (filtered.length === 0) {
-    return (
-      <div className="cf-pn cf-pn-gallery cf-pn-empty">
-        <div className="cf-pn-empty-content">
-          <p className="cf-pn-eyebrow">Planos</p>
-          <h2 className="cf-pn-title">{model.display_name}</h2>
-          <p className="cf-pn-body-empty">
-            Sin planos cargados todavía.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  const safeActive = Math.min(active, filtered.length - 1)
-  const current = filtered[safeActive]
-
   return (
-    <div
-      className="cf-pn cf-pn-gallery"
-      style={{
-        backgroundImage: `url('${current.storage_url}')`,
-        backgroundSize: 'contain',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: '#f7f6f1',
-      }}
-    >
-      <div className="cf-pn-gallery-overlay">
-        <div className="cf-pn-gallery-top">
-          <span className="cf-pn-gallery-label">Planos</span>
-        </div>
-        <div className="cf-pn-pills">
-          {filtered.map((img, i) => (
-            <button
-              key={img.id}
-              type="button"
-              className={`cf-pn-pill ${i === safeActive ? 'active' : ''}`}
-              onClick={() => setActive(i)}
-            >
-              {img.view_label ?? `Plano ${i + 1}`}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <PanelImageSlider
+      images={images.filter(isExteriorRender)}
+      activeSkus={activeSkus}
+      label="Exteriores"
+      bgSize="cover"
+      pillFallback={(i) => `Foto ${i + 1}`}
+    />
+  )
+}
+
+export function PanelInteriores({
+  images,
+  activeSkus,
+}: {
+  images: CatalogImage[]
+  activeSkus: CatalogModel['skus']
+}) {
+  return (
+    <PanelImageSlider
+      images={images.filter(isInteriorRender)}
+      activeSkus={activeSkus}
+      label="Interiores"
+      bgSize="cover"
+      pillFallback={(i) => `Foto ${i + 1}`}
+    />
+  )
+}
+
+export function PanelPlanos({
+  images,
+  activeSkus,
+}: {
+  images: CatalogImage[]
+  activeSkus: CatalogModel['skus']
+}) {
+  return (
+    <PanelImageSlider
+      images={images.filter(isPlano)}
+      activeSkus={activeSkus}
+      label="Planos"
+      bgSize="contain"
+      pillFallback={(i) => `Plano ${i + 1}`}
+    />
+  )
+}
+
+export function PanelAxos({
+  images,
+  activeSkus,
+}: {
+  images: CatalogImage[]
+  activeSkus: CatalogModel['skus']
+}) {
+  return (
+    <PanelImageSlider
+      images={images.filter(isAxo)}
+      activeSkus={activeSkus}
+      label="Axonometrías"
+      bgSize="contain"
+      pillFallback={(i) => `Vista ${i + 1}`}
+    />
   )
 }
 
@@ -474,18 +616,20 @@ export function PanelEstilosCompare({
 export function Panel6CasaQueCrece({
   model,
   brandContent,
+  activeSkus,
 }: {
   model: CatalogModel
   brandContent: BrandContentLite[]
+  activeSkus: CatalogModel['skus']
 }) {
   const concept = brandContent.find((b) => b.key === 'concept')
-  // Variantes únicas (sin repetir sistema)
-  const uniqueVars = model.skus.reduce(
+  // Variantes únicas dentro de las activeSkus (respeta filtros del usuario)
+  const uniqueVars = activeSkus.reduce(
     (acc, s) => {
       if (!acc.find((v) => v.variante === s.variante)) acc.push(s)
       return acc
     },
-    [] as typeof model.skus,
+    [] as typeof activeSkus,
   )
 
   return (
@@ -536,16 +680,19 @@ export function Panel6CasaQueCrece({
 export function Panel7Comparativo({
   model,
   images,
+  activeSkus,
 }: {
   model: CatalogModel
   images: CatalogImage[]
+  activeSkus: CatalogModel['skus']
 }) {
-  const uniqueVars = model.skus.reduce(
+  // Si el usuario filtró por bed/size, activeSkus viene reducido. Sino es model.skus.
+  const uniqueVars = activeSkus.reduce(
     (acc, s) => {
       if (!acc.find((v) => v.variante === s.variante)) acc.push(s)
       return acc
     },
-    [] as typeof model.skus,
+    [] as typeof activeSkus,
   )
   const [active, setActive] = useState(0)
   const currentVar = uniqueVars[active] ?? uniqueVars[0]
@@ -737,24 +884,30 @@ export function PanelSistemaConstructivo({
 // Panel 9 — Datos + Precios + CTA (Ficha Completa)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function Panel9Datos({ model }: { model: CatalogModel }) {
+export function Panel9Datos({
+  model,
+  activeSkus,
+}: {
+  model: CatalogModel
+  activeSkus: CatalogModel['skus']
+}) {
   const [selectedVariant, setSelectedVariant] = useState(0)
   const [selectedSystem, setSelectedSystem] = useState(0)
 
-  const uniqueVars = model.skus.reduce(
+  const uniqueVars = activeSkus.reduce(
     (acc, s) => {
       if (!acc.find((v) => v.variante === s.variante)) acc.push(s)
       return acc
     },
-    [] as typeof model.skus,
+    [] as typeof activeSkus,
   )
 
   const currentSku =
-    model.skus.find(
+    activeSkus.find(
       (s) =>
         s.variante === uniqueVars[selectedVariant]?.variante &&
         s.sistema_constructivo === model.systems[selectedSystem],
-    ) ?? model.skus[0]
+    ) ?? activeSkus[0] ?? model.skus[0]
 
   const wapText = encodeURIComponent(
     `Hola, me interesa el modelo ${model.display_name} (variante ${
@@ -849,8 +1002,11 @@ export function Panel9Datos({ model }: { model: CatalogModel }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ExpandedPanels(props: PanelsProps) {
-  // Si la línea no tiene planos cargados (ej. ATLAS hoy), saltamos el slide.
-  const hasPlanos = props.images.some((img) => img.image_type === 'plano')
+  // Decidimos slide por slide si hay contenido. Sin contenido → no rendereamos.
+  const hasExt = hasExterioresImages(props.images)
+  const hasInt = hasInterioresImages(props.images)
+  const hasPlanos = hasPlanosImages(props.images)
+  const hasAxos = hasAxosImages(props.images)
 
   return (
     <>
@@ -859,15 +1015,19 @@ export default function ExpandedPanels(props: PanelsProps) {
         <Panel1Description model={props.model} modelContent={props.modelContent} />
       </div>
 
-      {/* 2. Exteriores */}
-      <div className="cf-station-slide cf-slide-image">
-        <PanelGallery model={props.model} images={props.images} isExterior={true} />
-      </div>
+      {/* 2. Exteriores — solo si hay fotos */}
+      {hasExt && (
+        <div className="cf-station-slide cf-slide-image">
+          <PanelExteriores images={props.images} activeSkus={props.activeSkus} />
+        </div>
+      )}
 
-      {/* 3. Interiores */}
-      <div className="cf-station-slide cf-slide-image">
-        <PanelGallery model={props.model} images={props.images} isExterior={false} />
-      </div>
+      {/* 3. Interiores — solo si hay fotos */}
+      {hasInt && (
+        <div className="cf-station-slide cf-slide-image">
+          <PanelInteriores images={props.images} activeSkus={props.activeSkus} />
+        </div>
+      )}
 
       {/* 4. Estilo (intro de estilos de la línea, solo texto) */}
       <div className="cf-station-slide cf-slide-text">
@@ -888,26 +1048,33 @@ export default function ExpandedPanels(props: PanelsProps) {
         <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
       </div>
 
-      {/* 7. Planos / Axonometrías — solo si hay imágenes cargadas */}
+      {/* 7. Planos arquitectónicos — solo si hay */}
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image">
-          <PanelPlanos model={props.model} images={props.images} />
+          <PanelPlanos images={props.images} activeSkus={props.activeSkus} />
+        </div>
+      )}
+
+      {/* 8. Axonometrías — solo si hay */}
+      {hasAxos && (
+        <div className="cf-station-slide cf-slide-image">
+          <PanelAxos images={props.images} activeSkus={props.activeSkus} />
         </div>
       )}
 
       {/* 8. La Casa que Crece (concept) */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
-        <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} />
+        <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
       </div>
 
       {/* 9. Comparativo de variantes (V1 / V2) */}
       <div className="cf-station-slide cf-slide-image">
-        <Panel7Comparativo model={props.model} images={props.images} />
+        <Panel7Comparativo model={props.model} images={props.images} activeSkus={props.activeSkus} />
       </div>
 
       {/* 10. Ficha Completa (datos + precios + WhatsApp CTA) */}
       <div className="cf-station-slide cf-slide-text">
-        <Panel9Datos model={props.model} />
+        <Panel9Datos model={props.model} activeSkus={props.activeSkus} />
       </div>
 
       {/* 11. Sistema Constructivo */}

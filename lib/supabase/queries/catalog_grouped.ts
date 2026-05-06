@@ -174,10 +174,31 @@ export async function getGroupedCatalog(
   // house_catalog_id, igual que el resto del catálogo público.)
   const coversByGroup = new Map<string, { url: string; lqip: string }>()
 
-  const [linksRes, imgsRes] = await Promise.all([
-    supabase
-      .from('model_image_skus')
-      .select('image_id, house_catalog_id'),
+  // Paginar manualmente la query de links: PostgREST tiene cap server-side
+  // (~1000) que `.range()` no siempre pasa.
+  async function loadAllLinks() {
+    const out: { image_id: string; house_catalog_id: string }[] = []
+    const PAGE = 1000
+    let from = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from('model_image_skus')
+        .select('image_id, house_catalog_id')
+        .range(from, from + PAGE - 1)
+      if (error) {
+        console.error('[getGroupedCatalog] links page error:', error.message)
+        break
+      }
+      if (!data || data.length === 0) break
+      out.push(...(data as { image_id: string; house_catalog_id: string }[]))
+      if (data.length < PAGE) break
+      from += PAGE
+    }
+    return out
+  }
+
+  const [allLinks, imgsRes] = await Promise.all([
+    loadAllLinks(),
     supabase
       .from('model_images')
       .select('id, storage_url, lqip_color, sort_order')
@@ -187,7 +208,6 @@ export async function getGroupedCatalog(
       .order('sort_order', { ascending: true }),
   ])
 
-  if (linksRes.error) console.error('[getGroupedCatalog] links:', linksRes.error.message)
   if (imgsRes.error) console.error('[getGroupedCatalog] imgs:', imgsRes.error.message)
 
   // Index image_id → image (solo exteriores tipo render).
@@ -209,7 +229,7 @@ export async function getGroupedCatalog(
     string,
     { url: string; lqip: string; sort_order: number }
   >()
-  for (const link of linksRes.data ?? []) {
+  for (const link of allLinks) {
     const img = imgById.get(link.image_id)
     if (!img) continue
     const existing = coverByHouseCatalogId.get(link.house_catalog_id)

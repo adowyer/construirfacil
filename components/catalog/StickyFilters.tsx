@@ -19,6 +19,12 @@ interface StickyFiltersProps {
   sizeFilter: string
   sortOrder: string
   availableEstilos: string[]
+  /** Sets de opciones que SÍ tienen resultados con los otros filtros activos.
+   *  Si una opción no está en el set, se renderiza disabled. La opción ya
+   *  activa siempre queda habilitada (para poder destildarla). */
+  enabledBeds?: Set<string>
+  enabledSizes?: Set<string>
+  enabledEstilos?: Set<string>
   onEstiloChange: (v: string) => void
   onBedChange: (v: string) => void
   onSizeChange: (v: string) => void
@@ -48,11 +54,25 @@ export default function StickyFilters({
   sizeFilter,
   sortOrder,
   availableEstilos,
+  enabledBeds,
+  enabledSizes,
+  enabledEstilos,
   onEstiloChange,
   onBedChange,
   onSizeChange,
   onSortChange,
 }: StickyFiltersProps) {
+  // Una opción está habilitada si:
+  //   - no le pasamos sets de "enabled" (modo retro-compat / sin filtros activos), o
+  //   - está en el set, o
+  //   - es la opción ya activa (para poder destildarla).
+  const isBedEnabled = (v: string) =>
+    !enabledBeds || enabledBeds.has(v) || bedFilter === v
+  const isSizeEnabled = (v: string) =>
+    !enabledSizes || enabledSizes.has(v) || sizeFilter === v
+  const isEstiloEnabled = (v: string) =>
+    !enabledEstilos || enabledEstilos.has(v) || estiloFilter === v
+
   return (
     <div className="cf-sticky-filters">
       <div className="cf-sticky-filters-inner">
@@ -67,7 +87,7 @@ export default function StickyFilters({
           >
             <option value="">Cualquiera</option>
             {availableEstilos.map((e) => (
-              <option key={e} value={e}>
+              <option key={e} value={e} disabled={!isEstiloEnabled(e)}>
                 {e}
               </option>
             ))}
@@ -77,31 +97,43 @@ export default function StickyFilters({
         {/* DORMITORIOS — pills */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Dorm.</span>
-          {BED_OPTIONS.map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={`cf-stf-pill ${bedFilter === v ? 'active' : ''}`}
-              onClick={() => onBedChange(bedFilter === v ? '' : v)}
-            >
-              {v}
-            </button>
-          ))}
+          {BED_OPTIONS.map((v) => {
+            const enabled = isBedEnabled(v)
+            return (
+              <button
+                key={v}
+                type="button"
+                className={`cf-stf-pill ${bedFilter === v ? 'active' : ''} ${
+                  enabled ? '' : 'cf-stf-pill-disabled'
+                }`}
+                disabled={!enabled}
+                onClick={() => onBedChange(bedFilter === v ? '' : v)}
+              >
+                {v}
+              </button>
+            )
+          })}
         </div>
 
         {/* SUPERFICIE — pills */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Superficie</span>
-          {SIZE_OPTIONS.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              className={`cf-stf-pill ${sizeFilter === s.value ? 'active' : ''}`}
-              onClick={() => onSizeChange(sizeFilter === s.value ? '' : s.value)}
-            >
-              {s.label}
-            </button>
-          ))}
+          {SIZE_OPTIONS.map((s) => {
+            const enabled = isSizeEnabled(s.value)
+            return (
+              <button
+                key={s.value}
+                type="button"
+                className={`cf-stf-pill ${sizeFilter === s.value ? 'active' : ''} ${
+                  enabled ? '' : 'cf-stf-pill-disabled'
+                }`}
+                disabled={!enabled}
+                onClick={() => onSizeChange(sizeFilter === s.value ? '' : s.value)}
+              >
+                {s.label}
+              </button>
+            )
+          })}
         </div>
 
         <div className="cf-stf-spacer" />
