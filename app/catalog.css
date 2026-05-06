@@ -792,7 +792,7 @@ body:has(.cf-row.cf-expanded) {
   width: clamp(800px, 58vw, 1080px);
 }
 
-.cf-station-slide > * {
+.cf-station-slide>* {
   width: 100%;
   height: 100%;
 }
@@ -1310,6 +1310,7 @@ body:has(.cf-row.cf-expanded) {
 .nextjs-toast {
   display: none !important;
 }
+
 /* ============================================================================
    Expanded Panels — 9 paneles del expandido del catálogo público
    (componente ExpandedPanels.tsx)
@@ -1452,13 +1453,11 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-gallery-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.5) 0%,
-    rgba(0, 0, 0, 0) 30%,
-    rgba(0, 0, 0, 0) 60%,
-    rgba(0, 0, 0, 0.55) 100%
-  );
+  background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0) 30%,
+      rgba(0, 0, 0, 0) 60%,
+      rgba(0, 0, 0, 0.55) 100%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1594,9 +1593,11 @@ body:has(.cf-row.cf-expanded) {
   background: rgba(0, 0, 0, 0.08);
   color: #333;
 }
+
 .cf-pn-gallery-light .cf-pn-variant-tab:hover {
   background: rgba(0, 0, 0, 0.16);
 }
+
 .cf-pn-gallery-light .cf-pn-variant-tab.active {
   background: #0a0a0a;
   color: #fff;
@@ -1626,9 +1627,11 @@ body:has(.cf-row.cf-expanded) {
   backdrop-filter: none;
   color: #333;
 }
+
 .cf-pn-gallery-light .cf-pn-pill:hover {
   background: rgba(0, 0, 0, 0.16);
 }
+
 .cf-pn-gallery-light .cf-pn-pill.active {
   background: #0a0a0a;
   color: #fff;
@@ -1659,6 +1662,7 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-gallery-pdf .cf-pn-gallery-overlay {
   pointer-events: none;
 }
+
 .cf-pn-gallery-pdf .cf-pn-gallery-top,
 .cf-pn-gallery-pdf .cf-pn-pills,
 .cf-pn-gallery-pdf .cf-pn-variant-tabs {
@@ -1687,6 +1691,7 @@ body:has(.cf-row.cf-expanded) {
   position: relative;
   width: 100%;
 }
+
 .cf-scrollable-body-content {
   overflow-y: auto;
   /* 32vh: balance entre mostrar suficiente texto sin que el botón ↓ quede
@@ -1698,9 +1703,11 @@ body:has(.cf-row.cf-expanded) {
   /* Sin scrollbar visible — los botones son el control */
   scrollbar-width: none;
 }
+
 .cf-scrollable-body-content::-webkit-scrollbar {
   display: none;
 }
+
 .cf-scrollable-body-btn {
   position: absolute;
   right: 4px;
@@ -1721,17 +1728,21 @@ body:has(.cf-row.cf-expanded) {
   font-family: inherit;
   line-height: 1;
 }
+
 .cf-scrollable-body-btn:hover:not(:disabled) {
   background: #fff;
   transform: scale(1.08);
 }
+
 .cf-scrollable-body-btn:disabled {
   opacity: 0.32;
   cursor: default;
 }
+
 .cf-scrollable-body-btn-up {
   top: 4px;
 }
+
 .cf-scrollable-body-btn-down {
   bottom: 4px;
 }
@@ -1794,20 +1805,16 @@ body:has(.cf-row.cf-expanded) {
   overflow-y: auto;
   padding-bottom: 28px;
   /* Máscara sutil para indicar scroll arriba/abajo. */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 18px,
-    #000 calc(100% - 28px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 18px,
-    #000 calc(100% - 28px),
-    transparent 100%
-  );
+  -webkit-mask-image: linear-gradient(to bottom,
+      transparent 0,
+      #000 18px,
+      #000 calc(100% - 28px),
+      transparent 100%);
+  mask-image: linear-gradient(to bottom,
+      transparent 0,
+      #000 18px,
+      #000 calc(100% - 28px),
+      transparent 100%);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
 }
@@ -1922,13 +1929,11 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-compare-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.55) 0%,
-    rgba(0, 0, 0, 0) 35%,
-    rgba(0, 0, 0, 0) 55%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
+  background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.55) 0%,
+      rgba(0, 0, 0, 0) 35%,
+      rgba(0, 0, 0, 0) 55%,
+      rgba(0, 0, 0, 0.7) 100%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2165,12 +2170,14 @@ body:has(.cf-row.cf-expanded) {
 /* ── Mobile ── */
 
 @media (max-width: 768px) {
+
   .cf-pn-desc-grid,
   .cf-pn-estilos-grid,
   .cf-pn-crece-grid {
     grid-template-columns: 1fr;
     gap: 32px;
   }
+
   .cf-pn-desc,
   .cf-pn-text,
   .cf-pn-estilos,
@@ -2179,6 +2186,7 @@ body:has(.cf-row.cf-expanded) {
   .cf-pn-datos {
     padding: 40px 24px;
   }
+
   .cf-pn-gallery-overlay,
   .cf-pn-compare-overlay {
     padding: 28px 20px;
@@ -2242,7 +2250,8 @@ body:has(.cf-row.cf-expanded) {
 .cf-hero-row-slide {
   flex: 0 0 auto;
   height: 100%;
-  aspect-ratio: 16 / 10; /* matchea las fotos colapsadas */
+  aspect-ratio: 16 / 10;
+  /* matchea las fotos colapsadas */
   scroll-snap-align: center;
   position: relative;
 }
@@ -2686,10 +2695,12 @@ body:has(.cf-row.cf-expanded) {
     width: 100vw;
     max-width: 100vw;
   }
+
   .cf-concepto-modal-inner {
     border-radius: 0;
     padding: 28px 22px;
   }
+
   .cf-concepto-modal-grid {
     grid-template-columns: 1fr;
   }
@@ -2857,4 +2868,641 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-compare,
 .cf-hero-slide-card {
   border-radius: 10px;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+/* HERO ROW v2 — slides editoriales del documento Sistema Constructivo.    */
+/* Orden: [Casa que Crece] ← [Flex] ← [PRINCIPAL] → [Mudarse] → [Ventajas] → [Calidad] */
+/* ═════════════════════════════════════════════════════════════════════════ */
+
+/* Slide PRINCIPAL: bastante más ancho para que el manifesto respire. */
+.cf-hero-row-slide-principal {
+  aspect-ratio: 18 / 10;
+}
+
+/* Slides de sección secundarios + crece: aspect-ratio normal del listado. */
+.cf-hero-row-slide-section,
+.cf-hero-row-slide-crece {
+  aspect-ratio: 16 / 10;
+}
+
+/* Botón "Ver más" reutilizable (sobre fondo claro). Variante -light para */
+/* fondos oscuros (slide principal sobre SVG dark).                         */
+.cf-hero-more-btn {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 9px 16px;
+  background: #0a0a0a;
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.cf-hero-more-btn:hover {
+  background: #ff003d;
+  transform: translateX(2px);
+}
+
+.cf-hero-more-btn-light {
+  background: #fff;
+  color: #0a0a0a;
+}
+
+.cf-hero-more-btn-light:hover {
+  background: #ff003d;
+  color: #fff;
+}
+
+/* ── Slide CASA QUE CRECE: fondo con fade entre fotos + glass overlay ── */
+
+.cf-hero-slide-crece {
+  position: relative;
+  padding: 0;
+  background: #1a1a1a;
+}
+
+.cf-hero-crece-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: inherit;
+}
+
+.cf-hero-crece-bg-1 {
+  z-index: 2;
+  opacity: 1;
+  transition: opacity 1.5s ease-in-out;
+}
+
+.cf-hero-crece-bg-2 {
+  z-index: 1;
+}
+
+.cf-hero-crece-bg-hide {
+  opacity: 0;
+}
+
+.cf-hero-crece-bg-empty {
+  background: linear-gradient(135deg, #2a2a2a, #0a0a0a);
+}
+
+/* Glass overlay vertical a la izquierda con texto encima de las fotos. */
+.cf-hero-slide-crece-overlay {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 16px;
+  width: clamp(220px, 48%, 320px);
+  z-index: 3;
+  padding: 22px 22px 20px;
+  background: rgba(20, 20, 20, 0.62);
+  -webkit-backdrop-filter: saturate(170%) blur(20px);
+  backdrop-filter: saturate(170%) blur(20px);
+  border-radius: 10px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cf-hero-slide-crece-overlay .cf-pn-eyebrow {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cf-hero-slide-crece-title {
+  font-size: clamp(20px, 1.9vw, 26px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.cf-hero-slide-crece-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+  margin: 0;
+  /* Limita a 6 líneas para que el bloque quede legible */
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Slide PRINCIPAL: SVG bg + aside glass blur con manifesto ── */
+
+.cf-hero-slide-principal {
+  position: relative;
+  padding: 0;
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.cf-hero-principal-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: inherit;
+  /* Fade-in cuando entra al viewport */
+  animation: cf-hero-bg-in 800ms ease-out both;
+}
+
+@keyframes cf-hero-bg-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cf-hero-principal-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  padding: 22px;
+}
+
+/* Aside ocupa ~50% del slide a la izquierda — tipografía generosa para */
+/* que el manifesto se lea como hero, no como sidebar técnico.            */
+.cf-hero-principal-aside {
+  width: clamp(320px, 50%, 520px);
+  height: 100%;
+  padding: 28px 30px 24px;
+  background: rgba(15, 15, 15, 0.7);
+  -webkit-backdrop-filter: saturate(170%) blur(22px);
+  backdrop-filter: saturate(170%) blur(22px);
+  border-radius: 10px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cf-hero-principal-aside .cf-pn-eyebrow {
+  color: rgba(255, 0, 61, 0.95);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+
+.cf-hero-principal-title {
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.06;
+  margin: 0;
+}
+
+.cf-hero-principal-intro {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+}
+
+.cf-hero-principal-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.cf-hero-principal-bullet {
+  font-size: 13px;
+  line-height: 1.42;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.cf-hero-principal-bullet-name {
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.cf-hero-principal-bullet-body {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Slides de sección secundarios (Flex / Mudarse / Ventajas / Calidad) ── */
+
+.cf-hero-slide-section {
+  background: #fff;
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cf-hero-slide-section-title {
+  font-size: clamp(20px, 1.8vw, 24px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: #0a0a0a;
+}
+
+.cf-hero-slide-section-intro {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.62);
+  margin: 0 0 4px;
+}
+
+.cf-hero-slide-section-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.cf-hero-slide-section-bullets::-webkit-scrollbar {
+  display: none;
+}
+
+.cf-hero-slide-section-bullet {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.cf-hero-slide-section-bullet-name {
+  font-weight: 600;
+  color: #0a0a0a;
+  letter-spacing: 0.01em;
+}
+
+.cf-hero-slide-section-bullet-body {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+/* Variante visual del slide Flex eliminada. */
+
+/* ── Modal "Ver más" reusable ── */
+
+.cf-hero-modal {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: min(720px, 92vw);
+  width: 100%;
+  max-height: 88vh;
+  border-radius: 14px;
+  margin: auto;
+}
+
+.cf-hero-modal::backdrop {
+  background: rgba(10, 10, 10, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.cf-hero-modal-inner {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  padding: 36px 40px 32px;
+  max-height: 88vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+.cf-hero-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #0a0a0a;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.cf-hero-modal-close:hover {
+  background: #ff003d;
+  color: #fff;
+}
+
+.cf-hero-modal-title {
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 8px 0 12px;
+  color: #0a0a0a;
+}
+
+.cf-hero-modal-intro {
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.72);
+  margin: 0 0 20px;
+}
+
+.cf-hero-modal-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cf-hero-modal-bullet {
+  border-left: 2px solid rgba(0, 0, 0, 0.08);
+  padding-left: 14px;
+}
+
+.cf-hero-modal-bullet-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff003d;
+  margin: 0 0 4px;
+}
+
+.cf-hero-modal-bullet-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.78);
+  margin: 0;
+}
+
+/* ── Feature Auto-Slider (Stories Mode) ── */
+.cf-story-slider {
+  margin: 24px 0 32px;
+  position: relative;
+  max-width: 440px;
+}
+
+.cf-story-progress-container {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.cf-story-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+
+.cf-story-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.cf-story-progress-fill.active {
+  animation-name: cfProgressFill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.cf-story-progress-fill.completed {
+  width: 100%;
+}
+
+@keyframes cfProgressFill {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+.cf-story-content-wrapper {
+  position: relative;
+  min-height: 100px;
+}
+
+.cf-story-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cf-story-content.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.cf-story-title {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+
+.cf-story-body {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.cf-hero-principal-bg {
+  background-size: cover !important;
+  background-position: center !important;
+  filter: brightness(0.9);
+}
+
+/* ── Centered Hero Variant ── */
+.cf-hero-principal-overlay-centered {
+  padding: 60px 40px 90px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.4) 100%);
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.cf-hero-principal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 800px;
+  gap: 3px;
+  color: #fff;
+  z-index: 10;
+}
+
+.cf-hero-principal-title-large {
+  font-size: clamp(36px, 4.5vw, 64px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  margin: 0;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.cf-hero-principal-intro-centered {
+  font-size: clamp(12px, 1.3vw, 15px);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 600px;
+  margin: 0 0 20px;
+}
+
+.cf-story-slider-centered {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 700px;
+  width: 100%;
+}
+
+.cf-story-slider-centered .cf-story-content-wrapper {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cf-story-slider-centered .cf-story-content {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%) scale(0.95);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: 0 auto;
+}
+
+.cf-story-slider-centered .cf-story-content.active {
+  transform: translateY(-50%) scale(1);
+}
+
+.cf-story-slider-centered .cf-story-title {
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-bottom: 0px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.cf-story-slider-centered .cf-story-body {
+  font-size: 14px;
+  max-width: 500px;
+  margin: 0 auto;
+  opacity: 0.95;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.cf-story-slider-centered .cf-story-progress-container {
+  margin-top: 16px;
+  margin-bottom: 0;
+  width: 180px;
+  margin-left: auto;
+  margin-right: auto;
+  gap: 4px;
+}
+
+.cf-story-slider-centered .cf-story-progress-bar {
+  height: 2px;
+}
+
+.cf-hero-more-btn-centered {
+  position: absolute;
+  bottom: 30px;
+  left: 0;
+  right: 0;
+  margin: 0 auto !important;
+  width: max-content;
+  z-index: 20;
+}
+
+.cf-hero-slide-section-centered {
+  background: #7a7a7a;
+  color: #fff;
+  padding: 0;
+  display: block;
+}
+
+.cf-hero-slide-section-overlay {
+  padding: 60px 40px 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  gap: 3px;
+}
+
+.cf-hero-slide-section-centered .cf-pn-eyebrow {
+  color: rgba(255, 0, 61, 0.95);
+}
+
+.cf-hero-slide-section-title-large {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.cf-hero-slide-section-intro-centered {
+  font-size: clamp(12px, 1.3vw, 15px);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 600px;
+  margin: 0 0 20px;
+}
+
+.cf-hero-slide-section-centered .cf-story-title {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.cf-hero-slide-section-centered .cf-story-body {
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.cf-hero-slide-section-centered .cf-story-progress-bar {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.cf-hero-slide-section-centered .cf-story-progress-fill {
+  background: #fff;
 }
