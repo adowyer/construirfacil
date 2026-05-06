@@ -57,40 +57,45 @@ export interface CatalogImage {
  * Devuelve todas las imágenes activas del catálogo, cada una con la lista
  * de `house_catalog_id` a los que aplica (vía model_image_skus). El caller
  * filtra usando `imagesForSkus(images, skuIds)`.
+ *
+ * Dos queries en paralelo + join en cliente. Antes usábamos un embed
+ * `links:model_image_skus(...)` pero el cache de schema de PostgREST en prod
+ * a veces no refleja FKs nuevas → devuelve `links: []` y el catálogo queda sin
+ * imágenes. El join manual es robusto a ese problema y trivialmente más lento.
  */
 export async function getAllCatalogImages(
   supabase: SupabaseClient,
 ): Promise<CatalogImage[]> {
-  const { data, error } = await supabase
-    .from('model_images')
-    .select(
-      `id, storage_url, is_exterior, image_type, view_label, sort_order,
-       style_name, variante, linea, tipologia_code,
-       links:model_image_skus(house_catalog_id)`,
-    )
-    .neq('status', 'archived')
-    .order('sort_order', { ascending: true })
+  const [imagesRes, linksRes] = await Promise.all([
+    supabase
+      .from('model_images')
+      .select(
+        'id, storage_url, is_exterior, image_type, view_label, sort_order, style_name, variante, linea, tipologia_code',
+      )
+      .neq('status', 'archived')
+      .order('sort_order', { ascending: true }),
+    supabase.from('model_image_skus').select('image_id, house_catalog_id'),
+  ])
 
-  if (error) {
-    console.error('[getAllCatalogImages]', error.message)
+  if (imagesRes.error) {
+    console.error('[getAllCatalogImages] images:', imagesRes.error.message)
     return []
   }
-
-  type RawRow = Omit<CatalogImage, 'sku_ids'> & {
-    links: { house_catalog_id: string }[] | null
+  if (linksRes.error) {
+    console.error('[getAllCatalogImages] links:', linksRes.error.message)
+    // Seguimos: devolvemos imágenes con sku_ids=[] en lugar de array vacío.
   }
-  return ((data ?? []) as unknown as RawRow[]).map((r) => ({
-    id: r.id,
-    storage_url: r.storage_url,
-    is_exterior: r.is_exterior,
-    image_type: r.image_type,
-    view_label: r.view_label,
-    sort_order: r.sort_order,
-    style_name: r.style_name,
-    variante: r.variante,
-    linea: r.linea,
-    tipologia_code: r.tipologia_code,
-    sku_ids: (r.links ?? []).map((l) => l.house_catalog_id),
+
+  const linksByImage = new Map<string, string[]>()
+  for (const link of (linksRes.data ?? []) as { image_id: string; house_catalog_id: string }[]) {
+    const arr = linksByImage.get(link.image_id) ?? []
+    arr.push(link.house_catalog_id)
+    linksByImage.set(link.image_id, arr)
+  }
+
+  return (imagesRes.data ?? []).map((r) => ({
+    ...(r as Omit<CatalogImage, 'sku_ids'>),
+    sku_ids: linksByImage.get((r as { id: string }).id) ?? [],
   }))
 }
 
