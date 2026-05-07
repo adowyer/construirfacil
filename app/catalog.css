@@ -2272,6 +2272,7 @@ body:has(.cf-row.cf-expanded) {
   padding: 28px 32px;
   background: #fff;
   overflow: hidden;
+  box-sizing: border-box !important;
 }
 
 /* Slide intro: solo texto, sin fondo ni borde, fluye con el catálogo */
@@ -2875,15 +2876,22 @@ body:has(.cf-row.cf-expanded) {
 /* Orden: [Casa que Crece] ← [Flex] ← [PRINCIPAL] → [Mudarse] → [Ventajas] → [Calidad] */
 /* ═════════════════════════════════════════════════════════════════════════ */
 
-/* Slide PRINCIPAL: bastante más ancho para que el manifesto respire. */
+/* Slide PRINCIPAL: 16/10 para igualar a las fotos del listado */
 .cf-hero-row-slide-principal {
-  aspect-ratio: 18 / 10;
+  aspect-ratio: 16 / 10 !important;
+  max-height: 420px;
 }
 
-/* Slides de sección secundarios + crece: aspect-ratio normal del listado. */
-.cf-hero-row-slide-section,
-.cf-hero-row-slide-crece {
-  aspect-ratio: 16 / 10;
+/* Slides Split (Crece, Flex): más anchos para que el panel lateral respire */
+.cf-hero-row-slide-split {
+  aspect-ratio: 21 / 10 !important;
+  max-height: 420px;
+}
+
+/* Slide de Pasos / Sección genérica */
+.cf-hero-row-slide-section {
+  aspect-ratio: 18 / 10 !important;
+  max-height: 420px;
 }
 
 /* Botón "Ver más" reutilizable (sobre fondo claro). Variante -light para */
@@ -3478,7 +3486,7 @@ body:has(.cf-row.cf-expanded) {
   line-height: 1;
   margin: 0;
   color: #fff;
-  text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .cf-hero-slide-section-intro-centered {
@@ -3491,12 +3499,12 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-hero-slide-section-centered .cf-story-title {
   color: #fff;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .cf-hero-slide-section-centered .cf-story-body {
   color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .cf-hero-slide-section-centered .cf-story-progress-bar {
@@ -3505,4 +3513,277 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-hero-slide-section-centered .cf-story-progress-fill {
   background: #fff;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+/* HERO ROW v3 — Modulares (Solid, Split, Steps)                           */
+/* ═════════════════════════════════════════════════════════════════════════ */
+
+/* Colores Base */
+:root {
+  --cf-hero-olive: #b2a67a;
+  --cf-hero-dark: #2c3439;
+  --cf-step-red: #e43e4d;
+  --cf-step-orange: #e49339;
+  --cf-step-blue: #3498db;
+  --cf-step-teal: #559588;
+}
+
+/* Base de Slide para resetear pading/bg si es necesario */
+.cf-slide-base {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ── Layouts ── */
+.cf-slide-solid {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 50px 130px 40px 50px !important;
+  text-align: left;
+  box-sizing: border-box !important;
+}
+
+.cf-slide-solid-pasos {
+  padding: 50px 40px 80px !important;
+  text-align: left;
+}
+
+.cf-slide-solid-olive {
+  background: var(--cf-hero-olive);
+  color: #fff;
+}
+
+.cf-slide-solid-dark {
+  background: var(--cf-hero-dark);
+  color: #fff;
+}
+
+.cf-slide-split {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.cf-slide-split-image {
+  flex: 0 0 75%;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.cf-slide-split-panel {
+  flex: 0 0 25%;
+  background: var(--cf-hero-dark);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: #fff;
+}
+
+.cf-slide-split-right .cf-slide-split-image {
+  order: 2;
+}
+
+.cf-slide-split-right .cf-slide-split-panel {
+  order: 1;
+}
+
+/* ── Componentes de UI ── */
+.cf-glass-card {
+  position: absolute;
+  width: clamp(280px, 45%, 400px);
+  height: clamp(300px, 60%, 400px);
+  background: rgba(30, 30, 30, 0.45);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px;
+}
+
+.cf-glass-card.left {
+  top: 43%;
+  left: 40px;
+  transform: translateY(-50%);
+}
+
+.cf-glass-card.right {
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+}
+
+.cf-glass-card .cf-hero-more-btn {
+  align-self: center;
+  margin-top: auto;
+  margin-bottom: 0;
+}
+
+.cf-panel-logo {
+  max-width: 140px;
+  max-height: 100px;
+  object-fit: contain;
+  margin-bottom: 30px;
+}
+
+.cf-step-arrow-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  margin-top: 2px;
+}
+
+.cf-slide-solid-pasos .cf-step-arrow-img {
+  height: 68px;
+}
+
+
+.cf-panel-logo-text {
+  font-size: clamp(28px, 3vw, 36px);
+  font-weight: 500;
+  line-height: 1.1;
+  text-align: left;
+  margin: 0;
+  width: 100%;
+  max-width: 160px;
+  letter-spacing: -0.02em;
+}
+
+/* ── Tipografía Principal ── */
+.cf-slide-title-large {
+  font-size: clamp(40px, 4.5vw, 70px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 0.85;
+  margin: 0 0 40px 0;
+  max-width: 900px;
+}
+
+.cf-slide-title-pasos {
+  font-size: clamp(40px, 4.5vw, 48px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 0 0 40px 0;
+  max-width: 900px;
+}
+
+.cf-pasos-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.cf-pasos-grid .cf-step-item {
+  font-size: 23px;
+
+}
+
+
+.cf-pasos-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* ── Footer Steps ── */
+.cf-steps-footer {
+  position: absolute;
+  bottom: 40px;
+  left: 55px;
+  width: 100%;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+.cf-steps-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.cf-steps-footer-grid .cf-step-item {
+  justify-content: flex-start;
+}
+
+.cf-steps-footer-left {
+  left: 40px;
+  width: auto;
+  justify-content: flex-start;
+}
+
+.cf-steps-footer-right {
+  right: 40px;
+  left: auto;
+  width: auto;
+  justify-content: flex-end;
+}
+
+.cf-step-item {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cf-step-arrow {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-top: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: 1px;
+}
+
+.cf-step-arrow-left {
+  width: 10px;
+  height: 10px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-right: 6px;
+  margin-top: 1px;
+}
+
+.cf-step-red {
+  color: var(--cf-step-red);
+}
+
+.cf-step-orange {
+  color: var(--cf-step-orange);
+}
+
+.cf-step-blue {
+  color: var(--cf-step-blue);
+}
+
+.cf-step-teal {
+  color: var(--cf-step-teal);
 }

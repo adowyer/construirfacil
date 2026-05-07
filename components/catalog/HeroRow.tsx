@@ -3,27 +3,15 @@
 /**
  * components/catalog/HeroRow.tsx
  *
- * Slider editorial superior del catálogo. 6 slides en orden:
- *
- *   [Casa que Crece] ← [Flex Build Suite] ← [PRINCIPAL] → [Cómo mudarte] → [Ventajas] → [Calidad]
- *
- * Carga inicial: scroll al centro (PRINCIPAL = Sección 1, manifesto editorial).
- *
- * El PRINCIPAL usa fondo SVG vectorial (/hero/sistema-bg.svg) para no
- * confundirse con las fotos del catálogo — look manifesto/blueprint con
- * aside glass blur encima.
- *
- * Cada sección de texto tiene "Ver más" que abre un modal con el contenido
- * extendido (versión `long` del documento original).
+ * Slider editorial superior del catálogo. 5 slides modulares:
+ *   [1. Pasos] ← [2. Crece] ← [3. Central] → [4. Flex] → [5. Líneas]
  */
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import { HERO_SECTIONS, type HeroSection } from '@/lib/data/heroContent'
-import FeatureAutoSlider from './FeatureAutoSlider'
 
-/** Par de imágenes de un modelo en sus variantes 1 planta / 2 plantas. */
 export interface GrowthPair {
   name: string
   img1: string
@@ -32,39 +20,15 @@ export interface GrowthPair {
 
 interface HeroRowProps {
   brandContent?: BrandContent[]
-  /** Reservado para usos futuros (línea content). Se acepta por compat con
-   *  CatalogPage; HeroRow actual no lo consume. */
   lineContent?: LineContent[]
-  /** Reservado por compat — actualmente no se usa en este HeroRow. */
   lineas?: LineaRow[]
-  /** Reservado por compat — actualmente no se usa en este HeroRow. */
   lineaCoverByName?: Record<string, string | null>
-  /** Pares (1 planta / 2 plantas) por modelo. Background animado del slide
-   *  "Casa que Crece" — alterna entre cada par para mostrar el crecimiento. */
   growthPairs?: GrowthPair[]
 }
 
-type Slide =
-  | { kind: 'crece'; concept: BrandContent | null }
-  | { kind: 'section'; section: HeroSection }
-
-function buildSlides(brandContent: BrandContent[]): Slide[] {
-  const concept = brandContent.find((b) => b.key === 'concept') ?? null
-  return [
-    { kind: 'crece', concept },
-    ...HERO_SECTIONS.map((s) => ({ kind: 'section' as const, section: s })),
-  ]
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Animación Casa que Crece (background + glass overlay)
+// Animación Casa que Crece (background para Slide 2)
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Crossfade entre img1 (1 planta) e img2 (2 plantas) de pares hermanos.
- * Antes era el contenido principal del slide; ahora es solo el FONDO del
- * slide "Casa que Crece" (encima va un bloque glass blur con el texto).
- */
 function HouseGrowBg({ pairs }: { pairs: GrowthPair[] }) {
   const images = useMemo(() => pairs.flatMap((p) => [p.img1, p.img2]), [pairs])
   const [activeIdx, setActiveIdx] = useState(0)
@@ -91,17 +55,8 @@ function HouseGrowBg({ pairs }: { pairs: GrowthPair[] }) {
         return (
           <div
             key={`${url}-${i}`}
-            className="cf-hero-crece-bg"
-            style={{
-              backgroundImage: `url('${url}')`,
-              opacity: isActive || isPrev ? 1 : 0,
-              zIndex: isActive ? 2 : isPrev ? 1 : 0,
-              transition: isActive ? 'opacity 1.2s ease-in-out' : 'none',
-              position: 'absolute',
-              inset: 0,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
+            className={`cf-hero-crece-bg ${isActive ? 'cf-hero-crece-bg-1' : isPrev ? 'cf-hero-crece-bg-2' : 'cf-hero-crece-bg-hide'}`}
+            style={{ backgroundImage: `url('${url}')` }}
           />
         )
       })}
@@ -110,9 +65,8 @@ function HouseGrowBg({ pairs }: { pairs: GrowthPair[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Modal "Ver más" — reusable para todas las secciones
+// Modal "Ver más"
 // ─────────────────────────────────────────────────────────────────────────────
-
 function SectionModal({
   open,
   onClose,
@@ -120,7 +74,7 @@ function SectionModal({
 }: {
   open: boolean
   onClose: () => void
-  section: HeroSection
+  section: HeroSection | null
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -130,6 +84,8 @@ function SectionModal({
     if (open && !dlg.open) dlg.showModal()
     else if (!open && dlg.open) dlg.close()
   }, [open])
+
+  if (!section) return null
 
   return (
     <dialog
@@ -141,14 +97,7 @@ function SectionModal({
       onClose={onClose}
     >
       <div className="cf-hero-modal-inner">
-        <button
-          type="button"
-          className="cf-hero-modal-close"
-          onClick={onClose}
-          aria-label="Cerrar"
-        >
-          ×
-        </button>
+        <button type="button" className="cf-hero-modal-close" onClick={onClose} aria-label="Cerrar">×</button>
         <p className="cf-pn-eyebrow">{section.eyebrow}</p>
         <h2 className="cf-hero-modal-title">{section.title}</h2>
         {section.intro && <p className="cf-hero-modal-intro">{section.intro}</p>}
@@ -166,155 +115,154 @@ function SectionModal({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Slide: Casa que Crece (background con fade + glass overlay con texto)
+// UI Components compartidos
+// ─────────────────────────────────────────────────────────────────────────────
+function StepsFooter() {
+  return (
+    <div className="cf-steps-footer">
+      <div className="cf-step-item">ELEGÍ <img src="/Flecha-Roja.png" className="cf-step-arrow-img" alt=""/></div>
+      <div className="cf-step-item">COTIZÁ <img src="/Flecha-naranja.png" className="cf-step-arrow-img" alt=""/></div>
+      <div className="cf-step-item">POSTULÁ <img src="/Flecha-celeste.png" className="cf-step-arrow-img" alt=""/></div>
+      <div className="cf-step-item">DISFRUTÁ <img src="/Flecha-verde.png" className="cf-step-arrow-img" alt=""/></div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Slides Individuales Modulares
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SlideCrece({
-  concept,
-  growthPairs,
-}: {
-  concept: BrandContent | null
-  growthPairs: GrowthPair[]
-}) {
-  const [open, setOpen] = useState(false)
-  const teaser =
-    concept?.body
-      ?.split(/\n{2,}/)
-      .map((p) => p.trim())
-      .filter(Boolean)[0] ?? null
-
-  // Adapta concept (BrandContent) a HeroSection-like para reutilizar el modal.
-  const modalSection: HeroSection = {
-    id: 'crece',
-    eyebrow: 'Concepto',
-    title: concept?.title ?? 'La Casa que Crece',
-    intro: concept?.subtitle ?? undefined,
-    short: [],
-    long: (concept?.body ?? '')
-      .split(/\n{2,}/)
-      .map((p, i) => ({ name: `${i + 1}.`, body: p.trim() }))
-      .filter((b) => b.body.length > 0),
-  }
-
+// Slide 1: Pasos (Olive Solid)
+function SlidePasos() {
   return (
-    <>
-      <div className="cf-hero-slide-card cf-hero-slide-crece">
+    <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-olive cf-slide-solid-pasos">
+      <h2 className="cf-slide-title-pasos">4 Simples pasos para acceder a<br/>tu nueva casa 100% financiada.</h2>
+      <div className="cf-pasos-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <p className="cf-pasos-text">
+            <strong style={{color: '#fff'}}>Elegí</strong> el estilo de<br/>
+            la casa que te gusta<br/>
+            y nuestro Agente de<br/>
+            Inteligencia Artificial te<br/>
+            ayudará a alcanzarla.
+          </p>
+          <div className="cf-step-item" style={{ marginTop: 'auto', paddingTop: '24px' }}>ELEGÍ <img src="/Flecha-Roja.png" className="cf-step-arrow-img" alt=""/></div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <p className="cf-pasos-text">
+            <strong style={{color: '#fff'}}>En "La casa que crece"</strong><br/>
+            podés agregar o quitar<br/>
+            ambientes y accesorios<br/>
+            según tu presupuesto, y<br/>
+            no resignar tu sueño.
+          </p>
+          <div className="cf-step-item" style={{ marginTop: 'auto', paddingTop: '24px' }}>COTIZÁ <img src="/Flecha-naranja.png" className="cf-step-arrow-img" alt=""/></div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <p className="cf-pasos-text">
+            <strong style={{color: '#fff'}}>Una vez preadjudicado</strong><br/>
+            tu crédito, postulás para<br/>
+            el cupo de viviendas en<br/>
+            curso, con un mínimo<br/>
+            pago condicional.
+          </p>
+          <div className="cf-step-item" style={{ marginTop: 'auto', paddingTop: '24px' }}>POSTULÁ <img src="/Flecha-celeste.png" className="cf-step-arrow-img" alt=""/></div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <p className="cf-pasos-text">
+            <strong style={{color: '#fff'}}>Completado el cupo</strong><br/>
+            de clientes aprobados,<br/>
+            comenzamos la obra<br/>
+            y en pocas semanas te<br/>
+            mudas a tu nueva casa.
+          </p>
+          <div className="cf-step-item" style={{ marginTop: 'auto', paddingTop: '24px' }}>DISFRUTÁ <img src="/Flecha-verde.png" className="cf-step-arrow-img" alt=""/></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Slide 2: Crece (Split Left)
+function SlideCrece({ growthPairs, onOpenModal, concept }: { growthPairs: GrowthPair[], onOpenModal: () => void, concept: BrandContent | null }) {
+  return (
+    <div className="cf-hero-slide-card cf-slide-base cf-slide-split">
+      <div className="cf-slide-split-image">
         <HouseGrowBg pairs={growthPairs} />
-        <div className="cf-hero-slide-crece-overlay">
-          <p className="cf-pn-eyebrow">Concepto</p>
-          <h3 className="cf-hero-slide-crece-title">
-            {concept?.title ?? 'La Casa que Crece'}
-          </h3>
-          {teaser && <p className="cf-hero-slide-crece-body">{teaser}</p>}
-          {(concept?.body?.length ?? 0) > (teaser?.length ?? 0) && (
-            <button
-              type="button"
-              className="cf-hero-more-btn cf-hero-more-btn-centered"
-              onClick={() => setOpen(true)}
-            >
-              Ver más →
-            </button>
-          )}
+        <div className="cf-glass-card left" style={{ zIndex: 10, justifyContent: 'center' }}>
+           <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Concepto</p>
+           <h3 className="cf-hero-slide-crece-title">{concept?.title || 'La Casa que Crece'}</h3>
+           <p className="cf-hero-slide-crece-body">{concept?.subtitle || 'Una vivienda evolutiva que se adapta a tus necesidades.'}</p>
+           <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>Ver más →</button>
+        </div>
+        <div className="cf-steps-footer cf-steps-footer-left" style={{ bottom: '30px', left: '40px', zIndex: 10 }}>
+           <div className="cf-step-item" style={{ color: 'var(--cf-hero-olive)' }}>
+             <img src="/Flecha-Roja.png" className="cf-step-arrow-img" style={{ transform: 'rotate(180deg)', marginRight: '6px' }} alt=""/>
+             4 SIMPLES PASOS PARA SER DUEÑO
+           </div>
         </div>
       </div>
-      <SectionModal open={open} onClose={() => setOpen(false)} section={modalSection} />
-    </>
+      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '60px' }}>
+        <img src="/la-casa-que-crece.png" alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
+      </div>
+    </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Slide: PRINCIPAL — manifesto editorial con SVG de fondo + aside glass blur
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SlidePrincipal({ section }: { section: HeroSection }) {
-  const [open, setOpen] = useState(false)
+// Slide 3: Principal / Central (Dark Solid)
+function SlidePrincipal() {
   return (
-    <>
-      <div className="cf-hero-slide-card cf-hero-slide-principal">
-        {/* Fondo fotográfico cinematográfico */}
-        <div
-          className="cf-hero-principal-bg"
-          style={{ backgroundImage: "url('https://img.magnific.com/premium-photo/modern-house-design-evening-sunset-illumination_1201528-15730.jpg')" }}
-        />
-        <div className="cf-hero-principal-overlay cf-hero-principal-overlay-centered">
-          <div className="cf-hero-principal-content">
-            <p className="cf-pn-eyebrow">{section.eyebrow}</p>
-            <h2 className="cf-hero-principal-title-large">{section.title}</h2>
-            {section.intro && (
-              <p className="cf-hero-principal-intro-centered">{section.intro}</p>
-            )}
-            
-            <FeatureAutoSlider items={section.short} intervalMs={3000} variant="centered" />
-            
-            <button
-              type="button"
-              className="cf-hero-more-btn cf-hero-more-btn-light cf-hero-more-btn-centered"
-              onClick={() => setOpen(true)}
-            >
-              Ver más →
-            </button>
-          </div>
-        </div>
-      </div>
-      <SectionModal open={open} onClose={() => setOpen(false)} section={section} />
-    </>
+    <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-dark">
+      <h2 className="cf-slide-title-large" style={{ marginBottom: '60px' }}>
+        La casa que querés, en las<br/>condiciones que necesitás.
+      </h2>
+      <StepsFooter />
+    </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Slide: secciones secundarias (Flex / Mudarse / Ventajas / Calidad)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SlideSection({ section }: { section: HeroSection }) {
-  const [open, setOpen] = useState(false)
+// Slide 4: Flex Build Suit (Split Right)
+function SlideFlex({ onOpenModal }: { onOpenModal: () => void }) {
   return (
-    <>
-      <div className={`cf-hero-slide-card cf-hero-slide-section cf-hero-slide-section-centered cf-hero-slide-${section.id}`}>
-        <div className="cf-hero-slide-section-overlay">
-          <p className="cf-pn-eyebrow">{section.eyebrow}</p>
-          <h3 className="cf-hero-slide-section-title-large">{section.title}</h3>
-          {section.intro && (
-            <p className="cf-hero-slide-section-intro-centered">{section.intro}</p>
-          )}
-          
-          <FeatureAutoSlider items={section.short} intervalMs={3000} variant="centered" />
-          
-          <button
-            type="button"
-            className="cf-hero-more-btn cf-hero-more-btn-centered"
-            onClick={() => setOpen(true)}
-          >
-            Ver más →
-          </button>
+    <div className="cf-hero-slide-card cf-slide-base cf-slide-split cf-slide-split-right">
+      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '60px' }}>
+        <img src="/Flex-Build-Suit.png" alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
+      </div>
+      <div className="cf-slide-split-image" style={{ backgroundImage: "url('/Fabrica-ARQUIMA.jpg')" }}>
+        <div className="cf-glass-card right">
+           <button className="cf-hero-more-btn" onClick={onOpenModal}>Ver más →</button>
+        </div>
+        <div className="cf-steps-footer cf-steps-footer-right">
+           <div className="cf-step-item" style={{ color: 'var(--cf-hero-olive)' }}>
+             DEFINÍ TU BÚSQUEDA EN EL MENÚ
+             <img src="/Flecha-Roja.png" className="cf-step-arrow-img" style={{ marginLeft: '4px' }} alt=""/>
+           </div>
         </div>
       </div>
-      <SectionModal open={open} onClose={() => setOpen(false)} section={section} />
-    </>
+    </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main
-// ─────────────────────────────────────────────────────────────────────────────
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Componente Principal
+// ─────────────────────────────────────────────────────────────────────────────
 export default function HeroRow({
   brandContent = [],
   growthPairs = [],
 }: HeroRowProps) {
   const trackRef = useRef<HTMLDivElement>(null)
-  const slides = useMemo(() => buildSlides(brandContent), [brandContent])
+  
+  // Modals state
+  const [modalSection, setModalSection] = useState<HeroSection | null>(null)
 
-  // Carga inicial: scroll al PRINCIPAL (= Sección 1, segundo desde
-  // izquierda en HERO_SECTIONS = índice 2 en el array completo:
-  //   0=crece, 1=flex, 2=principal, 3=mudarse, 4=ventajas, 5=calidad).
-  const principalIdx = useMemo(
-    () =>
-      slides.findIndex(
-        (s) => s.kind === 'section' && s.section.id === 'principal',
-      ),
-    [slides],
-  )
-  const [current, setCurrent] = useState(principalIdx >= 0 ? principalIdx : 0)
+  // Carga inicial: scroll al Centro (Slide 3 = índice 2)
+  const principalIdx = 2
+  const [current, setCurrent] = useState(principalIdx)
 
   const centerSlide = useCallback((i: number, smooth = true) => {
     const track = trackRef.current
@@ -326,7 +274,6 @@ export default function HeroRow({
   }, [])
 
   useEffect(() => {
-    if (principalIdx < 0) return
     centerSlide(principalIdx, false)
     setCurrent(principalIdx)
   }, [principalIdx, centerSlide])
@@ -357,42 +304,62 @@ export default function HeroRow({
     setCurrent(closestIdx)
   }, [])
 
+  // Construir data para Modal Crece
+  const concept = brandContent.find((b) => b.key === 'concept') ?? null
+  const modalCrece: HeroSection | null = useMemo(() => {
+    if (!concept) return null
+    return {
+      id: 'crece',
+      eyebrow: 'Concepto',
+      title: concept.title ?? 'La Casa que Crece',
+      intro: concept.subtitle ?? undefined,
+      short: [],
+      long: (concept.body ?? '')
+        .split(/\n{2,}/)
+        .map((p, i) => ({ name: `${i + 1}.`, body: p.trim() }))
+        .filter((b) => b.body.length > 0),
+    } as HeroSection
+  }, [concept])
+
+  const modalFlex = useMemo(() => HERO_SECTIONS.find(s => s.id === 'flex') ?? null, [])
+
+  const numSlides = 4
+
   return (
     <div className="cf-hero-row">
       <div ref={trackRef} className="cf-hero-row-track" onScroll={onScroll}>
-        {slides.map((slide, i) => (
-          <div
+        <div className="cf-hero-row-slide cf-hero-row-slide-section">
+           <SlidePasos />
+        </div>
+        <div className="cf-hero-row-slide cf-hero-row-slide-split">
+           <SlideCrece growthPairs={growthPairs} onOpenModal={() => { if(modalCrece) setModalSection(modalCrece) }} concept={concept} />
+        </div>
+        <div className="cf-hero-row-slide cf-hero-row-slide-principal">
+           <SlidePrincipal />
+        </div>
+        <div className="cf-hero-row-slide cf-hero-row-slide-split">
+           <SlideFlex onOpenModal={() => { if(modalFlex) setModalSection(modalFlex) }} />
+        </div>
+
+      </div>
+
+      <div className="cf-hero-row-dots">
+        {Array.from({ length: numSlides }).map((_, i) => (
+          <button
             key={i}
-            className={`cf-hero-row-slide cf-hero-row-slide-${slide.kind}${
-              slide.kind === 'section' ? ` cf-hero-row-slide-${slide.section.id}` : ''
-            }`}
-          >
-            {slide.kind === 'crece' && (
-              <SlideCrece concept={slide.concept} growthPairs={growthPairs} />
-            )}
-            {slide.kind === 'section' && slide.section.id === 'principal' && (
-              <SlidePrincipal section={slide.section} />
-            )}
-            {slide.kind === 'section' && slide.section.id !== 'principal' && (
-              <SlideSection section={slide.section} />
-            )}
-          </div>
+            type="button"
+            className={`cf-hero-row-dot ${i === current ? 'active' : ''}`}
+            onClick={() => snapTo(i)}
+            aria-label={`Slide ${i + 1}`}
+          />
         ))}
       </div>
 
-      {slides.length > 1 && (
-        <div className="cf-hero-row-dots">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`cf-hero-row-dot ${i === current ? 'active' : ''}`}
-              onClick={() => snapTo(i)}
-              aria-label={`Slide ${i + 1}`}
-            />
-          ))}
-        </div>
-      )}
+      <SectionModal 
+        open={!!modalSection} 
+        onClose={() => setModalSection(null)} 
+        section={modalSection} 
+      />
     </div>
   )
 }
