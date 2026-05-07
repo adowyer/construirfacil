@@ -3621,7 +3621,7 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-glass-card.right {
-  top: 50%;
+  top: 43%;
   right: 40px;
   transform: translateY(-50%);
 }
