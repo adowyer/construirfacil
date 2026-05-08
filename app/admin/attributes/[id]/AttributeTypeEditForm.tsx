@@ -70,7 +70,7 @@ export default function AttributeTypeEditForm({ type }: Props) {
           value={form.name}
           onChange={handleChange}
           required
-          className="w-full border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+          className="w-full border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors"
         />
       </div>
 
@@ -84,7 +84,7 @@ export default function AttributeTypeEditForm({ type }: Props) {
           value={form.description}
           onChange={handleChange}
           rows={3}
-          className="w-full border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none"
+          className="w-full border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors resize-none"
         />
       </div>
 
@@ -99,7 +99,7 @@ export default function AttributeTypeEditForm({ type }: Props) {
           value={form.sort_order}
           onChange={handleChange}
           min={0}
-          className="w-32 border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+          className="w-32 border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors"
         />
       </div>
 
@@ -109,7 +109,7 @@ export default function AttributeTypeEditForm({ type }: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors disabled:opacity-50"
+          className="bg-[#ff003d] text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors disabled:opacity-50"
         >
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>

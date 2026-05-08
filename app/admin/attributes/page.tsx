@@ -19,7 +19,7 @@ export default async function AdminAttributesPage() {
         </h1>
         <Link
           href="/admin/attributes/new"
-          className="bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+          className="bg-[#ff003d] text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors"
         >
           + Nuevo tipo
         </Link>
@@ -30,7 +30,7 @@ export default async function AdminAttributesPage() {
           <p className="text-neutral-400 mb-4">No hay tipos de atributos definidos.</p>
           <Link
             href="/admin/attributes/new"
-            className="inline-block bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+            className="inline-block bg-[#ff003d] text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors"
           >
             Crear primer tipo
           </Link>

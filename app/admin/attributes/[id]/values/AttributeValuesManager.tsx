@@ -117,12 +117,12 @@ export default function AttributeValuesManager({ type }: Props) {
           onChange={(e) => setNewLabel(e.target.value)}
           placeholder="Nuevo valor (ej. Doble vidriado)"
           required
-          className="flex-1 border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+          className="flex-1 border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors"
         />
         <button
           type="submit"
           disabled={adding || !newLabel.trim()}
-          className="bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors disabled:opacity-50"
+          className="bg-[#ff003d] text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors disabled:opacity-50"
         >
           {adding ? 'Agregando...' : 'Agregar'}
         </button>

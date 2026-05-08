@@ -31,6 +31,7 @@ export type ModelVariant = {
   precio_lista_usd: number | null
   precio_contado_usd: number | null
   precio_pozo_usd: number | null
+  featured_rank: number | null
 }
 
 export type CatalogModel = {
@@ -59,6 +60,11 @@ export type CatalogModel = {
   // Imagen principal (del modelo_images con mejor specificity)
   cover_url: string | null
   lqip_color: string
+
+  // Destaque (item 3d). Min de los featured_rank de los SKUs del grupo;
+  // null = no destacado. Menor = más destacado. Usado por el sort
+  // "Más Relevante" y el helper getFeaturedModels del footer.
+  featured_rank: number | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,6 +183,7 @@ export async function getGroupedCatalog(
       precio_lista_usd: row.precio_lista_usd,
       precio_contado_usd: row.precio_contado_usd,
       precio_pozo_usd: row.precio_pozo_usd,
+      featured_rank: row.featured_rank ?? null,
     })
   }
 
@@ -282,6 +289,7 @@ export async function getGroupedCatalog(
           : `${Math.min(...floors_all)} ó ${Math.max(...floors_all)}`
 
     const cover = coversByGroup.get(key)
+    const ranks = skus.map(s => s.featured_rank).filter(v => v != null) as number[]
 
     models.push({
       group_slug: key,
@@ -302,6 +310,7 @@ export async function getGroupedCatalog(
       skus,
       cover_url: cover?.url ?? null,
       lqip_color: cover?.lqip ?? '#d4d4cc',
+      featured_rank: ranks.length ? Math.min(...ranks) : null,
     })
   }
 

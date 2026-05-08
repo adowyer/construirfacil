@@ -3,100 +3,130 @@
 /**
  * app/admin/models/[id]/_components/ImageGallery.tsx
  *
- * Client component that renders the existing model_images for a single
- * house_catalog row and exposes per-image controls:
- *   - Toggle cover (atomic via the server action)
- *   - Change image_type
- *   - Archive (with confirm dialog)
+ * Galería del admin con tabs por categoría y chips de variantes / casas
+ * hermanas. Lee de `model_image_skus` (vía la query helper
+ * `getModelImagesForGroup`) — la fuente de verdad post-migración 0010.
  *
- * The gallery itself is fed from the server component (page.tsx), which is
- * the source of truth — after each successful mutation we call router.refresh()
- * to pull a fresh snapshot. The server actions also revalidate the relevant
- * paths, but router.refresh() ensures the active client view updates without
- * waiting for navigation.
+ * Tabs:
+ *   - Exterior      → is_exterior=true,  image_type='render'
+ *   - Interior      → is_exterior=false, image_type='render'
+ *   - Planos        → image_type='plano'
+ *   - Axonometrías  → image_type='axo'
+ *
+ * Por imagen:
+ *   - Chips de variantes (V1, V2…) del style_name actual del modelo →
+ *     toggle linkea/desvincula esa imagen al SKU correspondiente.
+ *   - Chips de casas hermanas (style_names de la misma tipología) →
+ *     toggle aplica la imagen a TODOS los SKUs de esa casa (todas sus
+ *     variantes) o ninguno.
+ *   - Marcar como portada, archivar (igual que antes).
+ *
+ * Cada acción persiste vía server actions y luego llama a router.refresh()
+ * para resincronizar la UI con la DB.
  */
 
-import { useTransition, useState } from 'react'
+import { useTransition, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   archiveImage,
   setCoverImage,
-  setImageType,
+  setImageSkuLinks,
   type ActionResult,
 } from '@/app/admin/models/[id]/image-actions'
+import type {
+  AdminGalleryImage,
+  AdminTypologySku,
+} from '@/lib/supabase/queries/admin_images'
+import { ImageUploadForm } from './ImageUploadForm'
 
 // ---------------------------------------------------------------------------
-// Types
+// Tabs — cada uno define is_exterior + image_type. El upload form dentro
+// del panel hereda esos valores automáticamente (no hay selector duplicado).
 // ---------------------------------------------------------------------------
 
-export type GalleryImage = {
-  id: string
-  storage_url: string
-  storage_path: string
-  is_cover: boolean
-  is_exterior: boolean
-  image_type: string | null
-  sort_order: number
-  status: string
-  style_name: string | null
-  variante: string | null
+type TabId = 'exterior' | 'interior' | 'planos' | 'axo'
+
+const TABS: {
+  id: TabId
+  label: string
+  isExterior: boolean
+  imageType: 'render' | 'plano' | 'axo'
+}[] = [
+    { id: 'exterior', label: 'Exterior', isExterior: true, imageType: 'render' },
+    { id: 'interior', label: 'Interior', isExterior: false, imageType: 'render' },
+    { id: 'planos', label: 'Planos', isExterior: false, imageType: 'plano' },
+    { id: 'axo', label: 'Axonometrías', isExterior: false, imageType: 'axo' },
+  ]
+
+function imageInTab(img: AdminGalleryImage, tab: TabId): boolean {
+  switch (tab) {
+    case 'exterior':
+      return img.is_exterior === true && img.image_type === 'render'
+    case 'interior':
+      return img.is_exterior === false && img.image_type === 'render'
+    case 'planos':
+      return img.image_type === 'plano'
+    case 'axo':
+      return img.image_type === 'axo'
+  }
 }
-
-type ImageScope = 'variant' | 'model' | 'typology'
-
-function computeScope(
-  image: { style_name: string | null; variante: string | null },
-  modelStyleName: string | null,
-): ImageScope {
-  // Compartida con la tipología (sin style ni variante)
-  if (image.style_name === null && image.variante === null) return 'typology'
-  // Compartida con todas las variantes del modelo (style sí, variante no)
-  if (image.style_name === modelStyleName && image.variante === null) return 'model'
-  // Específica de esta variante
-  return 'variant'
-}
-
-interface ImageGalleryProps {
-  modelId: string
-  linea: string
-  tipologiaCode: string
-  styleName: string | null
-  variante: string | null
-  sistemaConstructivo: string | null
-  images: GalleryImage[]
-  /** Whether to show archived rows (muted). */
-  showArchived?: boolean
-}
-
-// Planos y axonometrías comparten image_type='plano' (se diferencian por
-// view_label: "Planta", "Corte", "Axonométrica", etc.). El catálogo público
-// las muestra juntas en el panel "Planos".
-const TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'render', label: 'Render' },
-  { value: 'plano', label: 'Plano / Axonometría' },
-  { value: 'cover', label: 'Cover' },
-]
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
+interface ImageGalleryProps {
+  modelId: string
+  linea: string
+  tipologiaCode: string
+  /** Style del modelo actual. Usado para chips de variantes propias. */
+  currentStyleName: string | null
+  /** Variante del SKU actual del admin (para default del upload form). */
+  variante: string | null
+  /** Sistema constructivo del SKU actual (hidden input del upload). */
+  sistemaConstructivo: string | null
+  images: AdminGalleryImage[]
+  typologySkus: AdminTypologySku[]
+  /** Style_names únicos de la tipología (para chips de casas hermanas). */
+  typologyHouses: string[]
+  showArchived?: boolean
+}
+
 export function ImageGallery({
   modelId,
   linea,
   tipologiaCode,
-  styleName,
+  currentStyleName,
   variante,
   sistemaConstructivo,
   images,
+  typologySkus,
+  typologyHouses,
   showArchived = false,
 }: ImageGalleryProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  // Per-image error so each card can surface its own failure independently.
+  const [, startTransition] = useTransition()
   const [errors, setErrors] = useState<Record<string, string>>({})
-  // Track which row is currently mutating (for visual feedback).
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<TabId>('exterior')
+
+  // Index: house_catalog.id → AdminTypologySku
+  const skuById = useMemo(() => {
+    const m = new Map<string, AdminTypologySku>()
+    for (const s of typologySkus) m.set(s.id, s)
+    return m
+  }, [typologySkus])
+
+  // Index: style_name → SKUs de esa casa.
+  const skusByStyle = useMemo(() => {
+    const m = new Map<string, AdminTypologySku[]>()
+    for (const s of typologySkus) {
+      const arr = m.get(s.style_name) ?? []
+      arr.push(s)
+      m.set(s.style_name, arr)
+    }
+    return m
+  }, [typologySkus])
 
   function handleResult(imageId: string, result: ActionResult) {
     if (!result.ok) {
@@ -112,211 +142,284 @@ export function ImageGallery({
     setBusyId(null)
   }
 
-  function handleSetCover(image: GalleryImage) {
-    setBusyId(image.id)
+  function runAction(imageId: string, fn: () => Promise<ActionResult>) {
+    setBusyId(imageId)
     startTransition(async () => {
-      const result = await setCoverImage(
-        image.id,
-        { linea, tipologiaCode, styleName, variante },
-        modelId,
-      )
-      handleResult(image.id, result)
+      const result = await fn()
+      handleResult(imageId, result)
     })
   }
 
-  function handleChangeType(image: GalleryImage, nextType: string) {
-    if (nextType === image.image_type) return
-    setBusyId(image.id)
-    startTransition(async () => {
-      const result = await setImageType(image.id, nextType, modelId)
-      handleResult(image.id, result)
-    })
-  }
-
-  function handleArchive(image: GalleryImage) {
-    if (
-      !confirm(
-        '¿Archivar esta imagen? Quedará oculta del catálogo público pero se puede restaurar luego.',
-      )
-    )
-      return
-    setBusyId(image.id)
-    startTransition(async () => {
-      const result = await archiveImage(image.id, modelId)
-      handleResult(image.id, result)
-    })
-  }
-
-  // Decision: by default archived rows are hidden. The toggle re-renders them
-  // muted so admins can spot mistakes without leaving the page.
-  const visible = images.filter((img) =>
-    showArchived ? true : img.status !== 'archived',
-  )
-
-  if (visible.length === 0) {
-    return (
-      <p className="text-sm text-neutral-400">
-        Todavía no hay imágenes para este modelo. Subí la primera abajo.
-      </p>
+  function handleSetCover(image: AdminGalleryImage) {
+    runAction(image.id, () =>
+      setCoverImage(image.id, { linea, tipologiaCode }, modelId),
     )
   }
+
+  function handleArchive(image: AdminGalleryImage) {
+    if (!confirm('¿Archivar esta imagen? Quedará oculta del catálogo público pero se puede restaurar luego.')) return
+    runAction(image.id, () => archiveImage(image.id, modelId))
+  }
+
+  /** Toggle un SKU en los links de la imagen. */
+  function handleToggleSku(image: AdminGalleryImage, skuId: string) {
+    const current = new Set(image.linked_sku_ids)
+    if (current.has(skuId)) current.delete(skuId)
+    else current.add(skuId)
+    runAction(image.id, () =>
+      setImageSkuLinks(image.id, Array.from(current), modelId),
+    )
+  }
+
+  /** Toggle una casa hermana entera (todos sus SKUs) en los links. */
+  function handleToggleHouse(image: AdminGalleryImage, styleName: string) {
+    const houseSkus = skusByStyle.get(styleName) ?? []
+    const houseSkuIds = houseSkus.map((s) => s.id)
+    const current = new Set(image.linked_sku_ids)
+    const allLinked = houseSkuIds.every((id) => current.has(id))
+    if (allLinked) {
+      // Si los tiene todos, los saca a todos.
+      for (const id of houseSkuIds) current.delete(id)
+    } else {
+      // Si no los tiene todos, los agrega a todos.
+      for (const id of houseSkuIds) current.add(id)
+    }
+    runAction(image.id, () =>
+      setImageSkuLinks(image.id, Array.from(current), modelId),
+    )
+  }
+
+  // Filtrar por tab + archivadas.
+  const filtered = images.filter((img) => {
+    if (!showArchived && img.status === 'archived') return false
+    return imageInTab(img, activeTab)
+  })
+
+  // Counts para mostrar en cada tab.
+  const counts: Record<TabId, number> = useMemo(() => {
+    const out: Record<TabId, number> = { exterior: 0, interior: 0, planos: 0, axo: 0 }
+    for (const img of images) {
+      if (!showArchived && img.status === 'archived') continue
+      for (const tab of TABS) {
+        if (imageInTab(img, tab.id)) out[tab.id]++
+      }
+    }
+    return out
+  }, [images, showArchived])
+
+  // Variantes del style actual (chips primarios, arriba).
+  const ownVariants = currentStyleName
+    ? (skusByStyle.get(currentStyleName) ?? [])
+    : []
+  // Otras casas (chips secundarios, abajo).
+  const otherHouses = typologyHouses.filter((h) => h !== currentStyleName)
+
+  // Configuración de la tab activa (is_exterior + image_type para el upload).
+  const activeTabConfig = TABS.find((t) => t.id === activeTab) ?? TABS[0]
 
   return (
-    <div
-      className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 ${
-        isPending ? 'opacity-90' : ''
-      }`}
-    >
-      {visible.map((image) => {
-        const isArchived = image.status === 'archived'
-        const isBusy = busyId === image.id
-        const scope = computeScope(image, styleName)
-        const isShared = scope !== 'variant'
-        return (
-          <div
-            key={image.id}
-            className={`group relative border rounded-xl overflow-hidden bg-white transition-all ${
-              image.is_cover
-                ? 'border-black ring-2 ring-black/10'
-                : 'border-[#E8E8E5]'
-            } ${isArchived ? 'opacity-50 grayscale' : ''}`}
-          >
-            <div className="relative aspect-[4/3] bg-neutral-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={image.storage_url}
-                alt={image.storage_path}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-
-              {/* Cover star */}
-              {image.is_cover && (
-                <span
-                  className="absolute top-2 left-2 bg-black text-white text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full flex items-center gap-1"
-                  title="Imagen de portada"
-                >
-                  <span aria-hidden>★</span> Portada
-                </span>
-              )}
-
-              {/* Type + exterior badges */}
-              <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                {image.image_type && (
-                  <span className="bg-white/90 backdrop-blur-sm border border-[#E8E8E5] text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full text-neutral-700">
-                    {image.image_type}
-                  </span>
-                )}
-                <span
-                  className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${
-                    image.is_exterior
-                      ? 'bg-green-50 border-green-200 text-green-700'
-                      : 'bg-blue-50 border-blue-200 text-blue-700'
+    <div>
+      {/* ── Tabs estilo "folder" — sobresalen del panel y se conectan ── */}
+      <div className="flex flex-wrap gap-1 px-2 relative z-10">
+        {TABS.map((t) => {
+          const isActive = activeTab === t.id
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={`relative px-[27px] py-[5px] text-xs uppercase tracking-widest font-bold rounded-t-2xl transition-all flex items-center gap-2.5 border-2 ${isActive
+                ? 'bg-white border-[#E8E8E5] border-b-white text-[#ff003d] -mb-[2px] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]'
+                : 'bg-neutral-100 border-transparent text-neutral-500 hover:bg-neutral-200 hover:text-neutral-800 mt-2'
+                }`}
+            >
+              {t.label}
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full tabular-nums min-w-[22px] text-center ${isActive
+                  ? 'bg-[#ff003d]/10 text-[#ff003d]'
+                  : 'bg-white text-neutral-500'
                   }`}
-                >
-                  {image.is_exterior ? 'Exterior' : 'Interior'}
-                </span>
-              </div>
-
-              {/* Sort order */}
-              <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-mono px-2 py-0.5 rounded-full tabular-nums">
-                #{image.sort_order}
+              >
+                {counts[t.id]}
               </span>
+            </button>
+          )
+        })}
+      </div>
 
-              {scope === 'model' && (
-                <span
-                  className="absolute bottom-2 right-2 bg-amber-500 text-white text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full"
-                  title={`Compartida con todas las variantes de ${styleName}`}
-                >
-                  Modelo
-                </span>
-              )}
-              {scope === 'typology' && (
-                <span
-                  className="absolute bottom-2 right-2 bg-violet-500 text-white text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full"
-                  title="Compartida con todos los modelos de esta tipología"
-                >
-                  Tipología
-                </span>
-              )}
+      {/* ── Panel con grilla ─────────────────────────────────────────── */}
+      <div className="bg-white border-2 border-[#E8E8E5] rounded-2xl p-6 relative">
+        {filtered.length === 0 ? (
+          <p className="text-sm text-neutral-400 py-8 text-center">
+            No hay imágenes en esta categoría.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map((image) => {
+              const isArchived = image.status === 'archived'
+              const isBusy = busyId === image.id
+              const linkedSet = new Set(image.linked_sku_ids)
 
-              {isArchived && (
-                <span className="absolute bottom-2 right-2 bg-neutral-900 text-white text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full">
-                  Archivada
-                </span>
-              )}
-            </div>
+              return (
+                <div
+                  key={image.id}
+                  className={`group relative border rounded-xl overflow-hidden bg-white transition-all ${image.is_cover
+                    ? 'border-black ring-2 ring-black/10'
+                    : 'border-[#E8E8E5]'
+                    } ${isArchived ? 'opacity-50 grayscale' : ''} ${isBusy ? 'opacity-70' : ''}`}
+                >
+                  {/* Foto */}
+                  <div className="relative aspect-[4/3] bg-neutral-50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={image.storage_url}
+                      alt={image.storage_path}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
 
-            <div className="p-3 space-y-2">
-              {/* Type selector */}
-              <div>
-                <label
-                  htmlFor={`type-${image.id}`}
-                  className="block text-[10px] uppercase tracking-widest text-neutral-400 mb-1"
-                >
-                  Tipo
-                </label>
-                <select
-                  id={`type-${image.id}`}
-                  value={image.image_type ?? 'render'}
-                  onChange={(e) => handleChangeType(image, e.target.value)}
-                  disabled={isBusy || isArchived || isShared}
-                  className="w-full border border-[#E8E8E5] rounded-md px-2 py-1 text-xs focus:outline-none focus:border-black transition-colors bg-white disabled:opacity-50"
-                  title={
-                    isShared
-                      ? 'Esta imagen es compartida — editala desde otro modelo si querés cambiar su tipo (afecta a todos los que la heredan).'
-                      : undefined
-                  }
-                >
-                  {TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                    {image.is_cover && (
+                      <span
+                        className="absolute top-2 left-2 bg-black text-white text-[10px] font-semibold uppercase tracking-widest px-[27px] py-[5px] rounded-full flex items-center gap-1"
+                        title="Destacada de la tipología"
+                      >
+                        <span aria-hidden>★</span> Destacada
+                      </span>
+                    )}
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSetCover(image)}
-                  disabled={isBusy || isArchived || image.is_cover || isShared}
-                  className="flex-1 text-[10px] uppercase tracking-widest border border-[#E8E8E5] px-2 py-1.5 rounded-full hover:border-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={
-                    isShared
-                      ? 'Las imágenes compartidas no pueden ser portada — subí una específica del modelo.'
-                      : image.is_cover
-                        ? 'Ya es la portada'
-                        : 'Marcar como portada del modelo'
-                  }
-                >
-                  {image.is_cover ? '★ Portada' : '☆ Portada'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleArchive(image)}
-                  disabled={isBusy || isArchived || isShared}
-                  className="text-[10px] uppercase tracking-widest text-red-600 border border-red-200 px-2 py-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={
-                    isShared
-                      ? 'Esta imagen es compartida — archivala desde otro modelo (afecta a todos los que la heredan).'
-                      : 'Archivar imagen'
-                  }
-                >
-                  Archivar
-                </button>
-              </div>
+                    <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-mono px-2 py-0.5 rounded-full tabular-nums">
+                      #{image.sort_order}
+                    </span>
 
-              {errors[image.id] && (
-                <p className="text-[10px] text-red-600 leading-snug">
-                  {errors[image.id]}
-                </p>
-              )}
-            </div>
+                    {image.view_label && (
+                      <span className="absolute bottom-2 right-2 bg-white/95 backdrop-blur-sm border border-[#E8E8E5] text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full text-neutral-700">
+                        {image.view_label}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Controles */}
+                  <div className="p-3 space-y-3">
+                    {/* Variantes propias (style del modelo actual) */}
+                    {ownVariants.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1.5">
+                          Variantes de {currentStyleName}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {ownVariants.map((sku) => {
+                            const linked = linkedSet.has(sku.id)
+                            return (
+                              <button
+                                key={sku.id}
+                                type="button"
+                                onClick={() => handleToggleSku(image, sku.id)}
+                                disabled={isBusy || isArchived}
+                                className={`text-[10px] uppercase tracking-widest px-[27px] py-[5px] rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${linked
+                                  ? 'bg-[#ff003d] text-white border-[#ff003d]'
+                                  : 'bg-white text-neutral-700 border-[#E8E8E5] hover:border-[#ff003d] hover:text-[#ff003d]'
+                                  }`}
+                                title={`${sku.sistema_constructivo} · ${sku.area_m2 ?? '—'} m²`}
+                              >
+                                V{sku.variante}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Casas hermanas (otros style_names de la tipología) */}
+                    {otherHouses.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1.5">
+                          Aplica también a
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {otherHouses.map((house) => {
+                            const houseSkus = skusByStyle.get(house) ?? []
+                            const linkedCount = houseSkus.filter((s) =>
+                              linkedSet.has(s.id),
+                            ).length
+                            const isFullyLinked = linkedCount === houseSkus.length
+                            const isPartiallyLinked = linkedCount > 0 && !isFullyLinked
+                            return (
+                              <button
+                                key={house}
+                                type="button"
+                                onClick={() => handleToggleHouse(image, house)}
+                                disabled={isBusy || isArchived}
+                                className={`text-[10px] uppercase tracking-widest px-[27px] py-[5px] rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isFullyLinked
+                                  ? 'bg-[#ff003d] text-white border-[#ff003d]'
+                                  : isPartiallyLinked
+                                    ? 'bg-amber-100 text-amber-900 border-amber-400'
+                                    : 'bg-white text-neutral-700 border-[#E8E8E5] hover:border-[#ff003d] hover:text-[#ff003d]'
+                                  }`}
+                                title={
+                                  isPartiallyLinked
+                                    ? `${linkedCount} de ${houseSkus.length} variantes linkeadas`
+                                    : house
+                                }
+                              >
+                                {isFullyLinked ? '✓ ' : ''}
+                                {house}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSetCover(image)}
+                        disabled={isBusy || isArchived || image.is_cover}
+                        className="flex-1 text-[10px] uppercase tracking-widest border border-[#E8E8E5] px-[27px] py-[5px] rounded-full hover:border-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {image.is_cover ? '★ Destacada' : '☆ Destacada'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleArchive(image)}
+                        disabled={isBusy || isArchived}
+                        className="text-[10px] uppercase tracking-widest text-red-600 border border-red-200 px-[27px] py-[5px] rounded-full hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Archivar
+                      </button>
+                    </div>
+
+                    {errors[image.id] && (
+                      <p className="text-[10px] text-red-600 leading-snug">
+                        {errors[image.id]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        )
-      })}
+        )}
+
+        {/* Upload form dentro del panel — la tab activa fija is_exterior +
+          image_type, sin selector duplicado. */}
+        <div className="mt-8 pt-6 border-t border-neutral-200">
+          <ImageUploadForm
+            modelId={modelId}
+            linea={linea}
+            tipologiaCode={tipologiaCode}
+            styleName={currentStyleName}
+            variante={variante}
+            sistemaConstructivo={sistemaConstructivo}
+            typologySkus={typologySkus}
+            typologyHouses={typologyHouses}
+            isExterior={activeTabConfig.isExterior}
+            imageType={activeTabConfig.imageType}
+            categoryLabel={activeTabConfig.label}
+          />
+        </div>
+      </div>
     </div>
   )
 }

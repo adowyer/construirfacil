@@ -6,6 +6,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { LogOut, UserCircle2 } from 'lucide-react'
 
 export default async function AdminLayout({
   children,
@@ -17,7 +19,6 @@ export default async function AdminLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Belt-and-suspenders: middleware already blocks non-admins, but verify here too
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
@@ -29,26 +30,36 @@ export default async function AdminLayout({
   if (profile?.role !== 'admin') redirect('/portal')
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top nav */}
-      <header className="border-b border-neutral-200 px-6 py-4 flex items-center justify-between bg-neutral-950 text-white">
+    <div className="min-h-screen flex flex-col bg-[#FAFAF7]">
+      {/* Header al estilo del catálogo: blanco, generoso, logo CF a la izquierda. */}
+      <header className="bg-white border-b border-neutral-200 px-10 py-6 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="text-sm font-black uppercase tracking-tight">
-            ConstruirFácil
+          <Link href="/" className="flex items-center gap-3 group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cf_logo_gris.png"
+              alt="ConstruirFácil"
+              className="h-12 w-auto group-hover:opacity-80 transition-opacity"
+            />
           </Link>
-          <span className="text-xs text-neutral-400 uppercase tracking-widest">
-            Admin
+          <span className="text-[10px] uppercase tracking-[0.22em] text-neutral-500 border border-neutral-300 px-[27px] py-[5px] rounded-full font-semibold">
+            Panel admin
           </span>
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-neutral-400">
-            {profile?.full_name ?? user.email}
-          </span>
+
+        <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2 text-sm text-neutral-700">
+            <UserCircle2 className="w-5 h-5 text-neutral-400" />
+            <span className="font-medium">
+              {profile?.full_name ?? user.email}
+            </span>
+          </div>
           <form action="/api/auth/signout" method="post">
             <button
               type="submit"
-              className="text-neutral-400 hover:text-white transition-colors underline text-xs uppercase tracking-widest"
+              className="flex items-center gap-1.5 text-xs uppercase tracking-widest font-semibold text-neutral-600 hover:text-[#ff003d] transition-colors px-[27px] py-[5px] rounded-full border border-neutral-200 hover:border-[#ff003d]"
             >
+              <LogOut className="w-3.5 h-3.5" />
               Salir
             </button>
           </form>
@@ -56,57 +67,8 @@ export default async function AdminLayout({
       </header>
 
       <div className="flex flex-1">
-        {/* Sidebar */}
-        <nav className="w-56 border-r border-neutral-200 p-6 flex flex-col gap-1 text-sm">
-          <Link
-            href="/admin"
-            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm font-semibold"
-          >
-            Dashboard
-          </Link>
-          <div className="mt-4 mb-1 px-3 text-xs text-neutral-400 uppercase tracking-widest">
-            Moderación
-          </div>
-          <Link
-            href="/admin/marcas"
-            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
-          >
-            Marcas
-          </Link>
-          <Link
-            href="/admin/lineas"
-            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
-          >
-            Líneas
-          </Link>
-          <Link
-            href="/admin/models"
-            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
-          >
-            Modelos
-          </Link>
-          <div className="mt-4 mb-1 px-3 text-xs text-neutral-400 uppercase tracking-widest">
-            Contenido
-          </div>
-          <Link
-            href="/admin/brand"
-            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
-          >
-            Contenido del sitio
-          </Link>
-          <div className="mt-4 mb-1 px-3 text-xs text-neutral-400 uppercase tracking-widest">
-            Configuración
-          </div>
-          <Link
-            href="/admin/attributes"
-            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
-          >
-            Atributos
-          </Link>
-        </nav>
-
-        {/* Main */}
-        <main className="flex-1 p-8 min-w-0">{children}</main>
+        <AdminSidebar />
+        <main className="flex-1 min-w-0 px-10 py-10">{children}</main>
       </div>
     </div>
   )

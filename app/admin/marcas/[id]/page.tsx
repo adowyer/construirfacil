@@ -119,7 +119,7 @@ export default async function AdminMarcaEditPage({ params }: PageProps) {
             <form action={approveAction}>
               <button
                 type="submit"
-                className="bg-black text-white px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors rounded-full"
+                className="bg-[#ff003d] text-white px-[27px] py-[5px] text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors rounded-full"
               >
                 Aprobar
               </button>
@@ -132,11 +132,11 @@ export default async function AdminMarcaEditPage({ params }: PageProps) {
                 type="text"
                 name="rejection_reason"
                 placeholder="Motivo del rechazo (opcional)"
-                className="border border-neutral-300 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors w-64 rounded-full"
+                className="border border-neutral-300 px-[27px] py-[5px] text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors w-64 rounded-full"
               />
               <button
                 type="submit"
-                className="border border-red-600 text-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-widest hover:bg-red-600 hover:text-white transition-colors rounded-full"
+                className="border border-red-600 text-red-600 px-[27px] py-[5px] text-sm font-semibold uppercase tracking-widest hover:bg-red-600 hover:text-white transition-colors rounded-full"
               >
                 Rechazar
               </button>

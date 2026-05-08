@@ -72,6 +72,7 @@ export type HouseCatalogRow = {
   costo_plano_usd: number | null
   description: string | null
   pdf_url: string | null
+  featured_rank: number | null
 }
 
 export type CatalogFilters = {
@@ -153,6 +154,7 @@ function mapRow(r: any): HouseCatalogRow {
     costo_plano_usd: r.costo_plano_usd,
     description: r.description,
     pdf_url: r.pdf_url,
+    featured_rank: r.featured_rank ?? null,
   }
 }
 

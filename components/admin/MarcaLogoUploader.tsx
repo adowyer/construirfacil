@@ -120,7 +120,7 @@ export function MarcaLogoUploader({ marcaId, marcaName, initialLogoUrl }: Props)
               type="button"
               onClick={handlePickFile}
               disabled={isPending}
-              className="bg-black text-white px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors disabled:opacity-50"
+              className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-xs font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors disabled:opacity-50"
             >
               {isPending ? 'Subiendo…' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
             </button>
@@ -130,7 +130,7 @@ export function MarcaLogoUploader({ marcaId, marcaName, initialLogoUrl }: Props)
                 type="button"
                 onClick={handleRemove}
                 disabled={isPending}
-                className="text-red-600 border border-red-200 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-widest hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="text-red-600 border border-red-200 px-[27px] py-[5px] rounded-full text-xs font-semibold uppercase tracking-widest hover:bg-red-50 transition-colors disabled:opacity-50"
               >
                 Eliminar logo
               </button>

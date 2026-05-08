@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Oculta el dev indicator/logo de Next.js que aparece en dev mode.
+  devIndicators: false,
+
   experimental: {},
 }
 

@@ -30,7 +30,7 @@ export function DeleteModelButton({ id }: { id: string }) {
       type="button"
       onClick={handleDelete}
       disabled={isPending}
-      className="text-xs text-red-600 border border-red-200 px-4 py-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
+      className="text-xs text-red-600 border border-red-200 px-[27px] py-[5px] rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
     >
       {isPending ? 'Eliminando…' : 'Eliminar permanentemente'}
     </button>

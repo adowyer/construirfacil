@@ -2,53 +2,127 @@
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --blue:   #17B4D8;
-  --black:  #0a0a0a;
-  --gray:   #999999;
+  --blue: #17B4D8;
+  --black: #0a0a0a;
+  --gray: #999999;
   --border: #e8e8e8;
   --bg-alt: #f0f0ee;
-  --white:  #ffffff;
+  --white: #ffffff;
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
 
 body {
   background: #ffffff;
   color: #0a0a0a;
-  font-family: var(--font-geist), 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-geist), 'Roboto', sans-serif;
   font-size: 13px;
   line-height: 1.5;
   overflow-x: hidden;
 }
 
-a { text-decoration: none; color: inherit; }
-button { background: none; border: none; cursor: pointer; font: inherit; color: inherit; padding: 0; }
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Button reset SIN padding — Tailwind v4 preflight ya resetea padding del
+   browser, y poner padding aquí ganaba por orden de cascade contra
+   utilities como px-[27px] (ambos tienen specificity 0 en v4). */
+:where(button) {
+  background: none;
+  border: 1px solid #eadddd;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
 
 /* ─── Gradient image placeholders (used by ModelPlaceholder on detail page) ── */
-.ph-timbo2   { background: linear-gradient(150deg, #1a2a18 0%, #2c4020 50%, #4a5e30 100%); }
-.ph-cedro1   { background: linear-gradient(150deg, #0d1f35 0%, #1a3455 50%, #24487a 100%); }
-.ph-cedro2   { background: linear-gradient(150deg, #2a1f3d 0%, #3d2a5c 50%, #52367a 100%); }
-.ph-roble3   { background: linear-gradient(150deg, #3a1a0a 0%, #5c2a10 50%, #7a3818 100%); }
-.ph-alamo1   { background: linear-gradient(150deg, #2a2620 0%, #3e3830 50%, #524c40 100%); }
-.ph-pino4    { background: linear-gradient(150deg, #0c1f18 0%, #183028 50%, #244038 100%); }
-.ph-sauce1   { background: linear-gradient(150deg, #0a1c28 0%, #103040 50%, #184858 100%); }
-.ph-nogal2   { background: linear-gradient(150deg, #281a08 0%, #402a10 50%, #5a3c1a 100%); }
-.ph-eucalip3 { background: linear-gradient(150deg, #1a1e1a 0%, #282c28 50%, #363c36 100%); }
-.ph-jacar1   { background: linear-gradient(150deg, #1e0c0c 0%, #381818 50%, #501e1e 100%); }
-.ph-quebr2   { background: linear-gradient(150deg, #0e0e2a 0%, #1a1a44 50%, #26265e 100%); }
-.ph-lapach1  { background: linear-gradient(150deg, #1a2010 0%, #2c361a 50%, #3c4c22 100%); }
+.ph-timbo2 {
+  background: linear-gradient(150deg, #1a2a18 0%, #2c4020 50%, #4a5e30 100%);
+}
 
-.ph-timbo2, .ph-cedro1, .ph-cedro2, .ph-roble3, .ph-alamo1, .ph-pino4,
-.ph-sauce1, .ph-nogal2, .ph-eucalip3, .ph-jacar1, .ph-quebr2, .ph-lapach1 {
+.ph-cedro1 {
+  background: linear-gradient(150deg, #0d1f35 0%, #1a3455 50%, #24487a 100%);
+}
+
+.ph-cedro2 {
+  background: linear-gradient(150deg, #2a1f3d 0%, #3d2a5c 50%, #52367a 100%);
+}
+
+.ph-roble3 {
+  background: linear-gradient(150deg, #3a1a0a 0%, #5c2a10 50%, #7a3818 100%);
+}
+
+.ph-alamo1 {
+  background: linear-gradient(150deg, #2a2620 0%, #3e3830 50%, #524c40 100%);
+}
+
+.ph-pino4 {
+  background: linear-gradient(150deg, #0c1f18 0%, #183028 50%, #244038 100%);
+}
+
+.ph-sauce1 {
+  background: linear-gradient(150deg, #0a1c28 0%, #103040 50%, #184858 100%);
+}
+
+.ph-nogal2 {
+  background: linear-gradient(150deg, #281a08 0%, #402a10 50%, #5a3c1a 100%);
+}
+
+.ph-eucalip3 {
+  background: linear-gradient(150deg, #1a1e1a 0%, #282c28 50%, #363c36 100%);
+}
+
+.ph-jacar1 {
+  background: linear-gradient(150deg, #1e0c0c 0%, #381818 50%, #501e1e 100%);
+}
+
+.ph-quebr2 {
+  background: linear-gradient(150deg, #0e0e2a 0%, #1a1a44 50%, #26265e 100%);
+}
+
+.ph-lapach1 {
+  background: linear-gradient(150deg, #1a2010 0%, #2c361a 50%, #3c4c22 100%);
+}
+
+.ph-timbo2,
+.ph-cedro1,
+.ph-cedro2,
+.ph-roble3,
+.ph-alamo1,
+.ph-pino4,
+.ph-sauce1,
+.ph-nogal2,
+.ph-eucalip3,
+.ph-jacar1,
+.ph-quebr2,
+.ph-lapach1 {
   position: relative;
 }
 
-.ph-timbo2::after, .ph-cedro1::after, .ph-cedro2::after, .ph-roble3::after,
-.ph-alamo1::after, .ph-pino4::after,  .ph-sauce1::after, .ph-nogal2::after,
-.ph-eucalip3::after, .ph-jacar1::after, .ph-quebr2::after, .ph-lapach1::after {
+.ph-timbo2::after,
+.ph-cedro1::after,
+.ph-cedro2::after,
+.ph-roble3::after,
+.ph-alamo1::after,
+.ph-pino4::after,
+.ph-sauce1::after,
+.ph-nogal2::after,
+.ph-eucalip3::after,
+.ph-jacar1::after,
+.ph-quebr2::after,
+.ph-lapach1::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -64,6 +138,7 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
     flex-direction: column !important;
     min-height: auto !important;
   }
+
   .catalog-row .meta-col {
     width: 100% !important;
     border-right: none !important;
@@ -74,6 +149,7 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
     padding: 20px !important;
     gap: 16px;
   }
+
   .catalog-row .gallery-col {
     height: 280px;
     flex: none !important;
@@ -81,12 +157,27 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
 }
 
 @media (max-width: 580px) {
-  .catalog-nav { padding: 0 20px !important; }
-  .catalog-nav .nav-links { display: none !important; }
-  .catalog-list { padding: 52px 20px 0 !important; }
+  .catalog-nav {
+    padding: 0 20px !important;
+  }
+
+  .catalog-nav .nav-links {
+    display: none !important;
+  }
+
+  .catalog-list {
+    padding: 52px 20px 0 !important;
+  }
 }
 
 /* Detail page nav back-link hover */
-.detail-back-link { color: #999; text-decoration: none; }
-.detail-back-link:hover { color: #0a0a0a; }
+.detail-back-link {
+  color: #999;
+  text-decoration: none;
+}
+
+.detail-back-link:hover {
+  color: #0a0a0a;
+}
+
 @import './catalog.css';

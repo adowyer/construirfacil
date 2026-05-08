@@ -213,16 +213,16 @@ export function CatalogTable({
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-widest transition-colors ${
+              className={`px-[27px] py-[5px] rounded-full text-xs font-semibold uppercase tracking-widest transition-colors ${
                 tab === t.id
-                  ? 'bg-black text-white'
-                  : 'text-neutral-500 hover:text-black'
+                  ? 'bg-[#ff003d] text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-[#ff003d]'
               }`}
             >
               {t.label}
               <span
                 className={`ml-1.5 ${
-                  tab === t.id ? 'text-neutral-300' : 'text-neutral-400'
+                  tab === t.id ? 'text-white/70' : 'text-neutral-400'
                 }`}
               >
                 {counts[t.id]}
@@ -237,7 +237,7 @@ export function CatalogTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nombre, código o línea…"
-          className="flex-1 border border-[#E8E8E5] rounded-full px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
+          className="flex-1 border border-[#E8E8E5] rounded-full px-4 py-2 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors"
         />
       </div>
 
@@ -250,11 +250,14 @@ export function CatalogTable({
         <div className="space-y-8">
           {grouped.map((group) => (
             <section key={group.linea}>
-              <header className="flex items-baseline justify-between mb-3 px-1">
-                <h2 className="text-sm font-black uppercase tracking-widest">
-                  {group.linea}
-                </h2>
-                <span className="text-[11px] text-neutral-400 uppercase tracking-widest">
+              <header className="flex items-center justify-between mb-4 px-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-block w-1.5 h-6 bg-[#ff003d] rounded-full" />
+                  <h2 className="text-base font-black uppercase tracking-tight text-neutral-900">
+                    {group.linea}
+                  </h2>
+                </div>
+                <span className="text-[11px] text-neutral-400 uppercase tracking-widest font-mono">
                   {group.rows.length}{' '}
                   {group.rows.length === 1 ? 'modelo' : 'modelos'}
                 </span>

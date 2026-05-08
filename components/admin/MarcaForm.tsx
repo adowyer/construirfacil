@@ -48,7 +48,7 @@ function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.R
 }
 
 const inputClass =
-  'w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors'
+  'w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors'
 
 export function MarcaForm({
   action,
@@ -181,7 +181,7 @@ export function MarcaForm({
         <button
           type="submit"
           disabled={isPending}
-          className="bg-black text-white px-8 py-3 rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors disabled:opacity-50"
+          className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors disabled:opacity-50"
         >
           {isPending ? 'Guardando…' : submitLabel}
         </button>

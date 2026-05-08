@@ -6,6 +6,7 @@ import {
   getAllCatalogImages,
   getAllCatalogAttributes,
 } from '@/lib/supabase/queries/catalog_panels'
+import { getFeaturedModels } from '@/lib/supabase/queries/featured'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,7 @@ export default async function HomePage() {
     modelContentMap,
     catalogImages,
     catalogAttributes,
+    featuredModels,
   ] = await Promise.all([
     getGroupedCatalog(supabase),
     supabase.from('brand_content').select('*').eq('status', 'active').order('sort_order'),
@@ -29,6 +31,7 @@ export default async function HomePage() {
     getAllModelContentMap(supabase),
     getAllCatalogImages(supabase),
     getAllCatalogAttributes(supabase),
+    getFeaturedModels(supabase, 8),
   ])
 
   return (
@@ -40,6 +43,7 @@ export default async function HomePage() {
       modelContentMap={modelContentMap}
       catalogImages={catalogImages}
       catalogAttributes={catalogAttributes}
+      featuredModels={featuredModels}
     />
   )
 }

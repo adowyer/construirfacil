@@ -11,6 +11,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea, lineaTitleCase } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
@@ -19,6 +20,7 @@ import type {
   CatalogAttributeRow,
 } from '@/lib/supabase/queries/catalog_panels'
 import ExpandedPanels from './ExpandedPanels'
+import { buildCotizarMailto } from '@/lib/cta/mailto'
 
 interface BrandContentLite {
   key: string
@@ -86,6 +88,31 @@ export default function ModelRow({
   const rowRef = useRef<HTMLDivElement>(null)
   const galleryRef = useRef<HTMLDivElement>(null)
 
+  // Sticky CTA: mount/unmount con fade in/out manejado por dos states
+  // (mounted + visible) y CSS transitions. Cuando isExpanded baja a false,
+  // primero apagamos `visible` (dispara fade-out), luego unmounteamos
+  // tras el delay de la transition.
+  //
+  // Además: el RAF de focus physics (más abajo) toggleea la clase
+  // `.cf-sticky-cta-visible` directamente vía stickyRef cuando el progress
+  // baja, así el sticky empieza a desvanecerse APENAS el row se aleja del
+  // centro del viewport — sin esperar a que isExpanded baje a false.
+  const [stickyMounted, setStickyMounted] = useState(false)
+  const [stickyVisible, setStickyVisible] = useState(false)
+  const stickyRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isExpanded) {
+      setStickyMounted(true)
+      const f1 = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setStickyVisible(true)),
+      )
+      return () => cancelAnimationFrame(f1)
+    }
+    setStickyVisible(false)
+    const t = window.setTimeout(() => setStickyMounted(false), 220)
+    return () => window.clearTimeout(t)
+  }, [isExpanded])
+
   // Precarga de imágenes al expandir: evita el flash blanco al cambiar de pill.
   // Los PDFs (planos) no se precargan — solo se renderizan como link.
   useEffect(() => {
@@ -146,6 +173,20 @@ export default function ModelRow({
 
       if (rowRef.current) {
         rowRef.current.style.setProperty('--expand-progress', Math.max(0, Math.min(1, currentProgress.current)).toFixed(4))
+      }
+
+      // Sticky CTA: cuando el progress baja por debajo de 0.55, el row ya
+      // se está alejando del centro → empezamos el fade-out del sticky
+      // SIN esperar a que isExpanded baje a false (que solo ocurre cuando
+      // el row casi salió del viewport, demasiado tarde).
+      if (stickyRef.current) {
+        const shouldBeVisible = currentProgress.current >= 0.55
+        const hasClass = stickyRef.current.classList.contains('cf-sticky-cta-visible')
+        if (shouldBeVisible && !hasClass) {
+          stickyRef.current.classList.add('cf-sticky-cta-visible')
+        } else if (!shouldBeVisible && hasClass) {
+          stickyRef.current.classList.remove('cf-sticky-cta-visible')
+        }
       }
 
       rafId = requestAnimationFrame(loop)
@@ -356,6 +397,42 @@ export default function ModelRow({
         )}
       </div>
       </div>
+
+      {/* Sticky CTA → portal a document.body. Necesario porque cf-row-shell
+          tiene transform durante el expandido, lo cual atrapa el position:
+          fixed de los hijos. Además: fade-in/out controlado por
+          .cf-sticky-cta-visible (transition CSS). */}
+      {stickyMounted &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={stickyRef}
+            className={`cf-row-sticky-cta${
+              stickyVisible ? ' cf-sticky-cta-visible' : ''
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="cf-row-sticky-cta-info">
+              <span className="cf-row-sticky-cta-eyebrow">
+                {displayLinea(model.linea)}
+              </span>
+              <span className="cf-row-sticky-cta-name">
+                {model.display_name}
+              </span>
+            </div>
+            <a
+              className="cf-row-sticky-cta-btn"
+              href={buildCotizarMailto({
+                modelName: model.display_name,
+                linea: displayLinea(model.linea),
+              })}
+            >
+              Pedir cotización
+              <span aria-hidden>→</span>
+            </a>
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

@@ -10,6 +10,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
+import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
 
 type HeroBullet = { name: string; body: string }
 type HeroSection = {
@@ -130,6 +131,20 @@ function SectionModal({
               <p className="cf-hero-modal-bullet-body">{b.body}</p>
             </div>
           ))}
+        </div>
+        <div className="cf-hero-modal-cta-row">
+          <a
+            href={buildCotizarMailto()}
+            className="cf-hero-modal-cta-primary"
+          >
+            Pedir cotización →
+          </a>
+          <a
+            href={buildAsesorMailto()}
+            className="cf-hero-modal-cta-secondary"
+          >
+            Hablar con un asesor
+          </a>
         </div>
       </div>
     </dialog>
@@ -440,6 +455,20 @@ function LineaModal({
           </div>
         )}
         <p className="cf-linea-modal-body">{linea.about}</p>
+        <div className="cf-hero-modal-cta-row">
+          <a
+            href={buildCotizarMailto({ linea: linea.name })}
+            className="cf-hero-modal-cta-primary"
+          >
+            Pedir cotización de la línea {linea.name} →
+          </a>
+          <a
+            href={buildAsesorMailto({ linea: linea.name })}
+            className="cf-hero-modal-cta-secondary"
+          >
+            Hablar con un asesor
+          </a>
+        </div>
       </div>
     </dialog>
   )

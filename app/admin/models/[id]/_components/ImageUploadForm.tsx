@@ -3,23 +3,25 @@
 /**
  * app/admin/models/[id]/_components/ImageUploadForm.tsx
  *
- * Form to upload a new model image to Supabase Storage and create a
- * matching `model_images` row. The grouping fields (linea, tipologia_code,
- * style_name, model_id) are passed as hidden inputs from the server.
+ * Sube una imagen al modelo + popula `model_image_skus`. La categoría
+ * (is_exterior + image_type) viene determinada por la tab activa del padre
+ * (ImageGallery) — este componente NO tiene selector propio para evitar
+ * inconsistencias.
  *
- * Uses `useActionState` like ModelForm for consistent pending/error UX.
+ * El usuario solo elige:
+ *   - Variantes propias del style del modelo actual (chips V1/V2…).
+ *   - Casas hermanas opcionales (otros style_names de la tipología).
+ *   - El archivo + sort_order.
  */
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { uploadImage, type ActionResult } from '@/app/admin/models/[id]/image-actions'
-
-type Scope = 'variant' | 'model' | 'typology'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import {
+  uploadImage,
+  type ActionResult,
+} from '@/app/admin/models/[id]/image-actions'
+import type { AdminTypologySku } from '@/lib/supabase/queries/admin_images'
 
 type FormState = ActionResult | { ok: null }
 
@@ -30,11 +32,14 @@ interface ImageUploadFormProps {
   styleName: string | null
   variante: string | null
   sistemaConstructivo: string | null
+  typologySkus: AdminTypologySku[]
+  typologyHouses: string[]
+  /** Categoría — viene fija desde la tab activa del padre. */
+  isExterior: boolean
+  imageType: 'render' | 'plano' | 'axo'
+  /** Etiqueta visible para mostrar dónde se guarda la imagen. */
+  categoryLabel: string
 }
-
-// ---------------------------------------------------------------------------
-// Wrapper that adapts uploadImage to useActionState's signature
-// ---------------------------------------------------------------------------
 
 async function uploadAction(
   _prevState: FormState,
@@ -43,67 +48,18 @@ async function uploadAction(
   return await uploadImage(formData)
 }
 
-// ---------------------------------------------------------------------------
-// Submit button (uses useFormStatus to avoid double-rendering the parent)
-// ---------------------------------------------------------------------------
-
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
     <button
       type="submit"
       disabled={pending}
-      className="bg-black text-white px-6 py-2.5 rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors disabled:opacity-50"
+      className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors disabled:opacity-50"
     >
       {pending ? 'Subiendo…' : 'Subir imagen'}
     </button>
   )
 }
-
-function ScopeOption({
-  value,
-  current,
-  onSelect,
-  disabled,
-  title,
-  subtitle,
-}: {
-  value: Scope
-  current: Scope
-  onSelect: (s: Scope) => void
-  disabled?: boolean
-  title: string
-  subtitle: string
-}) {
-  const selected = current === value
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && onSelect(value)}
-      disabled={disabled}
-      className={`text-left border rounded-lg px-3 py-2 transition-colors ${
-        selected
-          ? 'border-black bg-black text-white'
-          : 'border-[#E8E8E5] bg-white text-neutral-900 hover:border-neutral-400'
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-    >
-      <div className="text-[11px] uppercase tracking-widest font-semibold">
-        {title}
-      </div>
-      <div
-        className={`text-[10px] mt-0.5 ${
-          selected ? 'text-neutral-300' : 'text-neutral-400'
-        }`}
-      >
-        {subtitle}
-      </div>
-    </button>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Form
-// ---------------------------------------------------------------------------
 
 export function ImageUploadForm({
   modelId,
@@ -112,6 +68,11 @@ export function ImageUploadForm({
   styleName,
   variante,
   sistemaConstructivo,
+  typologySkus,
+  typologyHouses,
+  isExterior,
+  imageType,
+  categoryLabel,
 }: ImageUploadFormProps) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -119,43 +80,93 @@ export function ImageUploadForm({
     uploadAction,
     { ok: null },
   )
-  // Scope por defecto: específica de la variante si el modelo tiene los 2 campos;
-  // si solo tiene style, "model"; si no tiene ni style, "typology".
-  const initialScope: Scope =
-    styleName !== null && variante !== null
-      ? 'variant'
-      : styleName !== null
-        ? 'model'
-        : 'typology'
-  const [scope, setScope] = useState<Scope>(initialScope)
 
-  // Resolver los valores que se mandan según el scope.
-  const sentStyle = scope === 'typology' ? '' : (styleName ?? '')
-  const sentVariante = scope === 'variant' ? (variante ?? '') : ''
+  // SKUs del style actual (chips de variantes propias).
+  const ownSkus = styleName ? typologySkus.filter((s) => s.style_name === styleName) : []
+  // Casas hermanas (otros style_names en la misma tipología).
+  const otherHouses = typologyHouses.filter((h) => h !== styleName)
 
-  // After a successful upload, reset the form and refresh the gallery.
-  // (revalidatePath inside the action covers SSR fetch; router.refresh forces
-  // the active client tree to re-render with the new server state.)
+  // Variantes propias seleccionadas. Default: la del SKU que el admin está
+  // editando (matchea variante actual). Si no hay variante actual, todas.
+  const [selectedSkuIds, setSelectedSkuIds] = useState<Set<string>>(() => {
+    if (variante !== null && styleName !== null) {
+      const sku = ownSkus.find((s) => s.variante === variante)
+      return new Set(sku ? [sku.id] : ownSkus.map((s) => s.id))
+    }
+    return new Set(ownSkus.map((s) => s.id))
+  })
+
+  // Casas hermanas seleccionadas (style_names → todos sus SKUs se incluyen).
+  const [selectedHouses, setSelectedHouses] = useState<Set<string>>(new Set())
+
+  function toggleSku(skuId: string) {
+    setSelectedSkuIds((cur) => {
+      const next = new Set(cur)
+      if (next.has(skuId)) next.delete(skuId)
+      else next.add(skuId)
+      return next
+    })
+  }
+
+  function toggleHouse(house: string) {
+    setSelectedHouses((cur) => {
+      const next = new Set(cur)
+      if (next.has(house)) next.delete(house)
+      else next.add(house)
+      return next
+    })
+  }
+
+  // Resolver lista final de house_catalog_ids (SKUs propios + SKUs de casas hermanas).
+  function buildHouseCatalogIds(): string[] {
+    const ids = new Set<string>(selectedSkuIds)
+    for (const house of selectedHouses) {
+      for (const sku of typologySkus) {
+        if (sku.style_name === house) ids.add(sku.id)
+      }
+    }
+    return Array.from(ids)
+  }
+
   useEffect(() => {
     if (state.ok === true) {
       formRef.current?.reset()
+      setSelectedHouses(new Set())
       router.refresh()
     }
   }, [state, router])
+
+  const houseCatalogIds = buildHouseCatalogIds()
 
   return (
     <form
       ref={formRef}
       action={formAction}
-      className="bg-white border border-[#E8E8E5] rounded-xl p-6 space-y-4"
+      className="bg-[#FAFAF7] border border-dashed border-neutral-300 rounded-xl p-6 space-y-5"
     >
-      {/* Hidden context. Los campos style_name/variante varían según el scope. */}
       <input type="hidden" name="model_id" value={modelId} />
       <input type="hidden" name="linea" value={linea} />
       <input type="hidden" name="tipologia_code" value={tipologiaCode} />
-      <input type="hidden" name="style_name" value={sentStyle} />
-      <input type="hidden" name="variante" value={sentVariante} />
+      <input type="hidden" name="style_name" value={styleName ?? ''} />
+      <input type="hidden" name="variante" value={variante ?? ''} />
       <input type="hidden" name="sistema_constructivo" value={sistemaConstructivo ?? ''} />
+      <input type="hidden" name="is_exterior" value={isExterior ? 'true' : 'false'} />
+      <input type="hidden" name="image_type" value={imageType} />
+      <input
+        type="hidden"
+        name="house_catalog_ids"
+        value={houseCatalogIds.join(',')}
+      />
+
+      <header className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-bold uppercase tracking-widest text-neutral-700">
+          Subir imagen a{' '}
+          <span className="text-[#ff003d]">{categoryLabel}</span>
+        </h4>
+        <span className="text-[10px] text-neutral-400 uppercase tracking-widest font-mono">
+          {imageType} · {isExterior ? 'exterior' : 'interior'}
+        </span>
+      </header>
 
       {state.ok === false && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
@@ -168,91 +179,85 @@ export function ImageUploadForm({
         </div>
       )}
 
-      {/* Scope selector */}
-      <div>
-        <span className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-2">
-          Alcance de la imagen
-        </span>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <ScopeOption
-            value="variant"
-            current={scope}
-            onSelect={setScope}
-            disabled={variante === null}
-            title="Específica de esta variante"
-            subtitle={
-              variante !== null
-                ? `Solo aplica a ${styleName ?? '—'} V${variante}`
-                : 'Este modelo no tiene variante — no aplica'
-            }
-          />
-          <ScopeOption
-            value="model"
-            current={scope}
-            onSelect={setScope}
-            disabled={styleName === null}
-            title="Compartida con el modelo"
-            subtitle={
-              styleName !== null
-                ? `Aplica a todas las variantes de ${styleName}`
-                : 'Este modelo no tiene style — no aplica'
-            }
-          />
-          <ScopeOption
-            value="typology"
-            current={scope}
-            onSelect={setScope}
-            title="Compartida con la tipología"
-            subtitle={`Aplica a todos los modelos de ${linea} T${tipologiaCode}`}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label
-          htmlFor="file"
-          className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-1"
-        >
-          Archivo de imagen *
-        </label>
-        <input
-          id="file"
-          name="file"
-          type="file"
-          accept="image/*"
-          required
-          className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-full file:border file:border-[#E8E8E5] file:bg-white file:text-xs file:uppercase file:tracking-widest file:font-semibold hover:file:border-black file:cursor-pointer"
-        />
-        <p className="text-[11px] text-neutral-400 mt-1">
-          JPG, PNG o WebP. Se guarda en{' '}
-          <code className="font-mono">
-            house-photos/{linea}/{tipologiaCode}/
-            {sentStyle || '_shared'}/{sentVariante || '_all'}/
-          </code>
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Variantes propias */}
+      {ownSkus.length > 0 && styleName && (
         <div>
+          <span className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-2">
+            Variantes de {styleName}
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {ownSkus.map((sku) => {
+              const sel = selectedSkuIds.has(sku.id)
+              return (
+                <button
+                  key={sku.id}
+                  type="button"
+                  onClick={() => toggleSku(sku.id)}
+                  className={`text-[11px] uppercase tracking-widest px-[27px] py-[5px] rounded-full border transition-colors ${
+                    sel
+                      ? 'bg-[#ff003d] text-white border-[#ff003d]'
+                      : 'bg-white text-neutral-700 border-[#E8E8E5] hover:border-[#ff003d] hover:text-[#ff003d]'
+                  }`}
+                  title={`${sku.sistema_constructivo} · ${sku.area_m2 ?? '—'} m²`}
+                >
+                  V{sku.variante}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Casas hermanas */}
+      {otherHouses.length > 0 && (
+        <div>
+          <span className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-2">
+            Aplica también a (opcional)
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {otherHouses.map((h) => {
+              const sel = selectedHouses.has(h)
+              return (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => toggleHouse(h)}
+                  className={`text-[11px] uppercase tracking-widest px-[27px] py-[5px] rounded-full border transition-colors ${
+                    sel
+                      ? 'bg-[#ff003d] text-white border-[#ff003d]'
+                      : 'bg-white text-neutral-700 border-[#E8E8E5] hover:border-[#ff003d] hover:text-[#ff003d]'
+                  }`}
+                >
+                  {sel ? '✓ ' : ''}
+                  {h}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-4">
+        {/* File */}
+        <div className="flex-1 min-w-[260px]">
           <label
-            htmlFor="image_type"
+            htmlFor="file"
             className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-1"
           >
-            Tipo
+            Archivo *
           </label>
-          <select
-            id="image_type"
-            name="image_type"
-            defaultValue="render"
-            className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-white"
-          >
-            <option value="render">Render</option>
-            <option value="plano">Plano</option>
-            <option value="axonometria">Axonometría</option>
-          </select>
+          <input
+            id="file"
+            name="file"
+            type="file"
+            accept="image/*"
+            required
+            className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-full file:border file:border-[#E8E8E5] file:bg-white file:text-xs file:uppercase file:tracking-widest file:font-semibold hover:file:border-[#ff003d] hover:file:text-[#ff003d] file:cursor-pointer"
+          />
         </div>
 
-        <div>
+        {/* Sort order */}
+        <div className="w-24">
           <label
             htmlFor="sort_order"
             className="block text-[11px] uppercase tracking-widest text-neutral-400 mb-1"
@@ -266,32 +271,17 @@ export function ImageUploadForm({
             step="1"
             min="0"
             defaultValue={0}
-            className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black transition-colors"
+            className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors"
           />
         </div>
 
-        <div className="flex items-end">
-          <label
-            htmlFor="is_exterior"
-            className="flex items-center gap-2 text-sm select-none cursor-pointer pb-2"
-          >
-            <input
-              id="is_exterior"
-              name="is_exterior"
-              type="checkbox"
-              defaultChecked
-              className="h-4 w-4 accent-black"
-            />
-            <span className="text-[11px] uppercase tracking-widest text-neutral-700">
-              Es exterior
-            </span>
-          </label>
-        </div>
-      </div>
-
-      <div className="flex justify-end pt-2">
         <SubmitButton />
       </div>
+
+      <p className="text-[11px] text-neutral-400">
+        Se va a linkear a {houseCatalogIds.length}{' '}
+        {houseCatalogIds.length === 1 ? 'SKU' : 'SKUs'}.
+      </p>
     </form>
   )
 }

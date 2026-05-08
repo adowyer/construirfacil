@@ -32,7 +32,7 @@ export default async function AdminMarcasPage() {
         </h1>
         <Link
           href="/admin/marcas/new"
-          className="bg-black text-white px-6 py-3 rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+          className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors"
         >
           Nueva marca
         </Link>

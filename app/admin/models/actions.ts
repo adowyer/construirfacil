@@ -128,6 +128,7 @@ type CatalogPayload = {
   brochure_url: string | null
   pdf_url: string | null
   status: string
+  featured_rank: number | null
 }
 
 function buildPayload(formData: FormData): CatalogPayload {
@@ -159,6 +160,7 @@ function buildPayload(formData: FormData): CatalogPayload {
     brochure_url: parseOptionalText(formData.get('brochure_url')),
     pdf_url: parseOptionalText(formData.get('pdf_url')),
     status: parseRequiredText(formData.get('status')) || 'active',
+    featured_rank: parseOptionalInt(formData.get('featured_rank')),
   }
 }
 

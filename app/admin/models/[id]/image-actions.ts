@@ -27,20 +27,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
 
-/**
- * 4 campos que identifican el "scope" de una imagen en `model_images`.
- * `sistema_constructivo` NO se incluye — Drive no separa por sistema y
- * todas las filas tienen sistema=NULL.
- */
-export type ModelGroupKey = {
-  linea: string
-  tipologiaCode: string
-  styleName: string | null
-  variante: string | null
-}
-
 const STORAGE_BUCKET = 'house-photos'
-const ALLOWED_IMAGE_TYPES = ['render', 'plano', 'axonometria'] as const
+// Tipos válidos según el check constraint del schema (post-migración 0013).
+const ALLOWED_IMAGE_TYPES = ['render', 'plano', 'axo'] as const
 type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number]
 
 // ---------------------------------------------------------------------------
@@ -70,73 +59,70 @@ function revalidateAll(modelId: string) {
   revalidatePath('/admin')
 }
 
-/**
- * Aplica un filtro de los 4 campos del grupo a un query de Supabase.
- * Usa .is(null) para campos null y .eq() para los demás.
- */
-function applyGroupFilter<Q extends {
-  eq: (col: string, val: string) => Q
-  is: (col: string, val: null) => Q
-}>(query: Q, group: ModelGroupKey): Q {
-  let q = query.eq('linea', group.linea).eq('tipologia_code', group.tipologiaCode)
-  q = group.styleName === null ? q.is('style_name', null) : q.eq('style_name', group.styleName)
-  q = group.variante === null ? q.is('variante', null) : q.eq('variante', group.variante)
-  return q
-}
-
-function rowMatchesGroup(
-  row: {
-    linea: string
-    tipologia_code: string
-    style_name: string | null
-    variante: string | null
-  },
-  group: ModelGroupKey,
-): boolean {
-  return (
-    row.linea === group.linea &&
-    row.tipologia_code === group.tipologiaCode &&
-    (row.style_name ?? null) === (group.styleName ?? null) &&
-    (row.variante ?? null) === (group.variante ?? null)
-  )
-}
-
 // ---------------------------------------------------------------------------
 // setCoverImage
 // ---------------------------------------------------------------------------
+// Nota: el catálogo público no usa is_cover (usa sort_order). Esta action
+// es solo bookkeeping del admin para marcar visualmente "la portada de la
+// tipología". Limpia is_cover en imágenes linkeadas a cualquier SKU de la
+// tipología y marca esta.
 
 export async function setCoverImage(
   imageId: string,
-  group: ModelGroupKey,
+  typology: { linea: string; tipologiaCode: string },
   modelId: string,
 ): Promise<ActionResult> {
-  if (!imageId || !group.linea || !group.tipologiaCode) {
+  if (!imageId || !typology.linea || !typology.tipologiaCode) {
     return { ok: false, error: 'Datos insuficientes para marcar portada.' }
   }
 
   const admin = createAdminClient()
 
-  // Verificar que la fila pertenece a este modelo (4 campos del scope).
+  // Verificar que la imagen existe.
   const { data: target, error: fetchErr } = await admin
     .from('model_images')
-    .select('id, linea, tipologia_code, style_name, variante')
+    .select('id')
     .eq('id', imageId)
     .maybeSingle()
-
   if (fetchErr) return { ok: false, error: `Error verificando imagen: ${fetchErr.message}` }
   if (!target) return { ok: false, error: 'La imagen no existe.' }
-  if (!rowMatchesGroup(target, group)) {
-    return { ok: false, error: 'La imagen no pertenece a este modelo.' }
+
+  // Encontrar todos los SKUs de la tipología.
+  const { data: skuRows, error: skuErr } = await admin
+    .from('house_catalog')
+    .select('id')
+    .eq('linea', typology.linea)
+    .eq('tipologia_code', typology.tipologiaCode)
+  if (skuErr) {
+    return { ok: false, error: `Error buscando SKUs de la tipología: ${skuErr.message}` }
+  }
+  const skuIds = (skuRows ?? []).map((r: { id: string }) => r.id)
+
+  // Encontrar todas las imágenes linkeadas a esos SKUs (vía model_image_skus).
+  let imageIdsInTypology: string[] = []
+  if (skuIds.length > 0) {
+    const { data: linkRows, error: linkErr } = await admin
+      .from('model_image_skus')
+      .select('image_id')
+      .in('house_catalog_id', skuIds)
+    if (linkErr) {
+      return { ok: false, error: `Error buscando links: ${linkErr.message}` }
+    }
+    imageIdsInTypology = Array.from(
+      new Set((linkRows ?? []).map((r: { image_id: string }) => r.image_id)),
+    )
   }
 
-  // Paso 1: desmarcar cualquier cover previo para este modelo (5 campos).
-  const clearQuery = applyGroupFilter(
-    admin.from('model_images').update({ is_cover: false }).eq('is_cover', true),
-    group,
-  )
-  const { error: clearErr } = await clearQuery
-  if (clearErr) {
-    return { ok: false, error: `No se pudo desmarcar la portada anterior: ${clearErr.message}` }
+  // Paso 1: desmarcar cualquier cover previo en esa tipología.
+  if (imageIdsInTypology.length > 0) {
+    const { error: clearErr } = await admin
+      .from('model_images')
+      .update({ is_cover: false })
+      .in('id', imageIdsInTypology)
+      .eq('is_cover', true)
+    if (clearErr) {
+      return { ok: false, error: `No se pudo desmarcar la portada anterior: ${clearErr.message}` }
+    }
   }
 
   // Paso 2: marcar la fila elegida.
@@ -144,9 +130,58 @@ export async function setCoverImage(
     .from('model_images')
     .update({ is_cover: true })
     .eq('id', imageId)
-
   if (setErr) {
     return { ok: false, error: `No se pudo marcar la portada: ${setErr.message}` }
+  }
+
+  revalidateAll(modelId)
+  return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// setImageSkuLinks
+// ---------------------------------------------------------------------------
+// Reemplaza atómicamente los links de una imagen en model_image_skus.
+// Si houseCatalogIds está vacío, la imagen queda huérfana (sin SKU).
+// Idempotente — el caller envía siempre el set completo, no diffs.
+
+export async function setImageSkuLinks(
+  imageId: string,
+  houseCatalogIds: string[],
+  modelId: string,
+): Promise<ActionResult> {
+  if (!imageId) return { ok: false, error: 'Falta el ID de la imagen.' }
+
+  const admin = createAdminClient()
+
+  // Verificar que la imagen existe.
+  const { data: img, error: fetchErr } = await admin
+    .from('model_images')
+    .select('id')
+    .eq('id', imageId)
+    .maybeSingle()
+  if (fetchErr) return { ok: false, error: `Error verificando imagen: ${fetchErr.message}` }
+  if (!img) return { ok: false, error: 'La imagen no existe.' }
+
+  // Replace all: delete existing + insert new set.
+  // Si falla el insert, los links quedan vacíos — el caller puede reintentar.
+  const { error: delErr } = await admin
+    .from('model_image_skus')
+    .delete()
+    .eq('image_id', imageId)
+  if (delErr) {
+    return { ok: false, error: `Error limpiando links: ${delErr.message}` }
+  }
+
+  if (houseCatalogIds.length > 0) {
+    const rows = houseCatalogIds.map((hcid) => ({
+      image_id: imageId,
+      house_catalog_id: hcid,
+    }))
+    const { error: insErr } = await admin.from('model_image_skus').insert(rows)
+    if (insErr) {
+      return { ok: false, error: `Error creando links: ${insErr.message}` }
+    }
   }
 
   revalidateAll(modelId)
@@ -304,27 +339,59 @@ export async function uploadImage(formData: FormData): Promise<ActionResult> {
   const { data: publicUrlData } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath)
   const storageUrl = publicUrlData.publicUrl
 
-  const { error: insertErr } = await admin.from('model_images').insert({
-    linea,
-    tipologia_code: tipologiaCode,
-    style_name: styleName,
-    variante,
-    sistema_constructivo: sistemaConstructivo,
-    is_exterior: isExterior,
-    image_type: imageTypeRaw,
-    is_cover: false,
-    sort_order: sortOrder,
-    storage_path: storagePath,
-    storage_url: storageUrl,
-    status: 'active',
-    drive_file_id: null,
-    drive_path: null,
-  })
+  const { data: insertedRow, error: insertErr } = await admin
+    .from('model_images')
+    .insert({
+      linea,
+      tipologia_code: tipologiaCode,
+      style_name: styleName,
+      variante,
+      sistema_constructivo: sistemaConstructivo,
+      is_exterior: isExterior,
+      image_type: imageTypeRaw,
+      is_cover: false,
+      sort_order: sortOrder,
+      storage_path: storagePath,
+      storage_url: storageUrl,
+      status: 'active',
+      drive_file_id: null,
+      drive_path: null,
+    })
+    .select('id')
+    .single()
 
-  if (insertErr) {
+  if (insertErr || !insertedRow) {
     // Rollback del archivo en Storage si falla el insert.
     await admin.storage.from(STORAGE_BUCKET).remove([storagePath])
-    return { ok: false, error: `Error al guardar la imagen: ${insertErr.message}` }
+    return {
+      ok: false,
+      error: `Error al guardar la imagen: ${insertErr?.message ?? 'sin id devuelto'}`,
+    }
+  }
+
+  // Linkear la imagen recién creada a los SKUs seleccionados (model_image_skus).
+  // El campo `house_catalog_ids` viene como CSV de uuids desde el form.
+  const houseCatalogIdsRaw = String(formData.get('house_catalog_ids') ?? '').trim()
+  const houseCatalogIds = houseCatalogIdsRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  if (houseCatalogIds.length > 0) {
+    const linkRows = houseCatalogIds.map((hcid) => ({
+      image_id: insertedRow.id,
+      house_catalog_id: hcid,
+    }))
+    const { error: linkErr } = await admin.from('model_image_skus').insert(linkRows)
+    if (linkErr) {
+      // No revertimos el insert ni el storage — la imagen quedó subida pero
+      // sin links. El admin la puede vincular manualmente desde la galería.
+      revalidateAll(modelId)
+      return {
+        ok: false,
+        error: `Imagen subida pero falló el linkeo a SKUs: ${linkErr.message}. Vinculala desde la galería.`,
+      }
+    }
   }
 
   revalidateAll(modelId)

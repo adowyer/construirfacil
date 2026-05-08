@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAllModelsAdmin } from '@/lib/supabase/queries/models'
 import { CatalogTable, type LineaInfo } from '@/components/admin/CatalogTable'
+import { Home as HomeIcon, Plus } from 'lucide-react'
 
 export default async function AdminModelsPage() {
   const supabase = await createClient()
@@ -27,12 +28,25 @@ export default async function AdminModelsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-10">
-        <h1 className="text-3xl font-black uppercase tracking-tight">Modelos</h1>
+      <div className="flex items-center justify-between mb-10 pb-6 border-b border-neutral-200">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-[#ff003d] text-white flex items-center justify-center shadow-sm shrink-0">
+            <HomeIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black uppercase tracking-tight">
+              Modelos
+            </h1>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              {rows.length} {rows.length === 1 ? 'modelo cargado' : 'modelos cargados'}
+            </p>
+          </div>
+        </div>
         <Link
           href="/admin/models/new"
-          className="bg-black text-white px-6 py-3 rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+          className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors flex items-center gap-2 shadow-md shadow-[#ff003d]/20"
         >
+          <Plus className="w-4 h-4" />
           Nuevo modelo
         </Link>
       </div>

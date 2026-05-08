@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
+import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
 import type {
   CatalogImage,
   CatalogAttributeRow,
@@ -139,6 +140,47 @@ function ScrollableBody({ children }: { children: ReactNode }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PanelInlineCTA — bloque reutilizable para el cierre de cada panel.
+// "Pedir cotización" contextualizado (con modelo) + "Hablar con un asesor"
+// como secundario. Si se le pasa `eyebrow`, lo muestra arriba del CTA.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PanelInlineCTA({
+  model,
+  eyebrow,
+  primaryLabel,
+}: {
+  model: CatalogModel
+  eyebrow?: string
+  primaryLabel?: string
+}) {
+  return (
+    <div className="cf-pn-cta">
+      {eyebrow && <p className="cf-pn-cta-eyebrow">{eyebrow}</p>}
+      <div className="cf-pn-cta-row">
+        <a
+          className="cf-pn-cta-primary"
+          href={buildCotizarMailto({
+            modelName: model.display_name,
+            linea: displayLinea(model.linea),
+          })}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {primaryLabel ?? 'Pedir cotización'} →
+        </a>
+        <a
+          className="cf-pn-cta-secondary"
+          href={buildAsesorMailto({ linea: model.linea })}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Hablar con un asesor
+        </a>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Panel 1 — Descripción larga
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -223,6 +265,10 @@ export function Panel1Description({
               Sin descripción cargada todavía.
             </p>
           )}
+          <PanelInlineCTA
+            model={model}
+            eyebrow="¿Te interesa este modelo?"
+          />
         </div>
       </div>
     </div>
@@ -540,6 +586,10 @@ export function Panel3Tipologia({
             Sin descripción de tipología cargada todavía.
           </p>
         )}
+        <PanelInlineCTA
+          model={model}
+          eyebrow="¿Te gusta esta tipología?"
+        />
       </div>
     </div>
   )
@@ -576,6 +626,11 @@ export function PanelEstiloIntro({
         ) : (
           <p className="cf-pn-body-empty">Sin texto introductorio cargado.</p>
         )}
+        <PanelInlineCTA
+          model={model}
+          eyebrow="¿Querés ver los estilos disponibles?"
+          primaryLabel="Pedir cotización"
+        />
       </div>
     </div>
   )
@@ -734,6 +789,10 @@ export function Panel6CasaQueCrece({
               </div>
             ))}
           </div>
+          <PanelInlineCTA
+            model={model}
+            eyebrow="¿Buscás una casa que evolucione con vos?"
+          />
         </div>
       </div>
     </div>
@@ -876,6 +935,10 @@ export function Panel8Equipamiento({
             </div>
           </>
         )}
+        <PanelInlineCTA
+          model={model}
+          eyebrow="¿Querés modificar el equipamiento?"
+        />
       </div>
     </div>
   )
@@ -938,6 +1001,10 @@ export function PanelSistemaConstructivo({
         ) : (
           <p className="cf-pn-body-empty">Sin descripción cargada para este sistema.</p>
         )}
+        <PanelInlineCTA
+          model={model}
+          eyebrow={`¿Te interesa el sistema ${currentSystem ?? 'constructivo'}?`}
+        />
       </div>
     </div>
   )
@@ -972,12 +1039,12 @@ export function Panel9Datos({
         s.sistema_constructivo === model.systems[selectedSystem],
     ) ?? activeSkus[0] ?? model.skus[0]
 
-  const wapText = encodeURIComponent(
-    `Hola, me interesa el modelo ${model.display_name} (variante ${
-      uniqueVars[selectedVariant]?.variante
-    }, sistema ${model.systems[selectedSystem]}). ¿Podría obtener más información?`,
-  )
-  const wapNumber = '5491155551234'
+  const cotizarHref = buildCotizarMailto({
+    modelName: model.display_name,
+    variante: uniqueVars[selectedVariant]?.variante,
+    sistema: model.systems[selectedSystem],
+    linea: displayLinea(model.linea),
+  })
 
   return (
     <div className="cf-pn cf-pn-datos">
@@ -1025,13 +1092,11 @@ export function Panel9Datos({
         )}
 
         <a
-          href={`https://wa.me/${wapNumber}?text=${wapText}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={cotizarHref}
           className="cf-pn-datos-cta"
           onClick={(e) => e.stopPropagation()}
         >
-          Pedir Cotización →
+          Pedir cotización →
         </a>
       </div>
     </div>

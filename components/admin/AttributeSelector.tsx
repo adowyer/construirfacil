@@ -20,11 +20,15 @@ import type { AttributeTypeWithValues } from '@/types/database'
 interface AttributeSelectorProps {
   attributeTypes: AttributeTypeWithValues[]
   selectedValueIds: string[]
+  /** Si se pasa, los <input> usan form={formId} para asociarse a un <form>
+   *  externo. Permite renderear el selector fuera del form principal. */
+  formId?: string
 }
 
 export function AttributeSelector({
   attributeTypes,
   selectedValueIds,
+  formId,
 }: AttributeSelectorProps) {
   const selected = new Set(selectedValueIds)
 
@@ -91,7 +95,8 @@ export function AttributeSelector({
                         name="attribute_ids"
                         value={v.id}
                         defaultChecked={selected.has(v.id)}
-                        className="w-4 h-4 accent-black shrink-0"
+                        form={formId}
+                        className="w-4 h-4 accent-[#ff003d] shrink-0"
                       />
                       <span className="leading-tight">{v.name}</span>
                     </label>

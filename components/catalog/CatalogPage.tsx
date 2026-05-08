@@ -30,6 +30,8 @@ import type {
   CatalogImage,
   CatalogAttributeRow,
 } from '@/lib/supabase/queries/catalog_panels'
+import { buildAsesorMailto } from '@/lib/cta/mailto'
+import CatalogFooter from './CatalogFooter'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -46,6 +48,8 @@ interface PageProps {
   catalogImages?: CatalogImage[]
   /** Todos los pairs (catalog × attribute_value). ModelRow filtra por house_catalog_id de sus SKUs. */
   catalogAttributes?: CatalogAttributeRow[]
+  /** Modelos featured (ordenados por featured_rank asc) para el mini marquee del footer. */
+  featuredModels?: CatalogModel[]
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -72,6 +76,7 @@ export default function CatalogPage({
   modelContentMap = {},
   catalogImages = [],
   catalogAttributes = [],
+  featuredModels = [],
 }: PageProps) {
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
@@ -138,6 +143,15 @@ export default function CatalogPage({
   }).sort((a, b) => {
     if (sortOrder === 'price-asc') return (a.price_from ?? 0) - (b.price_from ?? 0)
     if (sortOrder === 'price-desc') return (b.price_from ?? 0) - (a.price_from ?? 0)
+    if (sortOrder === 'recommended') {
+      // featured_rank asc, NULL al final.
+      const ra = a.featured_rank
+      const rb = b.featured_rank
+      if (ra == null && rb == null) return 0
+      if (ra == null) return 1
+      if (rb == null) return -1
+      return ra - rb
+    }
     return 0
   })
 
@@ -423,8 +437,11 @@ export default function CatalogPage({
                 activeSkuIds.has(a.house_catalog_id),
               )
 
-              // Otros modelos en la misma (linea, tipologia_code) — para panel 5
-              const otherStyles = filtered.filter(
+              // Otros modelos en la misma (linea, tipologia_code) — para panel 5.
+              // Usa `models` raw (no `filtered`) porque el panel Estilos quiere
+              // mostrar SIEMPRE toda la oferta de estilos de la tipología, sin
+              // que el filtro de estilo activo lo deje vacío.
+              const otherStyles = models.filter(
                 (m) =>
                   m.linea === model.linea &&
                   m.tipologia_code === model.tipologia_code &&
@@ -454,13 +471,24 @@ export default function CatalogPage({
             {gi === 0 && (
               <div className="cf-mid-cta">
                 <h3>¿Te ayudo a elegir?</h3>
-                <p>Conversá con nuestro asistente y encontrá la casa que mejor se adapta a vos.</p>
-                <button className="cf-mid-cta-btn">Hablar con asesor</button>
+                <p>Conversá con uno de nuestros asesores y encontrá la casa que mejor se adapta a vos.</p>
+                <a
+                  className="cf-mid-cta-btn"
+                  href={buildAsesorMailto()}
+                >
+                  Hablar con un asesor
+                </a>
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {/* ── Footer del catálogo (cierre + marquee + base) ── */}
+      <CatalogFooter
+        featuredModels={featuredModels}
+        onOpenModel={openDetail}
+      />
 
       {/* ── Detail slider overlay ── */}
       <div

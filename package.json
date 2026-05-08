@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.105.0",
     "csv-parse": "^6.2.1",
     "googleapis": "^171.4.0",
+    "lucide-react": "^1.14.0",
     "mime-types": "^3.0.2",
     "next": "16.2.4",
     "react": "19.2.4",

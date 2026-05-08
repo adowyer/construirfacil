@@ -804,6 +804,7 @@ body:has(.cf-row.cf-expanded) {
   padding: 40px 28px;
   text-align: center;
   margin: 60px 0;
+  display: none;
 }
 
 .cf-mid-cta h3 {
@@ -2151,21 +2152,83 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-datos-cta {
   display: block;
   margin-top: 28px;
-  background: #0a0a0a;
+  background: #ff003d;
   color: #fff;
   padding: 16px 24px;
-  border-radius: 6px;
+  border-radius: 999px;
   text-align: center;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-decoration: none;
-  transition: background 0.2s;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .cf-pn-datos-cta:hover {
-  background: #2a2a2a;
+  background: #d80035;
+  transform: translateY(-1px);
+}
+
+/* ── PanelInlineCTA — bloque reutilizable al cierre de cada panel ── */
+.cf-pn-cta {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cf-pn-cta-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0 0 12px;
+}
+
+.cf-pn-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.cf-pn-cta-primary {
+  background: #ff003d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.cf-pn-cta-primary:hover {
+  background: #d80035;
+  transform: translateY(-1px);
+}
+
+.cf-pn-cta-secondary {
+  color: rgba(0, 0, 0, 0.7);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  transition: border-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+
+.cf-pn-cta-secondary:hover {
+  border-color: #ff003d;
+  color: #ff003d;
 }
 
 /* ── Mobile ── */
@@ -3278,6 +3341,55 @@ body:has(.cf-row.cf-expanded) {
   margin: 0;
 }
 
+/* ── CTAs al final del modal (Crece / Flex / LineaModal) ── */
+.cf-hero-modal-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cf-hero-modal-cta-primary {
+  background: #ff003d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.cf-hero-modal-cta-primary:hover {
+  background: #d80035;
+  transform: translateY(-1px);
+}
+
+.cf-hero-modal-cta-secondary {
+  color: #0a0a0a;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border-radius: 999px;
+  text-decoration: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  transition: border-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+
+.cf-hero-modal-cta-secondary:hover {
+  border-color: #ff003d;
+  color: #ff003d;
+}
+
 /* ── Feature Auto-Slider (Stories Mode) ── */
 .cf-story-slider {
   margin: 24px 0 32px;
@@ -3853,8 +3965,16 @@ body:has(.cf-row.cf-expanded) {
 }
 
 @keyframes cfTypewriterBlink {
-  0%, 49.9% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+
+  0%,
+  49.9% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Chevrons del footer: el TEXTO (ELEGÍ/COTIZÁ/POSTULÁ/DISFRUTÁ) queda
@@ -3910,8 +4030,15 @@ body:has(.cf-row.cf-expanded) {
 }
 
 @keyframes cfHeroArrowRotated {
-  0% { transform: rotate(90deg) translateY(-4px); opacity: 0.65; }
-  100% { transform: rotate(90deg) translateY(4px); opacity: 1; }
+  0% {
+    transform: rotate(90deg) translateY(-4px);
+    opacity: 0.65;
+  }
+
+  100% {
+    transform: rotate(90deg) translateY(4px);
+    opacity: 1;
+  }
 }
 
 /* Flex: glyph ↓ apuntando hacia abajo (al menú StickyFilters debajo). */
@@ -3921,8 +4048,15 @@ body:has(.cf-row.cf-expanded) {
 }
 
 @keyframes cfHeroArrowDown {
-  0% { transform: translateY(-4px); opacity: 0.65; }
-  100% { transform: translateY(4px); opacity: 1; }
+  0% {
+    transform: translateY(-4px);
+    opacity: 0.65;
+  }
+
+  100% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
 }
 
 /* Cascada de fade-in/out de las flechas PNG. Cada keyframe tiene el
@@ -3930,27 +4064,73 @@ body:has(.cf-row.cf-expanded) {
    encadena las 4 flechas en cascada continua. Se aplican en orden
    invertido (nth-child 4 = Loop1 = primero) para R→L. */
 @keyframes cfChevronLoop1 {
-  0% { opacity: 0; }
-  6%, 75% { opacity: 1; }
-  90%, 100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+
+  6%,
+  75% {
+    opacity: 1;
+  }
+
+  90%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes cfChevronLoop2 {
-  0%, 6% { opacity: 0; }
-  12%, 75% { opacity: 1; }
-  90%, 100% { opacity: 0; }
+
+  0%,
+  6% {
+    opacity: 0;
+  }
+
+  12%,
+  75% {
+    opacity: 1;
+  }
+
+  90%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes cfChevronLoop3 {
-  0%, 12% { opacity: 0; }
-  18%, 75% { opacity: 1; }
-  90%, 100% { opacity: 0; }
+
+  0%,
+  12% {
+    opacity: 0;
+  }
+
+  18%,
+  75% {
+    opacity: 1;
+  }
+
+  90%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes cfChevronLoop4 {
-  0%, 18% { opacity: 0; }
-  24%, 75% { opacity: 1; }
-  90%, 100% { opacity: 0; }
+
+  0%,
+  18% {
+    opacity: 0;
+  }
+
+  24%,
+  75% {
+    opacity: 1;
+  }
+
+  90%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* ── Slide Líneas (1 intro + 3 cards verticales) ── */
@@ -4119,8 +4299,13 @@ body:has(.cf-row.cf-expanded) {
 }
 
 @keyframes cfLineaMarquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 .cf-linea-modal-marquee-photo {
@@ -4223,4 +4408,515 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-step-teal {
   color: var(--cf-step-teal);
+}
+
+/* ============================================================================
+   Sticky CTA del modelo expandido — barra fija al fondo del viewport
+   mientras un modelo está abierto. Aparece cuando .cf-row-shell.cf-expanded
+   está visible. Z-index alto para quedar por encima del catálogo.
+   ============================================================================ */
+
+.cf-row-sticky-cta {
+  position: fixed;
+  bottom: 32px;
+  left: 32px;
+  z-index: 200;
+  max-width: calc(100vw - 64px);
+  /* Paleta del catálogo: card blanco con border sutil, no FAB dark.
+     Esto la integra visualmente con las fichas del expandido. */
+  background: #fff;
+  color: #0a0a0a;
+  padding: 8px 8px 8px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 999px;
+  border: 1px solid #e8e8e5;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.05);
+  /* Estado inicial / fade-out: rápido (cuando se quita la clase visible). */
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.18s ease-in,
+    transform 0.2s cubic-bezier(0.4, 0, 1, 1);
+  pointer-events: none;
+}
+
+.cf-row-sticky-cta.cf-sticky-cta-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  /* Fade-in: más lento y suave que el fade-out. */
+  transition:
+    opacity 0.32s ease-out,
+    transform 0.36s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cf-row-sticky-cta-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.cf-row-sticky-cta-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.cf-row-sticky-cta-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #0a0a0a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.cf-row-sticky-cta-btn {
+  background: #ff003d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 11px 20px;
+  border-radius: 999px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cf-row-sticky-cta-btn:hover {
+  background: #d80035;
+  transform: scale(1.04);
+}
+
+@media (max-width: 580px) {
+  .cf-row-sticky-cta {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    max-width: none;
+    padding: 6px 6px 6px 18px;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .cf-row-sticky-cta-name {
+    font-size: 13px;
+    max-width: 160px;
+  }
+
+  .cf-row-sticky-cta-btn {
+    padding: 10px 16px;
+    font-size: 11px;
+  }
+}
+
+/* ============================================================================
+   Footer del catálogo (3 capas: cierre + marquee + base)
+   ============================================================================ */
+
+.cf-footer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 96px;
+}
+
+/* ── Capa 1: Cierre editorial (olive sage full-bleed) ─────────────────────── */
+.cf-footer-cierre {
+  background: var(--cf-hero-olive, #b2a67a);
+  color: #fff;
+  padding: 96px 56px;
+}
+
+.cf-footer-cierre-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.cf-footer-cierre-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 18px;
+}
+
+.cf-footer-cierre-title {
+  font-size: clamp(36px, 4.4vw, 64px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 0.95;
+  margin: 0 0 24px;
+}
+
+.cf-footer-cierre-body {
+  font-size: 17px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 640px;
+  margin: 0 auto 36px;
+}
+
+.cf-footer-cierre-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+}
+
+.cf-footer-cta-primary {
+  background: #ff003d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.cf-footer-cta-primary:hover {
+  background: #d80035;
+  transform: translateY(-1px);
+}
+
+.cf-footer-cta-secondary {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  border-radius: 999px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.cf-footer-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+}
+
+/* ── Capa 2: Mini marquee continuo ────────────────────────────────────────── */
+.cf-footer-marquee {
+  background: #fff;
+  padding: 56px 0 64px;
+  overflow: hidden;
+  position: relative;
+}
+
+.cf-footer-marquee-header {
+  padding: 0 56px;
+  margin-bottom: 28px;
+  max-width: 1200px;
+}
+
+.cf-footer-marquee-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ff003d;
+  margin: 0 0 8px;
+}
+
+.cf-footer-marquee-title {
+  font-size: clamp(22px, 2.4vw, 32px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+  color: #0a0a0a;
+}
+
+.cf-footer-marquee-track {
+  display: flex;
+  gap: 16px;
+  padding: 8px 56px;
+  height: 260px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cf-footer-marquee-track::-webkit-scrollbar {
+  display: none;
+}
+
+.cf-footer-marquee-card {
+  flex: 0 0 auto;
+  height: 100%;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cf-footer-marquee-card:hover {
+  transform: translateY(-3px);
+}
+
+/* CTA card */
+.cf-footer-marquee-card-cta {
+  width: 280px;
+  padding: 28px 26px;
+  justify-content: space-between;
+}
+
+.cf-footer-marquee-card-cta-primary {
+  background: #ff003d;
+  color: #fff;
+}
+
+.cf-footer-marquee-card-cta-secondary {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.cf-footer-marquee-card-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.cf-footer-marquee-card-title {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-top: 12px;
+}
+
+.cf-footer-marquee-card-arrow {
+  font-size: 28px;
+  align-self: flex-end;
+  line-height: 1;
+}
+
+/* Trust card */
+.cf-footer-marquee-card-trust {
+  width: 240px;
+  background: #f6f5ef;
+  border: 1px solid #e8e6dc;
+  padding: 26px 24px;
+  justify-content: space-between;
+}
+
+.cf-footer-marquee-card-icon {
+  width: 28px;
+  height: 28px;
+  color: #ff003d;
+  margin-bottom: 12px;
+}
+
+.cf-footer-marquee-card-trust-num {
+  display: block;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+  line-height: 1;
+}
+
+.cf-footer-marquee-card-trust-unit {
+  font-size: 18px;
+  font-weight: 500;
+  margin-left: 4px;
+  color: #555;
+}
+
+.cf-footer-marquee-card-trust-lbl {
+  display: block;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.35;
+  margin-top: 8px;
+}
+
+/* Model card */
+.cf-footer-marquee-card-model {
+  width: 280px;
+  background-color: #d4d4cc;
+  background-size: cover;
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.cf-footer-marquee-card-model-overlay {
+  margin-top: auto;
+  width: 100%;
+  padding: 18px 22px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.05));
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cf-footer-marquee-card-model-linea {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cf-footer-marquee-card-model-name {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* ── Capa 3: Footer estándar ──────────────────────────────────────────────── */
+.cf-footer-base {
+  background: #0e0f12;
+  color: #fff;
+  padding: 64px 56px 32px;
+}
+
+.cf-footer-base-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 56px;
+  max-width: 1200px;
+  margin: 0 auto 48px;
+}
+
+.cf-footer-base-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cf-footer-base-logo {
+  height: 36px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+.cf-footer-base-tag {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  max-width: 280px;
+}
+
+.cf-footer-base-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ff003d;
+  margin: 0 0 18px;
+}
+
+.cf-footer-base-col-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cf-footer-base-col-list li,
+.cf-footer-base-col-list a {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.cf-footer-base-col-list a:hover {
+  color: #fff;
+}
+
+.cf-footer-base-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cf-footer-base-bottom-sep {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Mobile / tablet ──────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cf-footer-cierre {
+    padding: 64px 24px;
+  }
+
+  .cf-footer-marquee-header {
+    padding: 0 24px;
+  }
+
+  .cf-footer-marquee-track {
+    padding: 8px 24px;
+    height: 220px;
+  }
+
+  .cf-footer-marquee-card-cta,
+  .cf-footer-marquee-card-trust,
+  .cf-footer-marquee-card-model {
+    width: 240px;
+  }
+
+  .cf-footer-base {
+    padding: 48px 24px 24px;
+  }
+
+  .cf-footer-base-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+}
+
+@media (max-width: 580px) {
+  .cf-footer-base-grid {
+    grid-template-columns: 1fr;
+  }
 }

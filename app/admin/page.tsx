@@ -145,13 +145,13 @@ export default async function AdminDashboardPage() {
       <div className="mt-8 flex gap-4">
         <Link
           href="/admin/models/new"
-          className="bg-black text-white px-6 py-3 rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+          className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors"
         >
           Nuevo modelo
         </Link>
         <Link
           href="/admin/models"
-          className="border border-[#E8E8E5] px-6 py-3 rounded-full text-sm font-semibold uppercase tracking-widest hover:border-black transition-colors"
+          className="border border-[#E8E8E5] px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:border-black transition-colors"
         >
           Ver todos los modelos
         </Link>
