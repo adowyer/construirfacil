@@ -177,28 +177,28 @@ function SlidePasos() {
       <div className="cf-pasos-grid">
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
-            Elegí la línea de la casa que te gusta y nuestro Agente de Inteligencia Artificial te ayudará con la escala.
+            Elegí la línea de la casa que te gusta y nuestro Agente de Inteligencia Artificial te ayudará a alcanzarla.
           </p>
           <div className="cf-step-item">ELEGÍ <img src="/Flecha-Roja.png" className="cf-step-arrow-img" alt="" /></div>
         </div>
 
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
-            Cotizamos la casa que se adapta a tus posibilidades con un innovador sistema de financiación.
+            Construimos la casa que se adapta a tus posibilidades, con varias alternativas de financiación.
           </p>
           <div className="cf-step-item">COTIZÁ <img src="/Flecha-naranja.png" className="cf-step-arrow-img" alt="" /></div>
         </div>
 
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
-            Una vez precalificado tu crédito, sumate a un "grupo" de viviendas en cuotas con un mínimo pago condicional.
+            Una vez preadjudicado tu crédito, postulás para el "cupo" de viviendas en curso, con un mínimo pago condicional.
           </p>
           <div className="cf-step-item">POSTULÁ <img src="/Flecha-celeste.png" className="cf-step-arrow-img" alt="" /></div>
         </div>
 
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
-            Con el grupo completo al "cupo" de la zona, comenzamos la obra y en pocos meses estarás mudado a tu nueva casa.
+            Cuando se completa el "cupo" del barrio comenzamos la obra y en pocas semanas te mudás a tu nueva casa.
           </p>
           <div className="cf-step-item">DISFRUTÁ <img src="/Flecha-verde.png" className="cf-step-arrow-img" alt="" /></div>
         </div>
