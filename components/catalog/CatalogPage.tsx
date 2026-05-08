@@ -216,6 +216,26 @@ export default function CatalogPage({
     {} as Record<string, string | null>,
   )
 
+  // ── Map linea (UPPERCASE) → array de URLs únicas para el marquee del
+  // LineaModal. Priorizamos exteriores (más representativas) y filtramos
+  // planos/axos. Dedupeamos por image id (algunas fotos aplican a múltiples SKUs).
+  const lineaPhotosByName: Record<string, string[]> = (() => {
+    const byLinea: Record<string, Map<string, string>> = {}
+    for (const img of catalogImages) {
+      if (!img.linea) continue
+      if (img.image_type === 'plano' || img.image_type === 'axo') continue
+      if (img.is_exterior !== true) continue
+      const key = img.linea.toUpperCase()
+      if (!byLinea[key]) byLinea[key] = new Map()
+      byLinea[key].set(img.id, img.storage_url)
+    }
+    const out: Record<string, string[]> = {}
+    for (const [k, m] of Object.entries(byLinea)) {
+      out[k] = Array.from(m.values())
+    }
+    return out
+  })()
+
   // ── Pares 1 planta / 2 plantas para la animación "La Casa que Crece" ──
   // En Bosque cada modelo tiene una sola fila con floors_options "1 ó 2",
   // y las dos versiones viven como skus distintos (cada uno con su `floors`
@@ -358,6 +378,7 @@ export default function CatalogPage({
         lineas={lineas}
         lineaCoverByName={coverByLineaName}
         growthPairs={growthPairs}
+        lineaPhotosByName={lineaPhotosByName}
       />
 
       {/* ── Filtros sticky en color CF ── */}
