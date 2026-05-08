@@ -207,7 +207,7 @@ function SlideCrece({ growthPairs, onOpenModal }: { growthPairs: GrowthPair[], o
         </div>
         <div className="cf-steps-footer cf-steps-footer-left" style={{ bottom: '30px', left: '40px', zIndex: 10 }}>
           <div className="cf-step-item" style={{ color: '#fff' }}>
-            <span style={{ fontSize: '40px', marginRight: '6px', color: '#ff003d', display: 'inline-block', transform: 'rotate(90deg)', lineHeight: 1 }}>&darr;</span>
+            <span className="cf-hero-arrow-pointer cf-hero-arrow-pointer-rotated" aria-hidden>&darr;</span>
             4 SIMPLES PASOS PARA SER DUEÑO
           </div>
         </div>
@@ -220,79 +220,41 @@ function SlideCrece({ growthPairs, onOpenModal }: { growthPairs: GrowthPair[], o
 }
 
 // Slide 3: Principal / Central (Dark Solid)
-// Reveal cinematográfico del título + barrido coloreado que sigue el mouse.
-// El COLOR del barrido interpola entre los 4 colores de los chevrons debajo,
-// según la X del cursor (rojo → naranja → celeste → teal). Posición:
-// `bgPos = (250 - cursorX*2) / 3` (válido para background-size: 250%).
-const SWEEP_COLOR_STOPS: { x: number; rgb: [number, number, number] }[] = [
-  { x: 12.5, rgb: [0xE6, 0x40, 0x4A] }, // rojo — ELEGÍ
-  { x: 37.5, rgb: [0xE4, 0x90, 0x30] }, // naranja — COTIZÁ
-  { x: 62.5, rgb: [0x3C, 0x9C, 0xD8] }, // celeste — POSTULÁ
-  { x: 87.5, rgb: [0x54, 0x90, 0x84] }, // teal — DISFRUTÁ
-]
-
-function lerpSweepColor(cursorX: number): string {
-  if (cursorX <= SWEEP_COLOR_STOPS[0].x) {
-    const [r, g, b] = SWEEP_COLOR_STOPS[0].rgb
-    return `rgb(${r}, ${g}, ${b})`
-  }
-  const last = SWEEP_COLOR_STOPS[SWEEP_COLOR_STOPS.length - 1]
-  if (cursorX >= last.x) {
-    const [r, g, b] = last.rgb
-    return `rgb(${r}, ${g}, ${b})`
-  }
-  for (let i = 0; i < SWEEP_COLOR_STOPS.length - 1; i++) {
-    const a = SWEEP_COLOR_STOPS[i]
-    const b = SWEEP_COLOR_STOPS[i + 1]
-    if (cursorX >= a.x && cursorX <= b.x) {
-      const t = (cursorX - a.x) / (b.x - a.x)
-      const r = Math.round(a.rgb[0] + (b.rgb[0] - a.rgb[0]) * t)
-      const g = Math.round(a.rgb[1] + (b.rgb[1] - a.rgb[1]) * t)
-      const bl = Math.round(a.rgb[2] + (b.rgb[2] - a.rgb[2]) * t)
-      return `rgb(${r}, ${g}, ${bl})`
-    }
-  }
-  const [r, g, b] = SWEEP_COLOR_STOPS[0].rgb
-  return `rgb(${r}, ${g}, ${b})`
-}
+// Typewriter effect con cursor rojo titilante + flechas señaladoras
+// arriba/abajo de la frase. Los chevrons abajo se encienden de derecha a
+// izquierda en cascada continua (CSS).
+const PRINCIPAL_TEXT = 'La casa que querés, en las\ncondiciones que necesitás.'
 
 function SlidePrincipal() {
-  const [revealed, setRevealed] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [done, setDone] = useState(false)
 
   useEffect(() => {
-    let f2 = 0
-    const f1 = requestAnimationFrame(() => {
-      f2 = requestAnimationFrame(() => setRevealed(true))
-    })
+    let i = 0
+    let interval = 0 as unknown as ReturnType<typeof setInterval>
+    const start = setTimeout(() => {
+      interval = setInterval(() => {
+        i++
+        if (i >= PRINCIPAL_TEXT.length) {
+          setTyped(PRINCIPAL_TEXT)
+          setDone(true)
+          clearInterval(interval)
+          return
+        }
+        setTyped(PRINCIPAL_TEXT.slice(0, i))
+      }, 75)
+    }, 400)
     return () => {
-      cancelAnimationFrame(f1)
-      if (f2) cancelAnimationFrame(f2)
+      clearTimeout(start)
+      clearInterval(interval)
     }
   }, [])
 
-  const handleTitleMove = (e: React.MouseEvent<HTMLHeadingElement>) => {
-    const el = e.currentTarget
-    const rect = el.getBoundingClientRect()
-    const cursor = ((e.clientX - rect.left) / rect.width) * 100
-    const bgPos = Math.max(0, Math.min(100, (250 - cursor * 2) / 3))
-    el.style.setProperty('--cf-sweep-x', `${bgPos}%`)
-    el.style.setProperty('--cf-sweep-color', lerpSweepColor(cursor))
-  }
-
-  const handleTitleLeave = (e: React.MouseEvent<HTMLHeadingElement>) => {
-    // vuelve al rest = sin color visible (gradiente fuera del viewport)
-    e.currentTarget.style.setProperty('--cf-sweep-x', '100%')
-  }
-
   return (
-    <div className={`cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-dark cf-slide-principal-card${revealed ? ' cf-principal-revealed' : ''}`}>
-      <h2
-        className="cf-slide-title-large cf-principal-scale"
-        style={{ marginBottom: '60px' }}
-        onMouseMove={handleTitleMove}
-        onMouseLeave={handleTitleLeave}
-      >
-        La casa que querés, en las<br />condiciones que necesitás.
+    <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-dark cf-slide-principal-card">
+      <h2 className="cf-slide-title-large cf-principal-typewriter" style={{ marginBottom: '60px' }}>
+        {typed}
+        <span className={`cf-typewriter-cursor${done ? ' cf-typewriter-cursor-done' : ''}`} aria-hidden>|</span>
       </h2>
       <StepsFooter />
     </div>
@@ -317,7 +279,7 @@ function SlideFlex({ onOpenModal }: { onOpenModal: () => void }) {
         <div className="cf-steps-footer cf-steps-footer-right" style={{ zIndex: 10 }}>
           <div className="cf-step-item">
             DEFINÍ TU BÚSQUEDA EN EL MENÚ
-            <span style={{ fontSize: '40px', marginLeft: '6px', color: '#ff003d', display: 'inline-block', lineHeight: 1 }}>&darr;</span>
+            <span className="cf-hero-arrow-pointer cf-hero-arrow-pointer-down" aria-hidden>&darr;</span>
           </div>
         </div>
       </div>
@@ -500,6 +462,7 @@ export default function HeroRow({
   // Carga inicial: scroll al Centro (Slide 3 = índice 2)
   const principalIdx = 2
   const [current, setCurrent] = useState(principalIdx)
+  const [paused, setPaused] = useState(false)
 
   const centerSlide = useCallback((i: number, smooth = true) => {
     const track = trackRef.current
@@ -515,10 +478,30 @@ export default function HeroRow({
     setCurrent(principalIdx)
   }, [principalIdx, centerSlide])
 
+  const numSlides = 8
+
+  // snapTo(i) busca la copia de slide i más cercana al scrollLeft actual
+  // (set A o set B duplicado) — evita rebobinar cuando el carousel ya pasó
+  // del primer set.
   const snapTo = useCallback(
     (i: number) => {
-      centerSlide(i, true)
-      setCurrent(i)
+      const track = trackRef.current
+      if (!track) return
+      const candidates = [i, i + numSlides]
+      let bestIdx = i
+      let bestDist = Infinity
+      for (const idx of candidates) {
+        const el = track.children[idx] as HTMLElement | undefined
+        if (!el) continue
+        const target = el.offsetLeft + el.offsetWidth / 2 - track.clientWidth / 2
+        const dist = Math.abs(track.scrollLeft - target)
+        if (dist < bestDist) {
+          bestDist = dist
+          bestIdx = idx
+        }
+      }
+      centerSlide(bestIdx, true)
+      setCurrent(bestIdx % numSlides)
     },
     [centerSlide],
   )
@@ -538,7 +521,7 @@ export default function HeroRow({
         closestIdx = i
       }
     }
-    setCurrent(closestIdx)
+    setCurrent(closestIdx % numSlides)
   }, [])
 
   // Data hardcodeada para Modals
@@ -568,38 +551,91 @@ export default function HeroRow({
     ]
   }), [])
 
-  const numSlides = 8
+  // Auto-carousel marquee: rAF loop que avanza scrollLeft a velocidad
+  // constante (px/frame). Para el loop sin saltos, los slides se renderean
+  // duplicados (set A + set B). Cuando scrollLeft alcanza el inicio del
+  // set B, restamos el ancho del set A → scrollLeft vuelve al inicio del
+  // set A en una posición visualmente idéntica (teleport invisible).
+  const pausedRef = useRef(paused)
+  useEffect(() => { pausedRef.current = paused }, [paused])
+
+  useEffect(() => {
+    const SPEED = 0.95 // px por frame ≈ 57 px/s a 60fps
+    const START_DELAY = 5000 // ms — deja que el typewriter del Principal termine
+    let rafId = 0
+    let started = false
+
+    const tick = () => {
+      const track = trackRef.current
+      if (!track) return
+      if (!pausedRef.current) {
+        const firstSlide = track.children[0] as HTMLElement | undefined
+        const setBStart = track.children[numSlides] as HTMLElement | undefined
+        if (firstSlide && setBStart) {
+          const loopAmount = setBStart.offsetLeft - firstSlide.offsetLeft
+          let next = track.scrollLeft + SPEED
+          if (loopAmount > 0 && next >= setBStart.offsetLeft) {
+            next -= loopAmount
+          }
+          track.scrollLeft = next
+        }
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+
+    const startTimer = setTimeout(() => {
+      started = true
+      rafId = requestAnimationFrame(tick)
+    }, START_DELAY)
+
+    return () => {
+      clearTimeout(startTimer)
+      if (started && rafId) cancelAnimationFrame(rafId)
+    }
+  }, [numSlides])
+
+  // Renderiza el set de 8 slides una vez. Se llama dos veces (set A + set B)
+  // para que el rAF loop pueda hacer wraparound invisible.
+  const renderSlideSet = (keyPrefix: string) => (
+    <>
+      <div key={`${keyPrefix}-pasos`} className="cf-hero-row-slide cf-hero-row-slide-section">
+        <SlidePasos />
+      </div>
+      <div key={`${keyPrefix}-crece`} className="cf-hero-row-slide cf-hero-row-slide-split">
+        <SlideCrece growthPairs={growthPairs} onOpenModal={() => { if (modalCrece) setModalSection(modalCrece) }} />
+      </div>
+      <div key={`${keyPrefix}-principal`} className="cf-hero-row-slide cf-hero-row-slide-principal">
+        <SlidePrincipal />
+      </div>
+      <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
+        <SlideFlex onOpenModal={() => { if (modalFlex) setModalSection(modalFlex) }} />
+      </div>
+      <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
+        <SlideLineasIntro />
+      </div>
+      {LINEAS.map((linea) => (
+        <div key={`${keyPrefix}-linea-${linea.name}`} className="cf-hero-row-slide cf-hero-row-slide-linea">
+          <SlideLineaCard
+            name={linea.name}
+            sub={linea.sub}
+            bg={linea.bg}
+            teaser={linea.teaser}
+            onOpenModal={() => setModalLinea(linea)}
+          />
+        </div>
+      ))}
+    </>
+  )
 
   return (
-    <div className="cf-hero-row">
+    <div
+      className="cf-hero-row"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       <div ref={trackRef} className="cf-hero-row-track" onScroll={onScroll}>
-        <div className="cf-hero-row-slide cf-hero-row-slide-section">
-          <SlidePasos />
-        </div>
-        <div className="cf-hero-row-slide cf-hero-row-slide-split">
-          <SlideCrece growthPairs={growthPairs} onOpenModal={() => { if (modalCrece) setModalSection(modalCrece) }} />
-        </div>
-        <div className="cf-hero-row-slide cf-hero-row-slide-principal">
-          <SlidePrincipal />
-        </div>
-        <div className="cf-hero-row-slide cf-hero-row-slide-split">
-          <SlideFlex onOpenModal={() => { if (modalFlex) setModalSection(modalFlex) }} />
-        </div>
-        <div className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
-          <SlideLineasIntro />
-        </div>
-        {LINEAS.map((linea) => (
-          <div key={linea.name} className="cf-hero-row-slide cf-hero-row-slide-linea">
-            <SlideLineaCard
-              name={linea.name}
-              sub={linea.sub}
-              bg={linea.bg}
-              teaser={linea.teaser}
-              onOpenModal={() => setModalLinea(linea)}
-            />
-          </div>
-        ))}
-
+        {renderSlideSet('a')}
+        {renderSlideSet('b')}
       </div>
 
       <div className="cf-hero-row-dots">

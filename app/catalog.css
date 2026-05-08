@@ -2239,8 +2239,6 @@ body:has(.cf-row.cf-expanded) {
   padding: 0 48px;
   height: 420px;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
   scrollbar-width: none;
 }
 
@@ -2253,7 +2251,6 @@ body:has(.cf-row.cf-expanded) {
   height: 100%;
   aspect-ratio: 16 / 10;
   /* matchea las fotos colapsadas */
-  scroll-snap-align: center;
   position: relative;
 }
 
@@ -3839,223 +3836,121 @@ body:has(.cf-row.cf-expanded) {
   margin-bottom: 0;
 }
 
-/* ── Slide Principal Animaciones ── */
-/* Estado inicial: título y chevrons invisibles. Las animaciones se
-   triggerean por la clase `.cf-principal-revealed` que el componente
-   agrega tras 2 frames (después del layout commit / scroll-to-center).
-   Así el reveal se ve siempre, no importa cuánto tarde en posicionarse. */
+/* ── Slide Principal: typewriter + chevrons L→R ── */
 
-/* Estado pre-reveal.
-   El título usa background-clip: text con gradiente HORIZONTAL blanco → rojo
-   CF → blanco, 3× más ancho que el elemento. La posición X del gradiente la
-   controla --cf-sweep-x (seteada por JS según la posición del mouse) → el
-   rojo "vive" debajo del cursor y lo sigue en tiempo real.
-   Rest (mouse fuera) = --cf-sweep-x: 100% → rojo fuera de viewport, blanco. */
-.cf-slide-principal-card .cf-principal-scale {
-  --cf-sweep-x: 100%;
-  --cf-sweep-color: #E6404A;
+/* Título tipeado preserva el line-break (\n) sin <br>. */
+.cf-principal-typewriter {
+  white-space: pre-line;
+}
 
+/* Cursor rojo titilante. Mientras tipea: titila. Al terminar: sigue titilando. */
+.cf-typewriter-cursor {
+  display: inline-block;
+  color: #ff003d;
+  margin-left: 4px;
+  font-weight: 400;
+  animation: cfTypewriterBlink 0.85s steps(2, end) infinite;
+}
+
+@keyframes cfTypewriterBlink {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Chevrons del footer: el TEXTO (ELEGÍ/COTIZÁ/POSTULÁ/DISFRUTÁ) queda
+   fijo al 100% siempre. Solo la flechita PNG hace fade in/out, en
+   cascada continua de izquierda a derecha (ELEGÍ → COTIZÁ → POSTULÁ → DISFRUTÁ).
+   Cycle 6s. Las 4 keyframes (cfChevronLoop1..4) tienen el "appear" en
+   distintos puntos del cycle, encadenando las 4 flechas. */
+.cf-slide-principal-card .cf-step-item .cf-step-arrow-img {
   opacity: 0;
-  filter: blur(14px);
-  transform: translateY(28px) scale(0.96);
-  transform-origin: center;
-
-  background-image: linear-gradient(90deg,
-      #fff 0%,
-      #fff 35%,
-      var(--cf-sweep-color) 50%,
-      #fff 65%,
-      #fff 100%);
-  background-size: 250% 100%;
-  background-position: var(--cf-sweep-x) 0;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-
-  transition:
-    opacity 1.1s cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 1.1s cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1),
-    background-position 0.12s ease-out;
-}
-
-.cf-slide-principal-card .cf-step-item {
-  opacity: 0;
-}
-
-/* Reveal: cuando se agrega .cf-principal-revealed, los valores estáticos
-   cambian y el transition de arriba se encarga de animarlos. */
-.cf-slide-principal-card.cf-principal-revealed .cf-principal-scale {
-  opacity: 1;
-  filter: blur(0);
-  transform: translateY(0) scale(1);
-}
-
-/* Loop infinito de los chevrons: aparecen de a una (rojo → naranja →
-   celeste → verde), las 4 quedan visibles juntas, fade total y repite.
-   Cycle 6s: appear 0-1.5s, hold 1.5-4.5s, fade 4.5-5.4s, rest 5.4-6s. */
-.cf-slide-principal-card.cf-principal-revealed .cf-step-item {
   animation-duration: 6s;
   animation-iteration-count: infinite;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  animation-delay: 0.6s;
-  /* arranca el loop tras el reveal del título */
 }
 
-.cf-slide-principal-card.cf-principal-revealed .cf-step-item:nth-child(1) {
+/* L→R: el primer item (ELEGÍ, nth-child 1) se enciende primero. */
+.cf-slide-principal-card .cf-step-item:nth-child(1) .cf-step-arrow-img {
   animation-name: cfChevronLoop1;
 }
 
-.cf-slide-principal-card.cf-principal-revealed .cf-step-item:nth-child(2) {
+.cf-slide-principal-card .cf-step-item:nth-child(2) .cf-step-arrow-img {
   animation-name: cfChevronLoop2;
 }
 
-.cf-slide-principal-card.cf-principal-revealed .cf-step-item:nth-child(3) {
+.cf-slide-principal-card .cf-step-item:nth-child(3) .cf-step-arrow-img {
   animation-name: cfChevronLoop3;
 }
 
-.cf-slide-principal-card.cf-principal-revealed .cf-step-item:nth-child(4) {
+.cf-slide-principal-card .cf-step-item:nth-child(4) .cf-step-arrow-img {
   animation-name: cfChevronLoop4;
 }
 
-/* Hover sobre el card: pausa el loop y mantiene los 4 chevrons visibles
-   (para que el efecto de colores del barrido del título matchee con ellos).
-   Al salir del hover, la regla base vuelve y la animación reinicia desde 0
-   (cascade-in fresca). */
-.cf-slide-principal-card.cf-principal-revealed:hover .cf-step-item {
+/* Hover: pausa el loop y deja las 4 flechas visibles. */
+.cf-slide-principal-card:hover .cf-step-item .cf-step-arrow-img {
   animation: none;
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: opacity 0.3s ease;
 }
 
-@keyframes cfPrincipalTitleIn {
-  from {
-    opacity: 0;
-    filter: blur(14px);
-    transform: translateY(28px) scale(0.96);
-  }
-
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
-  }
+/* ── Flechas señaladoras de los slides Crece y Flex ── */
+/* Bounce sutil hacia la dirección que apuntan, infinito. */
+.cf-hero-arrow-pointer {
+  display: inline-block;
+  color: #ff003d;
+  font-size: 40px;
+  line-height: 1;
 }
 
+/* Crece: glyph ↓ rotado 90° (CW) → apunta a la derecha (hacia el texto).
+   Animación oscila en la dirección que apunta, manteniendo el rotate. */
+.cf-hero-arrow-pointer-rotated {
+  margin-right: 6px;
+  animation: cfHeroArrowRotated 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes cfHeroArrowRotated {
+  0% { transform: rotate(90deg) translateY(-4px); opacity: 0.65; }
+  100% { transform: rotate(90deg) translateY(4px); opacity: 1; }
+}
+
+/* Flex: glyph ↓ apuntando hacia abajo (al menú StickyFilters debajo). */
+.cf-hero-arrow-pointer-down {
+  margin-left: 6px;
+  animation: cfHeroArrowDown 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes cfHeroArrowDown {
+  0% { transform: translateY(-4px); opacity: 0.65; }
+  100% { transform: translateY(4px); opacity: 1; }
+}
+
+/* Cascada de fade-in/out de las flechas PNG. Cada keyframe tiene el
+   "appear" en un punto distinto del cycle de 6s (6%/12%/18%/24%) →
+   encadena las 4 flechas en cascada continua. Se aplican en orden
+   invertido (nth-child 4 = Loop1 = primero) para R→L. */
 @keyframes cfChevronLoop1 {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  6% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  75% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  90%,
-  100% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
+  0% { opacity: 0; }
+  6%, 75% { opacity: 1; }
+  90%, 100% { opacity: 0; }
 }
 
 @keyframes cfChevronLoop2 {
-
-  0%,
-  6% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  12% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  75% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  90%,
-  100% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
+  0%, 6% { opacity: 0; }
+  12%, 75% { opacity: 1; }
+  90%, 100% { opacity: 0; }
 }
 
 @keyframes cfChevronLoop3 {
-
-  0%,
-  12% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  18% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  75% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  90%,
-  100% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
+  0%, 12% { opacity: 0; }
+  18%, 75% { opacity: 1; }
+  90%, 100% { opacity: 0; }
 }
 
 @keyframes cfChevronLoop4 {
-
-  0%,
-  18% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  24% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  75% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  90%,
-  100% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-.cf-principal-scale {
-  display: inline-block;
-  animation: cfSlowScaleText 10s linear infinite alternate;
-}
-
-@keyframes cfSlowScaleText {
-  0% {
-    transform: scale(1);
-  }
-
-  100% {
-    transform: scale(1.03);
-  }
+  0%, 18% { opacity: 0; }
+  24%, 75% { opacity: 1; }
+  90%, 100% { opacity: 0; }
 }
 
 /* ── Slide Líneas (1 intro + 3 cards verticales) ── */
