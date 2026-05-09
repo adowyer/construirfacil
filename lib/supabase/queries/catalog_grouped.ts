@@ -22,11 +22,15 @@ export type ModelVariant = {
   sku: string
   variante: string
   area_m2: number | null
+  area_semicubierta_m2: number | null
   floors: number | null
   min_bedrooms: number | null
   max_bedrooms: number | null
   bedrooms_label: string | null
   bathrooms: number | null
+  toilette: boolean | null
+  parrilla: boolean | null
+  lavadero: string | null
   sistema_constructivo: string
   precio_lista_usd: number | null
   precio_contado_usd: number | null
@@ -174,11 +178,15 @@ export async function getGroupedCatalog(
       sku: row.sku,
       variante: row.variante,
       area_m2: row.area_m2,
+      area_semicubierta_m2: row.area_semicubierta_m2 ?? null,
       floors: row.floors,
       min_bedrooms: row.min_bedrooms,
       max_bedrooms: row.max_bedrooms,
       bedrooms_label: row.bedrooms_label,
       bathrooms: row.bathrooms,
+      toilette: row.toilette ?? null,
+      parrilla: row.parrilla ?? null,
+      lavadero: row.lavadero ?? null,
       sistema_constructivo: row.sistema_constructivo,
       precio_lista_usd: row.precio_lista_usd,
       precio_contado_usd: row.precio_contado_usd,

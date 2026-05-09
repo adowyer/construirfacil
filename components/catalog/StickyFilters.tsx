@@ -34,13 +34,14 @@ interface StickyFiltersProps {
 
 const BED_OPTIONS = ['1', '2', '3', '4+'] as const
 
+// 4 buckets por perfil de uso, alineados a la distribución real del
+// catálogo: S = cabaña/individual, M = familiar, L = familia grande,
+// XL = premium. Los predicados en CatalogPage usan los mismos rangos.
 const SIZE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'S', label: '–60m²' },
-  { value: 'SM', label: '60–90m²' },
-  { value: 'M', label: '90–130m²' },
-  { value: 'L', label: '130–180m²' },
-  { value: 'XL', label: '180–240m²' },
-  { value: 'XXL', label: '+240m²' },
+  { value: 'S', label: '–70m²' },
+  { value: 'M', label: '70–120m²' },
+  { value: 'L', label: '120–200m²' },
+  { value: 'XL', label: '+200m²' },
 ]
 
 // "+ Relevante" hoy es no-op (queda como placeholder para item 3d cuando

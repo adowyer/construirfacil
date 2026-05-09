@@ -25,12 +25,13 @@ import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
+import type { Marca } from '@/types/database'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type {
   CatalogImage,
   CatalogAttributeRow,
 } from '@/lib/supabase/queries/catalog_panels'
-import { buildAsesorMailto } from '@/lib/cta/mailto'
+import { buildCotizarMailto } from '@/lib/cta/mailto'
 import CatalogFooter from './CatalogFooter'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +43,8 @@ interface PageProps {
   brandContent?: BrandContent[]
   lineContent?: LineContent[]
   lineas?: LineaRow[]
+  /** Marcas aprobadas — usadas en las cards del marquee del footer. */
+  marcas?: Marca[]
   /** Map indexado por `${linea}::${style_name}` → fila de model_content. */
   modelContentMap?: Record<string, ModelContentRow>
   /** Todas las imágenes del catálogo. ModelRow filtra las que aplican al modelo. */
@@ -73,6 +76,7 @@ export default function CatalogPage({
   brandContent = [],
   lineContent = [],
   lineas = [],
+  marcas = [],
   modelContentMap = {},
   catalogImages = [],
   catalogAttributes = [],
@@ -115,12 +119,11 @@ export default function CatalogPage({
   }
   const skuMatchesSize = (sku: CatalogModel['skus'][number], sf: string): boolean => {
     const a = sku.area_m2 ?? 0
-    if (sf === 'S') return a >= 0 && a < 60
-    if (sf === 'SM') return a >= 60 && a < 90
-    if (sf === 'M') return a >= 90 && a < 130
-    if (sf === 'L') return a >= 130 && a < 180
-    if (sf === 'XL') return a >= 180 && a < 240
-    if (sf === 'XXL') return a >= 240
+    // 4 buckets por perfil — labels en StickyFilters.SIZE_OPTIONS.
+    if (sf === 'S') return a < 70                    // cabaña / individual
+    if (sf === 'M') return a >= 70 && a < 120        // familiar
+    if (sf === 'L') return a >= 120 && a < 200       // familia grande
+    if (sf === 'XL') return a >= 200                 // premium
     return true
   }
 
@@ -164,7 +167,7 @@ export default function CatalogPage({
   // combinaran con los OTROS filtros activos. Las que no, van disabled en
   // la barra sticky para evitar que el usuario llegue a un listado vacío.
   const BED_OPTIONS = ['1', '2', '3', '4+']
-  const SIZE_OPTIONS = ['S', 'SM', 'M', 'L', 'XL', 'XXL']
+  const SIZE_OPTIONS = ['S', 'M', 'L', 'XL']
 
   // ¿Hay al menos 1 modelo que pase (estilo, beds[], sizes[])?
   // Misma lógica OR-dentro/AND-entre que skuMatchesFilters, pero con arrays
@@ -437,6 +440,20 @@ export default function CatalogPage({
                 activeSkuIds.has(a.house_catalog_id),
               )
 
+              // Foto del listado: si hay filtros activos, usa la primera
+              // foto exterior render que matchee los activeSkus → la card
+              // refleja exactamente la variante que el user filtró. Sin
+              // filtros, usa la cover_url default del modelo.
+              const dynamicCoverImg = hasSkuFilter
+                ? modelImages.find(
+                    (img) =>
+                      img.is_exterior === true &&
+                      img.image_type === 'render',
+                  )
+                : null
+              const dynamicCoverUrl =
+                dynamicCoverImg?.storage_url ?? model.cover_url
+
               // Otros modelos en la misma (linea, tipologia_code) — para panel 5.
               // Usa `models` raw (no `filtered`) porque el panel Estilos quiere
               // mostrar SIEMPRE toda la oferta de estilos de la tipología, sin
@@ -457,11 +474,13 @@ export default function CatalogPage({
                   modelContent={mc}
                   images={modelImages}
                   activeSkus={activeSkus}
+                  coverUrl={dynamicCoverUrl}
                   brandContent={brandContent}
                   lineContent={lineContent}
                   attributesForCatalogIds={modelAttributes}
                   otherStyles={otherStyles}
                   modelContentMap={modelContentMap}
+                  allModels={filtered}
                   lineaIconUrl={iconByLineaName[model.linea] ?? null}
                 />
               )
@@ -471,12 +490,12 @@ export default function CatalogPage({
             {gi === 0 && (
               <div className="cf-mid-cta">
                 <h3>¿Te ayudo a elegir?</h3>
-                <p>Conversá con uno de nuestros asesores y encontrá la casa que mejor se adapta a vos.</p>
+                <p>Pedí una cotización y te ayudamos a encontrar la casa que mejor se adapta a vos.</p>
                 <a
                   className="cf-mid-cta-btn"
-                  href={buildAsesorMailto()}
+                  href={buildCotizarMailto()}
                 >
-                  Hablar con un asesor
+                  Cotizar
                 </a>
               </div>
             )}
@@ -487,6 +506,7 @@ export default function CatalogPage({
       {/* ── Footer del catálogo (cierre + marquee + base) ── */}
       <CatalogFooter
         featuredModels={featuredModels}
+        marcas={marcas}
         onOpenModel={openDetail}
       />
 

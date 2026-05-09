@@ -10,7 +10,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
-import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
+import { buildCotizarMailto } from '@/lib/cta/mailto'
 
 type HeroBullet = { name: string; body: string }
 type HeroSection = {
@@ -137,14 +137,9 @@ function SectionModal({
             href={buildCotizarMailto()}
             className="cf-hero-modal-cta-primary"
           >
-            Pedir cotización →
+            Cotizar →
           </a>
-          <a
-            href={buildAsesorMailto()}
-            className="cf-hero-modal-cta-secondary"
-          >
-            Hablar con un asesor
-          </a>
+          {/* "Hablar con un asesor" oculto temporalmente. */}
         </div>
       </div>
     </dialog>
@@ -460,14 +455,9 @@ function LineaModal({
             href={buildCotizarMailto({ linea: linea.name })}
             className="cf-hero-modal-cta-primary"
           >
-            Pedir cotización de la línea {linea.name} →
+            Cotizar línea {linea.name} →
           </a>
-          <a
-            href={buildAsesorMailto({ linea: linea.name })}
-            className="cf-hero-modal-cta-secondary"
-          >
-            Hablar con un asesor
-          </a>
+          {/* "Hablar con un asesor" oculto temporalmente. */}
         </div>
       </div>
     </dialog>
@@ -589,7 +579,7 @@ export default function HeroRow({
   useEffect(() => { pausedRef.current = paused }, [paused])
 
   useEffect(() => {
-    const SPEED = 0.95 // px por frame ≈ 57 px/s a 60fps
+    const SPEED = 1.4 // px por frame ≈ 84 px/s a 60fps
     const START_DELAY = 5000 // ms — deja que el typewriter del Principal termine
     let rafId = 0
     let started = false

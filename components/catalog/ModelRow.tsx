@@ -13,7 +13,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
-import { displayLinea, lineaTitleCase } from '@/lib/supabase/queries/catalog_grouped'
+import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type {
   CatalogImage,
@@ -46,6 +46,9 @@ interface ModelRowProps {
    *  de variantes los usa en lugar de model.skus para no mostrar variantes
    *  que el usuario filtró fuera. Si no hay filtros activos, viene = model.skus. */
   activeSkus?: CatalogModel['skus']
+  /** URL de la foto del listado. Si hay filtros activos, refleja la
+   *  variante filtrada; si no, es model.cover_url default. */
+  coverUrl?: string | null
   brandContent?: BrandContentLite[]
   lineContent?: LineContentLite[]
   attributesForCatalogIds?: CatalogAttributeRow[]
@@ -53,6 +56,9 @@ interface ModelRowProps {
   /** Map global de model_content; usado en el panel comparativa de estilos
       para mostrar el texto de OTROS modelos en la misma tipología. */
   modelContentMap?: Record<string, ModelContentRow>
+  /** Catálogo completo — pasado al panel "También podría interesarte"
+   *  para sugerir modelos relacionados. */
+  allModels?: CatalogModel[]
   /** URL del ícono de la línea (mostrado arriba de la ficha colapsada). */
   lineaIconUrl?: string | null
 }
@@ -75,13 +81,18 @@ export default function ModelRow({
   modelContent = null,
   images = [],
   activeSkus,
+  coverUrl,
   brandContent = [],
   lineContent = [],
   attributesForCatalogIds = [],
   otherStyles = [],
   modelContentMap,
+  allModels = [],
   lineaIconUrl = null,
 }: ModelRowProps) {
+  // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
+  // fallback al cover default del modelo.
+  const displayCoverUrl = coverUrl ?? model.cover_url
   const [hovered, setHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const shellRef = useRef<HTMLDivElement>(null)
@@ -264,6 +275,7 @@ export default function ModelRow({
   return (
     <div
       ref={shellRef}
+      id={`row-${model.group_slug}`}
       className={`cf-row-shell ${isExpanded ? 'cf-expanded' : ''} ${isDragging ? 'cf-dragging' : ''}`}
       onMouseDown={onDragStart}
       onMouseUp={onDragEnd}
@@ -346,12 +358,13 @@ export default function ModelRow({
       >
         <div className="cf-row-track">
           {/* Cover image + overlay hover viven adentro de un wrapper común
-              para que el overlay tenga exactamente el tamaño de la foto. */}
-          {model.cover_url && (
+              para que el overlay tenga exactamente el tamaño de la foto.
+              displayCoverUrl refleja los filtros activos del catálogo. */}
+          {displayCoverUrl && (
             <div className="cf-row-img-wrap">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={model.cover_url}
+                src={displayCoverUrl}
                 alt={model.display_name}
                 loading={index < 3 ? 'eager' : 'lazy'}
                 className="cf-row-img"
@@ -381,21 +394,12 @@ export default function ModelRow({
               attributesForCatalogIds={attributesForCatalogIds}
               otherStyles={otherStyles}
               modelContentMap={modelContentMap}
+              allModels={allModels}
             />
           )}
         </div>
       </div>
 
-      {/* ── COL 3: Detail (Right, only visible when expanded) ── */}
-      <div className="cf-row-detail" onClick={e => isExpanded && e.stopPropagation()}>
-        {isExpanded && (
-          <div style={{ animation: 'cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-            <p style={{ fontSize: 13, lineHeight: 1.75, color: '#555', margin: 0 }}>
-              {model.display_name} de la línea {lineaTitleCase(model.linea)}. Disponible en {model.variantes_count} variante{model.variantes_count !== 1 ? 's' : ''}, con superficies desde {fmtRange(model.area_min, model.area_max)} m² y sistema {model.systems.join(' / ')}.
-            </p>
-          </div>
-        )}
-      </div>
       </div>
 
       {/* Sticky CTA → portal a document.body. Necesario porque cf-row-shell
@@ -427,7 +431,7 @@ export default function ModelRow({
                 linea: displayLinea(model.linea),
               })}
             >
-              Pedir cotización
+              Cotizar
               <span aria-hidden>→</span>
             </a>
           </div>,

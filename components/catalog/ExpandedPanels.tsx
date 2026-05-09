@@ -17,7 +17,7 @@
  *   9. Datos + Precios + CTA WhatsApp (selector de variante + sistema)
  */
 
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef, Fragment, type ReactNode } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
@@ -62,6 +62,9 @@ interface PanelsProps {
   otherStyles: CatalogModel[] // otros modelos en misma linea+tipologia
   /** Map para resolver model_content de OTROS modelos (panel comparativa estilos). */
   modelContentMap?: Record<string, ModelContentRow>
+  /** Catálogo completo — usado por el panel "También podría interesarte"
+   *  para sugerir modelos relacionados de OTRAS líneas/tipologías. */
+  allModels?: CatalogModel[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,15 +169,11 @@ function PanelInlineCTA({
           })}
           onClick={(e) => e.stopPropagation()}
         >
-          {primaryLabel ?? 'Pedir cotización'} →
+          {primaryLabel ?? 'Cotizar'} →
         </a>
-        <a
-          className="cf-pn-cta-secondary"
-          href={buildAsesorMailto({ linea: model.linea })}
-          onClick={(e) => e.stopPropagation()}
-        >
-          Hablar con un asesor
-        </a>
+        {/* "Hablar con un asesor" oculto temporalmente — vuelve cuando llegue
+            Ximia. Cuando reaparezca, restaurar el bloque con
+            href={buildAsesorMailto({ linea: model.linea })}. */}
       </div>
     </div>
   )
@@ -187,9 +186,11 @@ function PanelInlineCTA({
 export function Panel1Description({
   model,
   modelContent,
+  activeSkus,
 }: {
   model: CatalogModel
   modelContent: ModelContentRow | null
+  activeSkus: CatalogModel['skus']
 }) {
   const tagline = modelContent?.tagline ?? null
   const body = modelContent?.body ?? null
@@ -197,6 +198,12 @@ export function Panel1Description({
   const lifestyleTags = modelContent?.lifestyle_tags ?? []
   const familyMin = modelContent?.family_size_min ?? null
   const familyMax = modelContent?.family_size_max ?? null
+
+  // Variantes únicas que matchean los filtros activos del catálogo
+  // (puede ser menor que model.variantes_count si el user filtró por
+  // dormitorios o superficie). Coincide con el cuadro Comparativo.
+  const filteredVariantesCount = new Set(activeSkus.map((s) => s.variante))
+    .size
 
   return (
     <div className="cf-pn cf-pn-desc">
@@ -224,7 +231,7 @@ export function Panel1Description({
               <p className="cf-pn-stat-lbl">dormitorios</p>
             </div>
             <div>
-              <p className="cf-pn-stat-num">{model.variantes_count}</p>
+              <p className="cf-pn-stat-num">{filteredVariantesCount}</p>
               <p className="cf-pn-stat-lbl">variantes</p>
             </div>
           </div>
@@ -340,7 +347,7 @@ function PanelImageSlider({
     return (
       <div
         className="cf-pn cf-pn-gallery"
-        style={{ backgroundColor: bgSize === 'contain' ? '#f7f6f1' : '#1a1a1a' }}
+        style={{ backgroundColor: bgSize === 'contain' ? '#ffffff' : '#1a1a1a' }}
       >
         <div className="cf-pn-gallery-overlay">
           <div className="cf-pn-gallery-top">
@@ -392,13 +399,15 @@ function PanelImageSlider({
       className={`cf-pn cf-pn-gallery${isLight ? ' cf-pn-gallery-light' : ''}${isPdf ? ' cf-pn-gallery-pdf' : ''}`}
       style={
         isPdf
-          ? { backgroundColor: '#f7f6f1' }
+          ? { backgroundColor: '#ffffff' }
           : {
               backgroundImage: `url('${current.storage_url}')`,
               backgroundSize: bgSize,
-              backgroundPosition: 'center',
+              // En paneles light (Axos/Planos), subir la imagen al ~32%
+              // para que no choque con los pills de abajo.
+              backgroundPosition: bgSize === 'contain' ? 'center 32%' : 'center',
               backgroundRepeat: 'no-repeat',
-              backgroundColor: bgSize === 'contain' ? '#f7f6f1' : undefined,
+              backgroundColor: bgSize === 'contain' ? '#ffffff' : undefined,
             }
       }
     >
@@ -629,7 +638,6 @@ export function PanelEstiloIntro({
         <PanelInlineCTA
           model={model}
           eyebrow="¿Querés ver los estilos disponibles?"
-          primaryLabel="Pedir cotización"
         />
       </div>
     </div>
@@ -755,52 +763,48 @@ export function Panel6CasaQueCrece({
   return (
     <div className="cf-pn cf-pn-crece">
       <div className="cf-pn-crece-grid">
-        <div className="cf-pn-crece-text">
-          <p className="cf-pn-eyebrow">Concepto</p>
-          <h2 className="cf-pn-title">{concept?.title ?? 'La Casa que Crece'}</h2>
-          {concept?.body ? (
-            <ScrollableBody>
-              {paragraphs(concept.body).map((p, i) => (
-                <p key={i} className="cf-pn-body-p">
-                  {p}
-                </p>
-              ))}
-            </ScrollableBody>
-          ) : (
-            <p className="cf-pn-body-empty">Sin texto cargado.</p>
-          )}
+        {/* Texto + GIF unidos bajo un único borde — se sienten una sola
+            unidad. Variants queda afuera como bloque ortogonal. */}
+        <div className="cf-pn-crece-feature">
+          <div className="cf-pn-crece-text">
+            <p className="cf-pn-eyebrow">Concepto</p>
+            <h2 className="cf-pn-title">{concept?.title ?? 'La Casa que Crece'}</h2>
+            {concept?.body ? (
+              <ScrollableBody>
+                {paragraphs(concept.body).map((p, i) => (
+                  <p key={i} className="cf-pn-body-p">
+                    {p}
+                  </p>
+                ))}
+              </ScrollableBody>
+            ) : (
+              <p className="cf-pn-body-empty">Sin texto cargado.</p>
+            )}
+          </div>
+
+          <div className="cf-pn-crece-anim">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/la-casa-que-crece-anim.gif"
+              alt="La casa que crece — animación"
+              className="cf-pn-crece-anim-img"
+            />
+          </div>
         </div>
 
-        <div className="cf-pn-crece-variants">
-          <p className="cf-pn-eyebrow">Variantes de {model.display_name}</p>
-          <div className="cf-pn-variants-list">
-            {uniqueVars.map((v) => (
-              <div key={v.variante} className="cf-pn-variant-card">
-                <div className="cf-pn-variant-head">
-                  <span className="cf-pn-variant-name">V{v.variante}</span>
-                  <span className="cf-pn-variant-floors">
-                    {v.floors ? `${v.floors} planta${v.floors > 1 ? 's' : ''}` : '—'}
-                  </span>
-                </div>
-                <div className="cf-pn-variant-meta">
-                  <span>{v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—'}</span>
-                  {v.bedrooms_label && <span>· {v.bedrooms_label} dorm.</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-          <PanelInlineCTA
-            model={model}
-            eyebrow="¿Buscás una casa que evolucione con vos?"
-          />
-        </div>
+        {/* La columna de "Variantes de [modelo]" se eliminó: el panel
+            siguiente (Comparativo) ya muestra esa info en formato tabla
+            comparativa. Mantener acá era repetitivo. */}
       </div>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel 7 — Comparativo (pills, sin drag)
+// Panel 7 — Cuadro comparativo entre TODAS las variantes del modelo.
+// Bg con foto exterior representativa + overlay oscuro + card blanco
+// con la tabla. Cada celda autocontenida (valor + label) — no hay primera
+// columna de labels. Las celdas que difieren se destacan en rojo CF.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function Panel7Comparativo({
@@ -820,67 +824,115 @@ export function Panel7Comparativo({
     },
     [] as typeof activeSkus,
   )
-  const [active, setActive] = useState(0)
-  const currentVar = uniqueVars[active] ?? uniqueVars[0]
 
-  // Para cada variante, primer match por SKU (la imagen más específica).
-  const variantImages = uniqueVars.map((v) => {
-    const matched = imagesForSkus(images, [v.id])
-    return matched[0] ?? null
-  })
-  const currentImg = variantImages[active] ?? null
+  // Filas a comparar. Cada una extrae el valor de una variante + un
+  // formatter para mostrarlo. El campo `key` se usa para detectar si
+  // todas las variantes tienen el mismo valor (en cuyo caso la fila es
+  // "homogénea" y no destacamos las celdas).
+  // Atributos a comparar — se renderean como COLUMNAS (header arriba)
+  // y cada VARIANTE es una fila. Sistema constructivo no se incluye:
+  // todas las variantes ofrecen los mismos sistemas, no aporta.
+  const cols: {
+    key: string
+    label: string
+    get: (v: CatalogModel['skus'][number]) => string
+  }[] = [
+    {
+      key: 'area',
+      label: 'Sup.',
+      get: (v) => (v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—'),
+    },
+    {
+      key: 'floors',
+      label: 'Plantas',
+      get: (v) => (v.floors ? String(v.floors) : '—'),
+    },
+    {
+      key: 'beds',
+      label: 'Dorm.',
+      get: (v) => v.bedrooms_label ?? '—',
+    },
+    {
+      key: 'baths',
+      label: 'Baños',
+      get: (v) => (v.bathrooms != null ? String(v.bathrooms) : '—'),
+    },
+    {
+      key: 'toilette',
+      label: 'Toilette',
+      get: (v) => (v.toilette ? '✓' : '—'),
+    },
+    {
+      key: 'parrilla',
+      label: 'Parrilla',
+      get: (v) => (v.parrilla ? '✓' : '—'),
+    },
+  ]
+
+  // Foto representativa: preferimos la variante más "grande" (mayor
+  // superficie). Dentro de esa, preferimos floors=2 si existe (queda
+  // mejor visualmente en el bg). Si no hay foto linkeada al SKU,
+  // caemos a cualquier exterior render del modelo.
+  const sortedByArea = [...uniqueVars].sort(
+    (a, b) => (b.area_m2 ?? 0) - (a.area_m2 ?? 0),
+  )
+  const preferred =
+    sortedByArea.find((v) => v.floors === 2) ?? sortedByArea[0]
+
+  const heroImg =
+    (preferred &&
+      imagesForSkus(images, [preferred.id]).find(
+        (img) => img.is_exterior === true && img.image_type === 'render',
+      )) ??
+    images.find(
+      (img) => img.is_exterior === true && img.image_type === 'render',
+    )
 
   return (
     <div
       className="cf-pn cf-pn-compare"
       style={{
-        backgroundImage: currentImg?.storage_url
-          ? `url('${currentImg.storage_url}')`
+        backgroundImage: heroImg
+          ? `url('${heroImg.storage_url}')`
           : undefined,
-        backgroundColor: currentImg?.storage_url ? undefined : model.lqip_color,
+        backgroundColor: heroImg ? undefined : model.lqip_color,
       }}
     >
       <div className="cf-pn-compare-overlay">
-        <div className="cf-pn-compare-top">
+        <header className="cf-pn-compare-header">
           <p className="cf-pn-eyebrow">Comparativo</p>
-          <h2 className="cf-pn-compare-title">{model.display_name}</h2>
-        </div>
+          <h3 className="cf-pn-compare-sub">
+            {uniqueVars.length} variante{uniqueVars.length !== 1 ? 's' : ''} disponible
+            {uniqueVars.length !== 1 ? 's' : ''} — diferencias clave
+          </h3>
+        </header>
 
-        <div className="cf-pn-compare-data">
-          {currentVar && (
-            <>
-              <div className="cf-pn-compare-stat">
-                <span className="cf-pn-stat-lbl">Superficie</span>
-                <span className="cf-pn-stat-num">
-                  {currentVar.area_m2 ? `${Math.round(currentVar.area_m2)} m²` : '—'}
-                </span>
-              </div>
-              <div className="cf-pn-compare-stat">
-                <span className="cf-pn-stat-lbl">Plantas</span>
-                <span className="cf-pn-stat-num">
-                  {currentVar.floors ?? '—'}
-                </span>
-              </div>
-              <div className="cf-pn-compare-stat">
-                <span className="cf-pn-stat-lbl">Dormitorios</span>
-                <span className="cf-pn-stat-num">
-                  {currentVar.bedrooms_label ?? '—'}
-                </span>
-              </div>
-            </>
-          )}
-        </div>
+        <div
+          className="cf-pn-compare-table"
+          style={{
+            // 1ra col para etiqueta de variante (V1/V2/...) + N cols con
+            // los atributos (Sup., Plantas, Dorm., Baños, Toilette, Parrilla).
+            gridTemplateColumns: `auto repeat(${cols.length}, minmax(80px, 1fr))`,
+          }}
+        >
+          {/* Header row: corner vacío + label de cada atributo. */}
+          <div className="cf-pn-compare-corner" />
+          {cols.map((c) => (
+            <div key={`th-${c.key}`} className="cf-pn-compare-th">
+              {c.label}
+            </div>
+          ))}
 
-        <div className="cf-pn-pills">
-          {uniqueVars.map((v, i) => (
-            <button
-              key={v.variante}
-              type="button"
-              className={`cf-pn-pill ${i === active ? 'active' : ''}`}
-              onClick={() => setActive(i)}
-            >
-              Variante {v.variante}
-            </button>
+          {/* Una fila por variante: V<x> + valores. */}
+          {uniqueVars.map((v) => (
+            <Fragment key={`row-${v.variante}`}>
+              <div className="cf-pn-compare-row-lbl">V{v.variante}</div>
+              {cols.map((c) => (
+                <div key={`${v.variante}-${c.key}`} className="cf-pn-compare-cell">
+                  {c.get(v)}
+                </div>
+              ))}
+            </Fragment>
           ))}
         </div>
       </div>
@@ -1049,8 +1101,14 @@ export function Panel9Datos({
   return (
     <div className="cf-pn cf-pn-datos">
       <div className="cf-pn-datos-inner">
-        <p className="cf-pn-eyebrow">Datos & precio</p>
-        <h2 className="cf-pn-title">{model.display_name}</h2>
+        <p className="cf-pn-eyebrow">{model.display_name}</p>
+        <h2 className="cf-pn-title">
+          Cotizá la variante que se ajusta a vos.
+        </h2>
+        <p className="cf-pn-datos-lead">
+          Elegí superficie, dormitorios y sistema constructivo — te enviamos
+          la cotización a tu correo en menos de 24 horas.
+        </p>
 
         <p className="cf-pn-equip-sub">Elegí tu variante</p>
         <div className="cf-pn-datos-vargrid">
@@ -1096,8 +1154,100 @@ export function Panel9Datos({
           className="cf-pn-datos-cta"
           onClick={(e) => e.stopPropagation()}
         >
-          Pedir cotización →
+          Cotizar →
         </a>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel "También podría interesarte" — modelos relacionados al que el
+// user está viendo. Prioriza:
+//   1. Mismo estilo en otra línea/tipología.
+//   2. Misma línea pero distinta tipología.
+//   3. Cualquier otro modelo del catálogo (fallback).
+// Cards clickeables: el click hace scroll al row del modelo en la grilla.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PanelRelated({
+  model,
+  allModels,
+}: {
+  model: CatalogModel
+  allModels: CatalogModel[]
+}) {
+  const candidates = allModels.filter((m) => m.group_slug !== model.group_slug)
+
+  // Score: mismo estilo (3) + misma línea otra tipología (2) + nada (0).
+  const scored = candidates.map((m) => {
+    let score = 0
+    if (m.estilo === model.estilo) score += 3
+    if (m.linea === model.linea && m.tipologia_code !== model.tipologia_code)
+      score += 2
+    return { m, score }
+  })
+  // Top 4: priorizar score alto, después orden alfabético.
+  const related = scored
+    .sort((a, b) => b.score - a.score || a.m.display_name.localeCompare(b.m.display_name))
+    .slice(0, 4)
+    .map((s) => s.m)
+
+  if (related.length === 0) return null
+
+  return (
+    <div className="cf-pn cf-pn-related">
+      <div className="cf-pn-related-inner">
+        <header className="cf-pn-related-header">
+          <p className="cf-pn-eyebrow">Más opciones</p>
+          <h3 className="cf-pn-related-title">
+            Tu misma búsqueda en otros estilos
+          </h3>
+        </header>
+        <div className="cf-pn-related-grid">
+          {related.map((r) => (
+            <a
+              key={r.group_slug}
+              href={`#row-${r.group_slug}`}
+              className="cf-pn-related-card"
+              style={{
+                backgroundImage: r.cover_url
+                  ? `url('${r.cover_url}')`
+                  : undefined,
+                backgroundColor: r.cover_url ? undefined : r.lqip_color,
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                // Doble scroll: el primero inmediato y el segundo
+                // después de que el row actualmente expandido se
+                // colapse y el listado se reacomode (el RAF de focus
+                // physics tarda ~600-1000ms en cerrar el row al
+                // perder el centro). Sin el segundo scroll, el target
+                // queda fuera del viewport hacia arriba.
+                const id = `row-${r.group_slug}`
+                const el = document.getElementById(id)
+                if (!el) return
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                window.setTimeout(() => {
+                  document
+                    .getElementById(id)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }, 1300)
+              }}
+            >
+              <div className="cf-pn-related-card-overlay">
+                <span className="cf-pn-related-card-linea">
+                  {displayLinea(r.linea)} · {r.estilo}
+                </span>
+                <span className="cf-pn-related-card-name">
+                  {r.display_name}
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -1116,9 +1266,13 @@ export default function ExpandedPanels(props: PanelsProps) {
 
   return (
     <>
-      {/* 1. Description */}
+      {/* 1. Description — usa el ancho default cf-slide-text. */}
       <div className="cf-station-slide cf-slide-text">
-        <Panel1Description model={props.model} modelContent={props.modelContent} />
+        <Panel1Description
+          model={props.model}
+          modelContent={props.modelContent}
+          activeSkus={props.activeSkus}
+        />
       </div>
 
       {/* 2. Exteriores — solo si hay fotos */}
@@ -1136,7 +1290,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       )}
 
       {/* 4. Estilo (intro de estilos de la línea, solo texto) */}
-      <div className="cf-station-slide cf-slide-text">
+      <div className="cf-station-slide cf-slide-text cf-slide-text-narrow">
         <PanelEstiloIntro model={props.model} lineContent={props.lineContent} />
       </div>
 
@@ -1154,28 +1308,31 @@ export default function ExpandedPanels(props: PanelsProps) {
         <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
       </div>
 
-      {/* 7. Planos arquitectónicos — solo si hay */}
+      {/* 7. Planos arquitectónicos — solo si hay. Slide medio (75vw)
+          para que se lean cómodos. */}
       {hasPlanos && (
-        <div className="cf-station-slide cf-slide-image">
+        <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
           <PanelPlanos images={props.images} activeSkus={props.activeSkus} />
         </div>
       )}
 
-      {/* 8. Axonometrías — solo si hay */}
+      {/* 8. Axonometrías — solo si hay. Slide angosto con bg blanco. */}
       {hasAxos && (
-        <div className="cf-station-slide cf-slide-image">
+        <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
           <PanelAxos images={props.images} activeSkus={props.activeSkus} />
         </div>
       )}
 
-      {/* 8. La Casa que Crece (concept) */}
-      <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
-        <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
-      </div>
-
-      {/* 9. Comparativo de variantes (V1 / V2) */}
+      {/* 9. Comparativo de variantes — bg foto + tabla. Va acá (después
+          de planos/axos) para romper la secuencia de bloques blancos
+          consecutivos con un slide de foto. */}
       <div className="cf-station-slide cf-slide-image">
         <Panel7Comparativo model={props.model} images={props.images} activeSkus={props.activeSkus} />
+      </div>
+
+      {/* 10. La Casa que Crece — feature único (text + GIF) sin variants. */}
+      <div className="cf-station-slide cf-slide-text cf-slide-text-xwide">
+        <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
       </div>
 
       {/* 10. Ficha Completa (datos + precios + WhatsApp CTA) */}
@@ -1188,13 +1345,26 @@ export default function ExpandedPanels(props: PanelsProps) {
         <PanelSistemaConstructivo model={props.model} brandContent={props.brandContent} />
       </div>
 
-      {/* 12. Equipamiento */}
-      <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
-        <Panel8Equipamiento
-          model={props.model}
-          attributesForCatalogIds={props.attributesForCatalogIds}
-        />
-      </div>
+      {/* 12. Equipamiento — solo se muestra si el modelo tiene atributos
+          cargados. Si está vacío, ocultamos el slide entero (no tiene
+          sentido mostrar "sin equipamiento configurado"). */}
+      {props.attributesForCatalogIds.length > 0 && (
+        <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
+          <Panel8Equipamiento
+            model={props.model}
+            attributesForCatalogIds={props.attributesForCatalogIds}
+          />
+        </div>
+      )}
+
+      {/* 13. También podría interesarte — modelos relacionados al final
+          del expandido. Da una salida lateral al usuario que está en
+          deep dive sin cerrarle el detalle actual. */}
+      {props.allModels && props.allModels.length > 1 && (
+        <div className="cf-station-slide cf-slide-image">
+          <PanelRelated model={props.model} allModels={props.allModels} />
+        </div>
+      )}
     </>
   )
 }

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
 import { getAllLineas } from '@/lib/supabase/queries/lineas'
+import { getAllMarcas } from '@/lib/supabase/queries/marcas'
 import {
   getAllModelContentMap,
   getAllCatalogImages,
@@ -19,6 +20,7 @@ export default async function HomePage() {
     { data: brandContent },
     { data: lineContent },
     lineas,
+    marcas,
     modelContentMap,
     catalogImages,
     catalogAttributes,
@@ -28,11 +30,15 @@ export default async function HomePage() {
     supabase.from('brand_content').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('line_content').select('*').eq('status', 'active').order('sort_order'),
     getAllLineas(supabase),
+    getAllMarcas(supabase),
     getAllModelContentMap(supabase),
     getAllCatalogImages(supabase),
     getAllCatalogAttributes(supabase),
     getFeaturedModels(supabase, 8),
   ])
+
+  // Solo marcas aprobadas en el footer público.
+  const approvedMarcas = marcas.filter((m) => m.status === 'approved')
 
   return (
     <CatalogPage
@@ -40,6 +46,7 @@ export default async function HomePage() {
       brandContent={brandContent ?? []}
       lineContent={lineContent ?? []}
       lineas={lineas}
+      marcas={approvedMarcas}
       modelContentMap={modelContentMap}
       catalogImages={catalogImages}
       catalogAttributes={catalogAttributes}
