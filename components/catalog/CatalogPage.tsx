@@ -26,6 +26,7 @@ import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import type { Marca } from '@/types/database'
+import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type {
   CatalogImage,
@@ -53,6 +54,9 @@ interface PageProps {
   catalogAttributes?: CatalogAttributeRow[]
   /** Modelos featured (ordenados por featured_rank asc) para el mini marquee del footer. */
   featuredModels?: CatalogModel[]
+  /** Footer cards editables por marca, indexadas por marca_id. Si una marca
+   *  no tiene cards, el CatalogFooter usa el fallback hardcoded. */
+  footerCardsByMarca?: Record<string, FooterCardRow[]>
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -81,6 +85,7 @@ export default function CatalogPage({
   catalogImages = [],
   catalogAttributes = [],
   featuredModels = [],
+  footerCardsByMarca = {},
 }: PageProps) {
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
@@ -119,9 +124,10 @@ export default function CatalogPage({
   }
   const skuMatchesSize = (sku: CatalogModel['skus'][number], sf: string): boolean => {
     const a = sku.area_m2 ?? 0
-    // 4 buckets por perfil — labels en StickyFilters.SIZE_OPTIONS.
+    // 5 buckets por perfil — labels en StickyFilters.SIZE_OPTIONS.
     if (sf === 'S') return a < 70                    // cabaña / individual
-    if (sf === 'M') return a >= 70 && a < 120        // familiar
+    if (sf === 'SM') return a >= 70 && a < 90        // pareja / familia chica
+    if (sf === 'M') return a >= 90 && a < 120        // familiar
     if (sf === 'L') return a >= 120 && a < 200       // familia grande
     if (sf === 'XL') return a >= 200                 // premium
     return true
@@ -167,7 +173,7 @@ export default function CatalogPage({
   // combinaran con los OTROS filtros activos. Las que no, van disabled en
   // la barra sticky para evitar que el usuario llegue a un listado vacío.
   const BED_OPTIONS = ['1', '2', '3', '4+']
-  const SIZE_OPTIONS = ['S', 'M', 'L', 'XL']
+  const SIZE_OPTIONS = ['S', 'SM', 'M', 'L', 'XL']
 
   // ¿Hay al menos 1 modelo que pase (estilo, beds[], sizes[])?
   // Misma lógica OR-dentro/AND-entre que skuMatchesFilters, pero con arrays
@@ -213,9 +219,20 @@ export default function CatalogPage({
   // ── Map name → icon_url para resolver el ícono de cada modelo en el catálogo ──
   // El nombre de la línea en `lineas.name` está en MAYÚSCULAS (normalizado por
   // el action) y coincide con `house_catalog.linea` (poblada por el trigger).
+  //
+  // Para BOSQUE/ATLAS/TERRA usamos los SVG/PNG curados en /public como
+  // override sobre lo que tenga el admin (los iconos del admin estaban
+  // desactualizados). Para cualquier otra línea (Patagonia, futuras), se
+  // respeta `icon_url` del admin.
+  const LINEA_ICON_OVERRIDE: Record<string, string> = {
+    BOSQUE: '/bosque-icon.png',
+    ATLAS: '/atlas-icon.png',
+    TERRA: '/terra-icon.png',
+  }
   const iconByLineaName: Record<string, string | null> = lineas.reduce(
     (acc, l) => {
-      acc[l.name] = l.icon_url
+      const key = l.name.toUpperCase()
+      acc[l.name] = LINEA_ICON_OVERRIDE[key] ?? l.icon_url
       return acc
     },
     {} as Record<string, string | null>,
@@ -440,16 +457,19 @@ export default function CatalogPage({
                 activeSkuIds.has(a.house_catalog_id),
               )
 
-              // Foto del listado: si hay filtros activos, usa la primera
-              // foto exterior render que matchee los activeSkus → la card
-              // refleja exactamente la variante que el user filtró. Sin
-              // filtros, usa la cover_url default del modelo.
+              // Foto del listado: si hay filtros activos, prioriza la
+              // foto MÁS ESPECÍFICA de la variante (la que tiene menos
+              // SKUs linkeados — idealmente solo el activeSku). Si todas
+              // las fotos están linkeadas a todos los SKUs del grupo, cae
+              // a la primera disponible (no hay foto distintiva en DB).
               const dynamicCoverImg = hasSkuFilter
-                ? modelImages.find(
-                    (img) =>
-                      img.is_exterior === true &&
-                      img.image_type === 'render',
-                  )
+                ? modelImages
+                    .filter(
+                      (img) =>
+                        img.is_exterior === true &&
+                        img.image_type === 'render',
+                    )
+                    .sort((a, b) => a.sku_ids.length - b.sku_ids.length)[0]
                 : null
               const dynamicCoverUrl =
                 dynamicCoverImg?.storage_url ?? model.cover_url
@@ -507,6 +527,7 @@ export default function CatalogPage({
       <CatalogFooter
         featuredModels={featuredModels}
         marcas={marcas}
+        footerCardsByMarca={footerCardsByMarca}
         onOpenModel={openDetail}
       />
 

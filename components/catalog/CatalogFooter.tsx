@@ -24,8 +24,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { Marca } from '@/types/database'
-import { buildCotizarMailto } from '@/lib/cta/mailto'
+import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
 import { Ruler, BadgeCheck, ShieldCheck, Factory, Globe, Phone } from 'lucide-react'
+
+// Map de icon_key (DB) → componente lucide-react. Default factory.
+const ICON_BY_KEY: Record<string, typeof Ruler> = {
+  ruler: Ruler,
+  'badge-check': BadgeCheck,
+  'shield-check': ShieldCheck,
+  factory: Factory,
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Trust cards
@@ -72,6 +81,9 @@ interface CatalogFooterProps {
   featuredModels: CatalogModel[]
   /** Marcas aprobadas — se renderean como cards anchas en el marquee. */
   marcas?: Marca[]
+  /** Cards editables del marquee, por marca. Si la marca primaria tiene cards
+   *  cargadas, se usan; sino fallback a TRUST_CARDS hardcoded. */
+  footerCardsByMarca?: Record<string, FooterCardRow[]>
   /** Callback cuando se hace click en una card de modelo. */
   onOpenModel?: (model: CatalogModel) => void
 }
@@ -79,39 +91,75 @@ interface CatalogFooterProps {
 export default function CatalogFooter({
   featuredModels,
   marcas = [],
+  footerCardsByMarca = {},
   onOpenModel,
 }: CatalogFooterProps) {
   return (
     <footer className="cf-footer">
-      {/* ── Capa 1: Cierre editorial (olive sage) ────────────────────── */}
-      <section className="cf-footer-cierre">
+      {/* ── Capa "cemento": cierre con CTAs, ancho restringido (no full-bleed),
+          sin copy descriptivo. ─────────────────────────────────────────── */}
+      <section className="cf-footer-cierre cf-footer-cierre-narrow">
         <div className="cf-footer-cierre-inner">
           <p className="cf-footer-cierre-eyebrow">¿No encontraste lo que buscás?</p>
           <h2 className="cf-footer-cierre-title">
             Diseñamos tu casa<br />a medida.
           </h2>
-          <p className="cf-footer-cierre-body">
-            Nuestro equipo te ayuda a definir la casa que mejor se adapta a tu
-            terreno, presupuesto y estilo de vida. Sin compromiso, te
-            respondemos siempre.
-          </p>
           <div className="cf-footer-cierre-ctas">
             <a className="cf-footer-cta-primary" href={buildCotizarMailto()}>
-              Cotizar →
+              Contactanos →
             </a>
-            {/* "Hablar con un asesor" oculto temporalmente. */}
+            <a className="cf-footer-cta-secondary" href={buildAsesorMailto()}>
+              Conversar con Ximia
+            </a>
           </div>
         </div>
       </section>
 
-      {/* ── Capa 2: Mini marquee ─────────────────────────────────────── */}
+      {/* ── Capa "principal": marquee de cards (CF + Marca + trust + Hablemos).
+          Sin header (eyebrow/título arriba quitados a pedido del user). */}
       <FooterMarquee
         featuredModels={featuredModels}
         marcas={marcas}
+        footerCardsByMarca={footerCardsByMarca}
         onOpenModel={onOpenModel}
       />
 
+      {/* ── Capa institucional: logos partner + copyright + legales ──── */}
+      <FooterInstitucional />
+
     </footer>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FooterInstitucional — capa pequeña al pie del catálogo, estilo Ximia.ai.
+// Logos Link / AD / Marketeam + copyright + links Privacidad/Términos.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FooterInstitucional() {
+  return (
+    <section className="cf-footer-inst">
+      <div className="cf-footer-inst-inner">
+        <div className="cf-footer-inst-logos">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/Link.png" alt="Link" className="cf-footer-inst-logo" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/Ad.png" alt="AD" className="cf-footer-inst-logo" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/Marketeam.png" alt="Marketeam" className="cf-footer-inst-logo" />
+        </div>
+        <div className="cf-footer-inst-meta">
+          <span className="cf-footer-inst-copy">
+            © {new Date().getFullYear()} ConstruirFácil. Todos los derechos reservados.
+          </span>
+          <nav className="cf-footer-inst-links">
+            <a href="/privacidad">Política de Privacidad</a>
+            <span aria-hidden="true">·</span>
+            <a href="/terminos">Términos del Servicio</a>
+          </nav>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -120,45 +168,62 @@ export default function CatalogFooter({
 // ─────────────────────────────────────────────────────────────────────────────
 
 type MarqueeCard =
-  | { kind: 'cta-cotizar' }
+  | { kind: 'cf' }
+  | { kind: 'cta-hablemos' }
   | { kind: 'trust'; trust: (typeof TRUST_CARDS)[number] }
+  | { kind: 'db_trust'; card: FooterCardRow }
   | { kind: 'model'; model: CatalogModel }
   | { kind: 'brand'; brand: Marca }
 
+function findTrust(id: string) {
+  return TRUST_CARDS.find((t) => t.id === id)
+}
+
 function buildMarqueeCards(
-  featured: CatalogModel[],
+  _featured: CatalogModel[],
   marcas: Marca[],
+  footerCardsByMarca: Record<string, FooterCardRow[]>,
 ): MarqueeCard[] {
-  // Patrón visual: intercalar tamaños distintos para dar dinámica.
-  // cta (compacto) → trust (cuadrado) → model (rectangular) →
-  // brand (ancho, hero) → trust → model → ...
+  // Orden fijo a pedido del user (item 18):
+  //   CF → Marca → cards 3-6 (Garantía/100%/Fábrica/50.000) → Hablemos.
+  // Cards 3-6 son trust cards: si la marca primaria tiene cards en DB,
+  // las usamos; sino fallback al hardcode.
   const cards: MarqueeCard[] = []
-  cards.push({ kind: 'cta-cotizar' })
-  cards.push({ kind: 'trust', trust: TRUST_CARDS[0] })
-  if (featured[0]) cards.push({ kind: 'model', model: featured[0] })
-  // La card de marca va aprox al "centro" del set para que aparezca
-  // visible al cargar (la 4ta posición en el track).
+  cards.push({ kind: 'cf' })
   if (marcas[0]) cards.push({ kind: 'brand', brand: marcas[0] })
-  cards.push({ kind: 'trust', trust: TRUST_CARDS[1] })
-  if (featured[1]) cards.push({ kind: 'model', model: featured[1] })
-  if (featured[2]) cards.push({ kind: 'model', model: featured[2] })
-  cards.push({ kind: 'trust', trust: TRUST_CARDS[2] })
-  if (featured[3]) cards.push({ kind: 'model', model: featured[3] })
-  // Resto de marcas si hay más de una.
+
+  const primary = marcas[0]
+  const dbCards = primary ? footerCardsByMarca[primary.id] ?? [] : []
+  if (dbCards.length > 0) {
+    for (const c of dbCards) {
+      cards.push({ kind: 'db_trust', card: c })
+    }
+  } else {
+    const garantia = findTrust('garantia')
+    if (garantia) cards.push({ kind: 'trust', trust: garantia })
+    const financiado = findTrust('financiado')
+    if (financiado) cards.push({ kind: 'trust', trust: financiado })
+    const fabrica = findTrust('fabrica')
+    if (fabrica) cards.push({ kind: 'trust', trust: fabrica })
+    const m2 = findTrust('m2')
+    if (m2) cards.push({ kind: 'trust', trust: m2 })
+  }
+
+  cards.push({ kind: 'cta-hablemos' })
+  // Marcas extra al final si hay más de una.
   for (const b of marcas.slice(1)) cards.push({ kind: 'brand', brand: b })
-  cards.push({ kind: 'trust', trust: TRUST_CARDS[3] })
-  if (featured[4]) cards.push({ kind: 'model', model: featured[4] })
-  for (const m of featured.slice(5)) cards.push({ kind: 'model', model: m })
   return cards
 }
 
 function FooterMarquee({
   featuredModels,
   marcas,
+  footerCardsByMarca,
   onOpenModel,
 }: {
   featuredModels: CatalogModel[]
   marcas: Marca[]
+  footerCardsByMarca: Record<string, FooterCardRow[]>
   onOpenModel?: (model: CatalogModel) => void
 }) {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -168,7 +233,7 @@ function FooterMarquee({
     pausedRef.current = paused
   }, [paused])
 
-  const cards = buildMarqueeCards(featuredModels, marcas)
+  const cards = buildMarqueeCards(featuredModels, marcas, footerCardsByMarca)
 
   // rAF marquee: scrollLeft +0.7 px/frame, wraparound invisible cuando pasa
   // del inicio del set B (= inicio de la 2ª copia de las cards).
@@ -198,15 +263,36 @@ function FooterMarquee({
 
   const renderCard = (card: MarqueeCard, keyPrefix: string, idx: number) => {
     const key = `${keyPrefix}-${idx}-${card.kind}`
-    if (card.kind === 'cta-cotizar') {
+    if (card.kind === 'cf') {
+      return (
+        <a
+          key={key}
+          className="cf-footer-marquee-card cf-footer-marquee-card-cf"
+          href="/"
+        >
+          <div className="cf-footer-marquee-card-cf-head">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/ConstruirFacil.gif"
+              alt="ConstruirFácil"
+              className="cf-footer-marquee-card-cf-logo"
+            />
+          </div>
+          <span className="cf-footer-marquee-card-cf-tagline">
+            Encontrá la casa que mejor se adapta a vos.
+          </span>
+        </a>
+      )
+    }
+    if (card.kind === 'cta-hablemos') {
       return (
         <a
           key={key}
           className="cf-footer-marquee-card cf-footer-marquee-card-cta cf-footer-marquee-card-cta-primary"
-          href={buildCotizarMailto()}
+          href={buildAsesorMailto()}
         >
           <span className="cf-footer-marquee-card-eyebrow">Acción</span>
-          <span className="cf-footer-marquee-card-title">Cotizar</span>
+          <span className="cf-footer-marquee-card-title">Hablemos</span>
           <span className="cf-footer-marquee-card-arrow">→</span>
         </a>
       )
@@ -229,6 +315,28 @@ function FooterMarquee({
           </span>
           <span className="cf-footer-marquee-card-trust-lbl">
             {card.trust.label}
+          </span>
+        </div>
+      )
+    }
+    if (card.kind === 'db_trust') {
+      const Icon = ICON_BY_KEY[card.card.icon_key] ?? Factory
+      return (
+        <div
+          key={key}
+          className="cf-footer-marquee-card cf-footer-marquee-card-trust"
+        >
+          <Icon className="cf-footer-marquee-card-icon" />
+          <span className="cf-footer-marquee-card-trust-num">
+            {card.card.number_text}
+            {card.card.unit_text && (
+              <span className="cf-footer-marquee-card-trust-unit">
+                {card.card.unit_text}
+              </span>
+            )}
+          </span>
+          <span className="cf-footer-marquee-card-trust-lbl">
+            {card.card.label_text}
           </span>
         </div>
       )
@@ -316,12 +424,6 @@ function FooterMarquee({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <header className="cf-footer-marquee-header">
-        <p className="cf-footer-marquee-eyebrow">Más para vos</p>
-        <h3 className="cf-footer-marquee-title">
-          Modelos destacados, datos clave y formas de avanzar
-        </h3>
-      </header>
       <div ref={trackRef} className="cf-footer-marquee-track">
         {cards.map((c, i) => renderCard(c, 'a', i))}
         {cards.map((c, i) => renderCard(c, 'b', i))}

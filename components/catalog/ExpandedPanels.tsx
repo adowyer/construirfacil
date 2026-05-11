@@ -38,6 +38,7 @@ import {
 interface BrandContentLite {
   key: string
   title: string | null
+  subtitle?: string | null
   body: string | null
 }
 
@@ -77,6 +78,47 @@ function paragraphs(s: string | null | undefined): string[] {
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
+}
+
+// Helpers de formato — derivar listas discretas de superficies y dormitorios
+// desde los SKUs activos. Los textos del catálogo deben reflejar SKUs reales,
+// no rangos sintéticos.
+function bedroomsFromSkus(skus: CatalogModel['skus']): number[] {
+  const set = new Set<number>()
+  for (const sku of skus) {
+    const min = sku.min_bedrooms
+    const max = sku.max_bedrooms ?? min
+    if (min == null) continue
+    for (let n = min; n <= (max ?? min); n++) set.add(n)
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+function fmtBedroomsList(skus: CatalogModel['skus']): string {
+  const beds = bedroomsFromSkus(skus)
+  if (beds.length === 0) return '—'
+  if (beds.length === 1) return String(beds[0])
+  const last = beds[beds.length - 1]
+  const rest = beds.slice(0, -1).join(', ')
+  return `${rest} o ${last}`
+}
+
+function areasFromSkus(skus: CatalogModel['skus']): number[] {
+  const set = new Set<number>()
+  for (const sku of skus) {
+    const a = sku.area_m2 ?? 0
+    if (a > 0) set.add(Math.round(a))
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+function fmtAreasList(skus: CatalogModel['skus']): string {
+  const areas = areasFromSkus(skus)
+  if (areas.length === 0) return '—'
+  if (areas.length === 1) return `${areas[0]} m²`
+  const last = areas[areas.length - 1]
+  const rest = areas.slice(0, -1).join(', ')
+  return `${rest} y ${last} m²`
 }
 
 /**
@@ -171,9 +213,13 @@ function PanelInlineCTA({
         >
           {primaryLabel ?? 'Cotizar'} →
         </a>
-        {/* "Hablar con un asesor" oculto temporalmente — vuelve cuando llegue
-            Ximia. Cuando reaparezca, restaurar el bloque con
-            href={buildAsesorMailto({ linea: model.linea })}. */}
+        <a
+          className="cf-pn-cta-secondary"
+          href={buildAsesorMailto({ linea: displayLinea(model.linea) })}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Hablar con Ximia
+        </a>
       </div>
     </div>
   )
@@ -192,7 +238,6 @@ export function Panel1Description({
   modelContent: ModelContentRow | null
   activeSkus: CatalogModel['skus']
 }) {
-  const tagline = modelContent?.tagline ?? null
   const body = modelContent?.body ?? null
   const estilo = modelContent?.estilo_label ?? model.estilo
   const lifestyleTags = modelContent?.lifestyle_tags ?? []
@@ -205,34 +250,32 @@ export function Panel1Description({
   const filteredVariantesCount = new Set(activeSkus.map((s) => s.variante))
     .size
 
+  // Labels singular/plural — la stat number puede ser "1" y el label
+  // entonces va sin "s". "2" o "1, 2" → plural.
+  const bedsList = bedroomsFromSkus(activeSkus)
+  const dormLbl =
+    bedsList.length === 1 && bedsList[0] === 1 ? 'dormitorio' : 'dormitorios'
+  const varLbl = filteredVariantesCount === 1 ? 'variante' : 'variantes'
+
   return (
     <div className="cf-pn cf-pn-desc">
       <div className="cf-pn-desc-grid">
         <div className="cf-pn-desc-left">
           <p className="cf-pn-eyebrow">{displayLinea(model.linea)} · {estilo}</p>
           <h2 className="cf-pn-title">{model.display_name}</h2>
-          {tagline && <p className="cf-pn-tagline">{tagline}</p>}
 
           <div className="cf-pn-stats">
             <div>
-              <p className="cf-pn-stat-num">
-                {model.area_min && model.area_max
-                  ? `${Math.round(model.area_min)}–${Math.round(model.area_max)}`
-                  : '—'}
-              </p>
-              <p className="cf-pn-stat-lbl">m² superficie</p>
+              <p className="cf-pn-stat-num">{fmtAreasList(activeSkus)}</p>
+              <p className="cf-pn-stat-lbl">superficie</p>
             </div>
             <div>
-              <p className="cf-pn-stat-num">
-                {model.beds_min && model.beds_max
-                  ? `${model.beds_min}–${model.beds_max}`
-                  : model.beds_min ?? '—'}
-              </p>
-              <p className="cf-pn-stat-lbl">dormitorios</p>
+              <p className="cf-pn-stat-num">{fmtBedroomsList(activeSkus)}</p>
+              <p className="cf-pn-stat-lbl">{dormLbl}</p>
             </div>
             <div>
               <p className="cf-pn-stat-num">{filteredVariantesCount}</p>
-              <p className="cf-pn-stat-lbl">variantes</p>
+              <p className="cf-pn-stat-lbl">{varLbl}</p>
             </div>
           </div>
 
@@ -272,10 +315,6 @@ export function Panel1Description({
               Sin descripción cargada todavía.
             </p>
           )}
-          <PanelInlineCTA
-            model={model}
-            eyebrow="¿Te interesa este modelo?"
-          />
         </div>
       </div>
     </div>
@@ -580,8 +619,11 @@ export function Panel3Tipologia({
   return (
     <div className="cf-pn cf-pn-text">
       <div className="cf-pn-text-inner">
-        <p className="cf-pn-eyebrow">Tipología {model.tipologia_code}</p>
-        <h2 className="cf-pn-title">{row?.subtitle ?? 'Distribución arquitectónica'}</h2>
+        <p className="cf-pn-eyebrow">Distribución arquitectónica</p>
+        <p className="cf-pn-tipo-code">Tipología {model.tipologia_code}</p>
+        <h2 className="cf-pn-title">
+          {row?.subtitle ?? 'Una tipología que integra distintos espacios'}
+        </h2>
         {row?.body ? (
           <ScrollableBody>
             {paragraphs(row.body).map((p, i) => (
@@ -597,7 +639,8 @@ export function Panel3Tipologia({
         )}
         <PanelInlineCTA
           model={model}
-          eyebrow="¿Te gusta esta tipología?"
+          eyebrow="¿Querés más detalles de la tipología?"
+          primaryLabel="Consultar"
         />
       </div>
     </div>
@@ -611,19 +654,39 @@ export function Panel3Tipologia({
 export function PanelEstiloIntro({
   model,
   lineContent,
+  otherStyles,
 }: {
   model: CatalogModel
   lineContent: LineContentLite[]
+  otherStyles: CatalogModel[]
 }) {
   const intro = lineContent.find(
     (lc) => lc.linea === model.linea && lc.tipologia_code === 'estilos_intro',
   )
+  // Cantidad de estilos disponibles para esta tipología (incluye el actual).
+  const allStylesCount =
+    1 + otherStyles.filter((m) => m.style_name !== model.style_name).length
+  const single = allStylesCount <= 1
+  // Title-case del estilo para el caso single. "moderno" → "Moderno".
+  const titleCaseEstilo = (model.estilo ?? '')
+    .toLowerCase()
+    .replace(/(?:^|\s)\S/g, (c) => c.toUpperCase())
+  const dynamicTitle = single
+    ? `El perfecto estilo ${titleCaseEstilo}`
+    : `${allStylesCount} Estilos para elegir`
+  const ctaEyebrow = single
+    ? '¿Querés más detalles de este estilo?'
+    : '¿Querés más detalles de algún estilo?'
 
   return (
     <div className="cf-pn cf-pn-text">
       <div className="cf-pn-text-inner">
         <p className="cf-pn-eyebrow">{displayLinea(model.linea)} · Estilos</p>
-        <h2 className="cf-pn-title">{intro?.title ?? 'Maneras de habitar'}</h2>
+        {/* Título siempre dinámico (item 10a): el conteo viene de los modelos
+            disponibles en la DB para esta línea+tipología; el editorial del
+            admin (intro?.title) NO se usa porque debe reflejar el conteo
+            real, no un copy fijo. El body editorial sí se respeta. */}
+        <h2 className="cf-pn-title">{dynamicTitle}</h2>
         {intro?.body ? (
           <ScrollableBody>
             {paragraphs(intro.body).map((p, i) => (
@@ -637,7 +700,8 @@ export function PanelEstiloIntro({
         )}
         <PanelInlineCTA
           model={model}
-          eyebrow="¿Querés ver los estilos disponibles?"
+          eyebrow={ctaEyebrow}
+          primaryLabel="Consultar"
         />
       </div>
     </div>
@@ -807,16 +871,42 @@ export function Panel6CasaQueCrece({
 // columna de labels. Las celdas que difieren se destacan en rojo CF.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Lavadero formatter: la DB tiene 'INTERIOR' | 'EXTERIOR' | null | otra string.
+function fmtLavadero(l: string | null | undefined): string {
+  if (!l) return '—'
+  const u = l.toUpperCase().trim()
+  if (u === 'NO' || u === '-' || u === '—') return '—'
+  if (u === 'INTERIOR' || u === 'INT') return '✓ Interior'
+  if (u === 'EXTERIOR' || u === 'EXT') return '✓ Exterior'
+  // String custom (ej. "Cubierto").
+  return l
+}
+
+// Precio formatter: si la marca no muestra precios o el SKU no tiene precio,
+// devolvemos "Cotizar".
+function fmtPrecio(
+  sku: CatalogModel['skus'][number] | null,
+  showPrices: boolean,
+): string {
+  if (!showPrices) return 'Cotizar'
+  if (!sku?.precio_lista_usd) return 'Cotizar'
+  return `USD ${Math.round(sku.precio_lista_usd).toLocaleString('es-AR')}`
+}
+
 export function Panel7Comparativo({
   model,
   images,
   activeSkus,
+  showPrices = false,
 }: {
   model: CatalogModel
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
+  showPrices?: boolean
 }) {
-  // Si el usuario filtró por bed/size, activeSkus viene reducido. Sino es model.skus.
+  // Una variante única por (variante × sistema) — pero como el SC se elige
+  // arriba con pills, mostramos una fila por VARIANTE y los datos del SKU
+  // que matchea (variante + SC seleccionado).
   const uniqueVars = activeSkus.reduce(
     (acc, s) => {
       if (!acc.find((v) => v.variante === s.variante)) acc.push(s)
@@ -825,60 +915,56 @@ export function Panel7Comparativo({
     [] as typeof activeSkus,
   )
 
-  // Filas a comparar. Cada una extrae el valor de una variante + un
-  // formatter para mostrarlo. El campo `key` se usa para detectar si
-  // todas las variantes tienen el mismo valor (en cuyo caso la fila es
-  // "homogénea" y no destacamos las celdas).
-  // Atributos a comparar — se renderean como COLUMNAS (header arriba)
-  // y cada VARIANTE es una fila. Sistema constructivo no se incluye:
-  // todas las variantes ofrecen los mismos sistemas, no aporta.
+  // Selector de SC arriba — controla los precios de toda la tabla.
+  const [selectedSCIdx, setSelectedSCIdx] = useState(0)
+  const currentSC = model.systems[selectedSCIdx] ?? model.systems[0] ?? null
+
+  // Selector de variante para la cotización inline al pie.
+  const [selectedVarIdx, setSelectedVarIdx] = useState(0)
+
+  // SKU del cruce variante × SC seleccionado. Si la combinación no existe
+  // (algunos SKUs solo en un SC), caemos al SKU de la variante en cualquier SC.
+  const skuForVarSC = (v: CatalogModel['skus'][number]) =>
+    activeSkus.find(
+      (s) => s.variante === v.variante && s.sistema_constructivo === currentSC,
+    ) ??
+    activeSkus.find((s) => s.variante === v.variante) ??
+    null
+
   const cols: {
     key: string
     label: string
     get: (v: CatalogModel['skus'][number]) => string
   }[] = [
+    { key: 'area', label: 'Sup.', get: (v) => (v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—') },
+    { key: 'floors', label: 'Plantas', get: (v) => (v.floors ? String(v.floors) : '—') },
+    { key: 'beds', label: 'Dorm.', get: (v) => v.bedrooms_label ?? '—' },
+    { key: 'baths', label: 'Baños', get: (v) => (v.bathrooms != null ? String(v.bathrooms) : '—') },
+    { key: 'toilette', label: 'Toilette', get: (v) => (v.toilette ? '✓' : '—') },
+    { key: 'parrilla', label: 'Parrilla', get: (v) => (v.parrilla ? '✓' : '—') },
+    { key: 'lavadero', label: 'Lavadero', get: (v) => fmtLavadero(v.lavadero) },
     {
-      key: 'area',
-      label: 'Sup.',
-      get: (v) => (v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—'),
-    },
-    {
-      key: 'floors',
-      label: 'Plantas',
-      get: (v) => (v.floors ? String(v.floors) : '—'),
-    },
-    {
-      key: 'beds',
-      label: 'Dorm.',
-      get: (v) => v.bedrooms_label ?? '—',
-    },
-    {
-      key: 'baths',
-      label: 'Baños',
-      get: (v) => (v.bathrooms != null ? String(v.bathrooms) : '—'),
-    },
-    {
-      key: 'toilette',
-      label: 'Toilette',
-      get: (v) => (v.toilette ? '✓' : '—'),
-    },
-    {
-      key: 'parrilla',
-      label: 'Parrilla',
-      get: (v) => (v.parrilla ? '✓' : '—'),
+      key: 'precio',
+      label: 'Precio',
+      get: (v) => fmtPrecio(skuForVarSC(v), showPrices),
     },
   ]
 
-  // Foto representativa: preferimos la variante más "grande" (mayor
-  // superficie). Dentro de esa, preferimos floors=2 si existe (queda
-  // mejor visualmente en el bg). Si no hay foto linkeada al SKU,
-  // caemos a cualquier exterior render del modelo.
+  const selectedVar = uniqueVars[selectedVarIdx] ?? uniqueVars[0]
+  const cotizarHref = buildCotizarMailto({
+    modelName: model.display_name,
+    variante: selectedVar?.variante,
+    sistema: currentSC ?? undefined,
+    linea: displayLinea(model.linea),
+  })
+
+  // Foto de fondo del panel (item 14: la foto está bien, solo el CUADRO
+  // interno va blanco). Preferimos la variante más grande con floors=2,
+  // sino la mayor; fallback a cualquier exterior render del modelo.
   const sortedByArea = [...uniqueVars].sort(
     (a, b) => (b.area_m2 ?? 0) - (a.area_m2 ?? 0),
   )
-  const preferred =
-    sortedByArea.find((v) => v.floors === 2) ?? sortedByArea[0]
-
+  const preferred = sortedByArea.find((v) => v.floors === 2) ?? sortedByArea[0]
   const heroImg =
     (preferred &&
       imagesForSkus(images, [preferred.id]).find(
@@ -890,50 +976,103 @@ export function Panel7Comparativo({
 
   return (
     <div
-      className="cf-pn cf-pn-compare"
+      className="cf-pn cf-pn-compare cf-pn-compare-light"
       style={{
-        backgroundImage: heroImg
-          ? `url('${heroImg.storage_url}')`
-          : undefined,
+        backgroundImage: heroImg ? `url('${heroImg.storage_url}')` : undefined,
         backgroundColor: heroImg ? undefined : model.lqip_color,
       }}
     >
-      <div className="cf-pn-compare-overlay">
+      <div className="cf-pn-compare-feature">
         <header className="cf-pn-compare-header">
-          <p className="cf-pn-eyebrow">Comparativo</p>
+          <p className="cf-pn-eyebrow">
+            Comparativo · Tipología {model.tipologia_code} · {displayLinea(model.linea)} · {model.display_name}
+          </p>
           <h3 className="cf-pn-compare-sub">
-            {uniqueVars.length} variante{uniqueVars.length !== 1 ? 's' : ''} disponible
-            {uniqueVars.length !== 1 ? 's' : ''} — diferencias clave
+            Cotizá la variante que más se ajusta a tus necesidades
           </h3>
         </header>
+
+        {model.systems.length > 1 && (
+          <div className="cf-pn-compare-sc-pills">
+            {model.systems.map((s, i) => (
+              <button
+                key={s}
+                type="button"
+                className={`cf-pn-pill ${i === selectedSCIdx ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedSCIdx(i)
+                }}
+              >
+                {displaySC(s)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div
           className="cf-pn-compare-table"
           style={{
-            // 1ra col para etiqueta de variante (V1/V2/...) + N cols con
-            // los atributos (Sup., Plantas, Dorm., Baños, Toilette, Parrilla).
-            gridTemplateColumns: `auto repeat(${cols.length}, minmax(80px, 1fr))`,
+            gridTemplateColumns: `auto repeat(${cols.length}, minmax(72px, 1fr))`,
           }}
         >
-          {/* Header row: corner vacío + label de cada atributo. */}
-          <div className="cf-pn-compare-corner" />
+          <div className="cf-pn-compare-corner">Variante</div>
           {cols.map((c) => (
             <div key={`th-${c.key}`} className="cf-pn-compare-th">
               {c.label}
             </div>
           ))}
 
-          {/* Una fila por variante: V<x> + valores. */}
-          {uniqueVars.map((v) => (
-            <Fragment key={`row-${v.variante}`}>
-              <div className="cf-pn-compare-row-lbl">V{v.variante}</div>
-              {cols.map((c) => (
-                <div key={`${v.variante}-${c.key}`} className="cf-pn-compare-cell">
-                  {c.get(v)}
-                </div>
-              ))}
-            </Fragment>
-          ))}
+          {uniqueVars.map((v, i) => {
+            const isSelected = i === selectedVarIdx
+            const cellCls = `cf-pn-compare-cell${isSelected ? ' selected' : ''}`
+            return (
+              <Fragment key={`row-${v.variante}`}>
+                <button
+                  type="button"
+                  className={`cf-pn-compare-row-lbl${isSelected ? ' selected' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedVarIdx(i)
+                  }}
+                >
+                  V{v.variante}
+                </button>
+                {cols.map((c) => (
+                  <div key={`${v.variante}-${c.key}`} className={cellCls}>
+                    {c.get(v)}
+                  </div>
+                ))}
+              </Fragment>
+            )
+          })}
+        </div>
+
+        {/* Cotización inline — variante + SC seleccionados arriba. */}
+        <div className="cf-pn-compare-inline-cotizar">
+          <div className="cf-pn-compare-inline-info">
+            <span className="cf-pn-compare-inline-eyebrow">Tu selección</span>
+            <span className="cf-pn-compare-inline-detail">
+              V{selectedVar?.variante}
+              {currentSC ? ` · ${displaySC(currentSC)}` : ''}
+            </span>
+          </div>
+          <div className="cf-pn-cta-row">
+            <a
+              className="cf-pn-cta-primary"
+              href={cotizarHref}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Cotizar →
+            </a>
+            <a
+              className="cf-pn-cta-secondary"
+              href={buildAsesorMailto({ linea: displayLinea(model.linea) })}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Hablar con Ximia
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -1004,8 +1143,208 @@ export function Panel8Equipamiento({
 const SYSTEM_KEY_MAP: Record<string, string> = {
   'WOOD PLUS': 'system_wood',
   'STEEL PLUS': 'system_steel',
+  'STONE PLUS': 'system_concrete',
+  // Aliases: la DB todavía puede tener "Hormigón Plus" o "Concrete Plus" en
+  // SKUs viejos. Todos resuelven al mismo brand_content.system_concrete.
   'HORMIGÓN PLUS': 'system_concrete',
   'HORMIGON PLUS': 'system_concrete',
+  'CONCRETE PLUS': 'system_concrete',
+}
+
+// Display normalizer: si la DB tiene "Hormigón Plus" / "Concrete Plus", lo
+// mostramos como "Stone Plus" (el rebrand vigente).
+function displaySC(sc: string): string {
+  const u = sc.toUpperCase().trim()
+  if (u === 'HORMIGÓN PLUS' || u === 'HORMIGON PLUS' || u === 'CONCRETE PLUS')
+    return 'Stone Plus'
+  // Title case: "WOOD PLUS" → "Wood Plus".
+  return sc
+    .toLowerCase()
+    .replace(/(?:^|\s)\S/g, (c) => c.toUpperCase())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel SC en columnas — replica el skin de los SlideLineaCard del HeroRow:
+// foto bg + overlay gradient + texto blanco. Una columna por SC presente en
+// el modelo. Foto = casa más grande del SC (max area_m2). Texto editorial
+// viene de brand_content.system_{wood,steel,concrete}.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface BrandContentForSC extends BrandContentLite {
+  subtitle?: string | null
+}
+
+// Lista canónica de los 3 sistemas constructivos Hausind. El panel SIEMPRE
+// muestra las 3 columnas, incluso si el modelo no está cargado en alguno —
+// es parte de la visión de marca (Steel/Wood/Stone Plus como sistemas de
+// Hausind, no como inventario por casa).
+//
+// `preferredLinea` define qué línea representa visualmente a cada SC.
+// Decisión editorial del user: Steel → Bosque, Wood → Atlas, Stone → Terra.
+// La foto bg viene de una casa de esa línea (cualquier modelo del catálogo),
+// no necesariamente del modelo abierto.
+//
+// Por ahora los títulos son FIJOS (Steel/Wood/Stone Plus), no leen del admin.
+// Cuando exista el admin dedicado de SC (`sistema_constructivo_content`),
+// el title también podrá venir de ahí.
+const CANONICAL_SCS: {
+  sc: string
+  key: string
+  title: string
+  preferredLinea: string
+}[] = [
+  { sc: 'STEEL PLUS', key: 'system_steel', title: 'Steel Plus', preferredLinea: 'BOSQUE' },
+  { sc: 'WOOD PLUS', key: 'system_wood', title: 'Wood Plus', preferredLinea: 'ATLAS' },
+  { sc: 'STONE PLUS', key: 'system_concrete', title: 'Stone Plus', preferredLinea: 'TERRA' },
+]
+
+// Splittea body en primera línea (copy/tagline) + resto. La primera línea
+// se promueve a subtítulo estilizado; el resto sigue como body normal.
+function splitFirstLine(s: string | null | undefined): {
+  lead: string
+  rest: string
+} {
+  if (!s) return { lead: '', rest: '' }
+  const trimmed = s.trim()
+  const m = trimmed.match(/^([^\n]+)\n+([\s\S]*)$/)
+  if (m) return { lead: m[1].trim(), rest: m[2].trim() }
+  return { lead: trimmed, rest: '' }
+}
+
+export function PanelSCColumns({
+  model,
+  brandContent,
+  images,
+  activeSkus,
+  allModels = [],
+}: {
+  model: CatalogModel
+  brandContent: BrandContentForSC[]
+  images: CatalogImage[]
+  activeSkus: CatalogModel['skus']
+  /** Todo el catálogo — usado para asignar foto bg por línea preferida
+   *  (Steel→Bosque, Wood→Atlas, Stone→Terra). Si está vacío, fallback al
+   *  pool de fotos del modelo actual. */
+  allModels?: CatalogModel[]
+}) {
+  // Filtro frente vs contrafrente: descartamos vistas posteriores explícitas
+  // (view_label "contrafrente" / "posterior" / "back" / "rear"). Si la foto
+  // no tiene view_label, asumimos frente (mayoría de renders del catálogo).
+  const isFrontView = (img: CatalogImage): boolean => {
+    const v = (img.view_label ?? '').toLowerCase().trim()
+    if (!v) return true
+    if (/contra|posterior|rear|back|trasera|fondo/.test(v)) return false
+    return true
+  }
+  const hasFrontKeyword = (img: CatalogImage): boolean => {
+    const v = (img.view_label ?? '').toLowerCase()
+    return /frente|frontal|front|principal/.test(v)
+  }
+
+  // Pool de exteriores render del modelo (solo frente), ordenado por
+  // preferencia: view_label "frente" explícito primero, después SKUs con
+  // floors=2, luego mayor area_m2. Cada columna toma una foto distinta.
+  const exteriorRenders = images.filter(
+    (i) =>
+      i.is_exterior === true &&
+      i.image_type === 'render' &&
+      isFrontView(i),
+  )
+  const photoScore = (img: CatalogImage): number => {
+    const skus = model.skus.filter((s) => img.sku_ids.includes(s.id))
+    const frontBoost = hasFrontKeyword(img) ? 100000 : 0
+    if (skus.length === 0) return frontBoost
+    const skuBoost = skus.reduce((acc, s) => {
+      const floorsBoost = s.floors === 2 ? 10000 : 0
+      const area = s.area_m2 ?? 0
+      return Math.max(acc, floorsBoost + area)
+    }, 0)
+    return frontBoost + skuBoost
+  }
+  const sortedPool = [...exteriorRenders].sort(
+    (a, b) => photoScore(b) - photoScore(a),
+  )
+
+  // Asignación de foto por línea preferida (Steel→Bosque, Wood→Atlas,
+  // Stone→Terra). Tomamos un modelo de esa línea del catálogo global y
+  // preferimos la casa más grande de 2 plantas. Devolvemos {cover_url} en
+  // un shape compatible con CatalogImage para reusar el render.
+  const usedUrls = new Set<string>()
+  const photoForLinea = (
+    targetLinea: string,
+  ): { storage_url: string } | null => {
+    const candidates = allModels.filter(
+      (m) => m.linea?.toUpperCase().trim() === targetLinea && m.cover_url,
+    )
+    if (candidates.length === 0) return null
+    // Preferimos casas grandes / con 2 plantas (mejor estética en bg).
+    const ranked = [...candidates].sort((a, b) => {
+      const aTwo = a.skus.some((s) => s.floors === 2) ? 1 : 0
+      const bTwo = b.skus.some((s) => s.floors === 2) ? 1 : 0
+      if (aTwo !== bTwo) return bTwo - aTwo
+      return (b.area_max ?? 0) - (a.area_max ?? 0)
+    })
+    for (const c of ranked) {
+      if (c.cover_url && !usedUrls.has(c.cover_url)) {
+        usedUrls.add(c.cover_url)
+        return { storage_url: c.cover_url }
+      }
+    }
+    // Todas usadas: tomar la primera igual.
+    if (ranked[0]?.cover_url) return { storage_url: ranked[0].cover_url }
+    return null
+  }
+
+  // Fallback: pool de fotos del modelo actual (cuando allModels está vacío
+  // o no hay casas en la línea preferida).
+  const usedIds = new Set<string>()
+  const photoFromPool = (): CatalogImage | null => {
+    const next = sortedPool.find((img) => !usedIds.has(img.id))
+    if (next) {
+      usedIds.add(next.id)
+      return next
+    }
+    return sortedPool[0] ?? null
+  }
+
+  const columns = CANONICAL_SCS.map(({ sc, key, title, preferredLinea }) => {
+    const content = brandContent.find((b) => b.key === key) ?? null
+    const split = splitFirstLine(content?.body)
+    const photo = photoForLinea(preferredLinea) ?? photoFromPool()
+    return {
+      sc,
+      title,
+      photo,
+      lead: content?.subtitle?.trim() || split.lead,
+      body: content?.subtitle ? content.body ?? '' : split.rest,
+    }
+  })
+
+  if (columns.length === 0) return null
+
+  return (
+    <div className="cf-pn cf-pn-sc-cols">
+      {columns.map((col) => (
+        <div
+          key={col.sc}
+          className="cf-pn-sc-col"
+          style={{
+            backgroundImage: col.photo
+              ? `url('${col.photo.storage_url}')`
+              : undefined,
+            backgroundColor: col.photo ? undefined : model.lqip_color,
+          }}
+        >
+          <div className="cf-pn-sc-col-overlay">
+            <p className="cf-pn-sc-col-eyebrow">Sistema constructivo</p>
+            <h3 className="cf-pn-sc-col-title">{col.title}</h3>
+            {col.lead && <p className="cf-pn-sc-col-sub">{col.lead}</p>}
+            {col.body && <p className="cf-pn-sc-col-body">{col.body}</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function PanelSistemaConstructivo({
@@ -1196,57 +1535,70 @@ function PanelRelated({
 
   if (related.length === 0) return null
 
+  // Mostrar siempre 4 slots: completar con placeholders grises si hay menos
+  // candidatos que matcheen. Mantiene la grid balanceada.
+  const slots: ((typeof related)[number] | null)[] = [
+    ...related,
+    ...Array(Math.max(0, 4 - related.length)).fill(null),
+  ].slice(0, 4)
+
   return (
     <div className="cf-pn cf-pn-related">
       <div className="cf-pn-related-inner">
-        <header className="cf-pn-related-header">
-          <p className="cf-pn-eyebrow">Más opciones</p>
-          <h3 className="cf-pn-related-title">
-            Tu misma búsqueda en otros estilos
-          </h3>
-        </header>
-        <div className="cf-pn-related-grid">
-          {related.map((r) => (
-            <a
-              key={r.group_slug}
-              href={`#row-${r.group_slug}`}
-              className="cf-pn-related-card"
-              style={{
-                backgroundImage: r.cover_url
-                  ? `url('${r.cover_url}')`
-                  : undefined,
-                backgroundColor: r.cover_url ? undefined : r.lqip_color,
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                // Doble scroll: el primero inmediato y el segundo
-                // después de que el row actualmente expandido se
-                // colapse y el listado se reacomode (el RAF de focus
-                // physics tarda ~600-1000ms en cerrar el row al
-                // perder el centro). Sin el segundo scroll, el target
-                // queda fuera del viewport hacia arriba.
-                const id = `row-${r.group_slug}`
-                const el = document.getElementById(id)
-                if (!el) return
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                window.setTimeout(() => {
-                  document
-                    .getElementById(id)
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }, 1300)
-              }}
-            >
-              <div className="cf-pn-related-card-overlay">
-                <span className="cf-pn-related-card-linea">
-                  {displayLinea(r.linea)} · {r.estilo}
-                </span>
-                <span className="cf-pn-related-card-name">
-                  {r.display_name}
-                </span>
-              </div>
-            </a>
-          ))}
+        <div className="cf-pn-related-feature">
+          <header className="cf-pn-related-header">
+            <p className="cf-pn-eyebrow">Más opciones</p>
+            <h3 className="cf-pn-related-title">
+              Casas similares a {model.display_name} en otros estilos
+            </h3>
+          </header>
+          <div className="cf-pn-related-grid-wrap">
+            <div className="cf-pn-related-grid">
+            {slots.map((r, i) =>
+            r ? (
+              <a
+                key={r.group_slug}
+                href={`#row-${r.group_slug}`}
+                className="cf-pn-related-card"
+                style={{
+                  backgroundImage: r.cover_url
+                    ? `url('${r.cover_url}')`
+                    : undefined,
+                  backgroundColor: r.cover_url ? undefined : r.lqip_color,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  const id = `row-${r.group_slug}`
+                  const el = document.getElementById(id)
+                  if (!el) return
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  window.setTimeout(() => {
+                    document
+                      .getElementById(id)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }, 1300)
+                }}
+              >
+                <div className="cf-pn-related-card-overlay">
+                  <span className="cf-pn-related-card-linea">
+                    {displayLinea(r.linea)} · {r.estilo}
+                  </span>
+                  <span className="cf-pn-related-card-name">
+                    {r.display_name}
+                  </span>
+                </div>
+              </a>
+            ) : (
+              <div
+                key={`placeholder-${i}`}
+                className="cf-pn-related-card cf-pn-related-card-placeholder"
+                aria-hidden="true"
+              />
+            ),
+          )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1291,7 +1643,11 @@ export default function ExpandedPanels(props: PanelsProps) {
 
       {/* 4. Estilo (intro de estilos de la línea, solo texto) */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-narrow">
-        <PanelEstiloIntro model={props.model} lineContent={props.lineContent} />
+        <PanelEstiloIntro
+          model={props.model}
+          lineContent={props.lineContent}
+          otherStyles={props.otherStyles}
+        />
       </div>
 
       {/* 5. Comparativa de estilos (foto + columna lateral + pills) */}
@@ -1308,46 +1664,36 @@ export default function ExpandedPanels(props: PanelsProps) {
         <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
       </div>
 
-      {/* 7. Planos arquitectónicos — solo si hay. Slide medio (75vw)
-          para que se lean cómodos. */}
-      {hasPlanos && (
-        <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
-          <PanelPlanos images={props.images} activeSkus={props.activeSkus} />
-        </div>
-      )}
-
-      {/* 8. Axonometrías — solo si hay. Slide angosto con bg blanco. */}
-      {hasAxos && (
-        <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
-          <PanelAxos images={props.images} activeSkus={props.activeSkus} />
-        </div>
-      )}
-
-      {/* 9. Comparativo de variantes — bg foto + tabla. Va acá (después
-          de planos/axos) para romper la secuencia de bloques blancos
-          consecutivos con un slide de foto. */}
+      {/* 7. Sistema Constructivo en columnas — foto + overlay + texto.
+          Una columna por SC presente en el modelo (Steel/Wood/Stone Plus).
+          Reemplaza al panel de Sistema Constructivo de texto. */}
       <div className="cf-station-slide cf-slide-image">
-        <Panel7Comparativo model={props.model} images={props.images} activeSkus={props.activeSkus} />
+        <PanelSCColumns
+          model={props.model}
+          brandContent={props.brandContent}
+          images={props.images}
+          activeSkus={props.activeSkus}
+          allModels={props.allModels}
+        />
       </div>
 
-      {/* 10. La Casa que Crece — feature único (text + GIF) sin variants. */}
+      {/* 8. Comparativo de variantes — tabla + cotización inline. */}
+      <div className="cf-station-slide cf-slide-image">
+        <Panel7Comparativo
+          model={props.model}
+          images={props.images}
+          activeSkus={props.activeSkus}
+          showPrices={props.model.show_prices}
+        />
+      </div>
+
+      {/* 9. La Casa que Crece — feature único (text + GIF) sin variants. */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-xwide">
         <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
       </div>
 
-      {/* 10. Ficha Completa (datos + precios + WhatsApp CTA) */}
-      <div className="cf-station-slide cf-slide-text">
-        <Panel9Datos model={props.model} activeSkus={props.activeSkus} />
-      </div>
-
-      {/* 11. Sistema Constructivo */}
-      <div className="cf-station-slide cf-slide-text">
-        <PanelSistemaConstructivo model={props.model} brandContent={props.brandContent} />
-      </div>
-
-      {/* 12. Equipamiento — solo se muestra si el modelo tiene atributos
-          cargados. Si está vacío, ocultamos el slide entero (no tiene
-          sentido mostrar "sin equipamiento configurado"). */}
+      {/* 10. Materiales / Equipamiento — solo si el modelo tiene atributos
+          cargados. Si está vacío, ocultamos el slide entero. */}
       {props.attributesForCatalogIds.length > 0 && (
         <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
           <Panel8Equipamiento
@@ -1357,9 +1703,21 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 13. También podría interesarte — modelos relacionados al final
-          del expandido. Da una salida lateral al usuario que está en
-          deep dive sin cerrarle el detalle actual. */}
+      {/* 11. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
+      {hasPlanos && (
+        <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
+          <PanelPlanos images={props.images} activeSkus={props.activeSkus} />
+        </div>
+      )}
+
+      {/* 12. Axonometrías — solo si hay. Slide angosto con bg blanco. */}
+      {hasAxos && (
+        <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
+          <PanelAxos images={props.images} activeSkus={props.activeSkus} />
+        </div>
+      )}
+
+      {/* 13. También podría interesarte — modelos relacionados al final. */}
       {props.allModels && props.allModels.length > 1 && (
         <div className="cf-station-slide cf-slide-image">
           <PanelRelated model={props.model} allModels={props.allModels} />

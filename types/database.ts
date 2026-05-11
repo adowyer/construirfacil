@@ -44,6 +44,7 @@ export interface Marca {
   rejection_reason: string | null
   approved_at: string | null
   approved_by: string | null
+  show_prices: boolean
   created_at: string
   updated_at: string
 }

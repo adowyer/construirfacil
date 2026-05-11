@@ -132,15 +132,6 @@ function SectionModal({
             </div>
           ))}
         </div>
-        <div className="cf-hero-modal-cta-row">
-          <a
-            href={buildCotizarMailto()}
-            className="cf-hero-modal-cta-primary"
-          >
-            Cotizar →
-          </a>
-          {/* "Hablar con un asesor" oculto temporalmente. */}
-        </div>
       </div>
     </dialog>
   )
@@ -208,21 +199,14 @@ function SlideCrece({ growthPairs, onOpenModal }: { growthPairs: GrowthPair[], o
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split">
       <div className="cf-slide-split-image">
         <HouseGrowBg pairs={growthPairs} />
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.35)', zIndex: 3, pointerEvents: 'none' }} />
         <div className="cf-glass-card left" style={{ zIndex: 10, justifyContent: 'center' }}>
           <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: '#fff', textTransform: 'uppercase' }}>Concepto</p>
           <h3 className="cf-hero-slide-crece-title">La Casa que Crece</h3>
           <p className="cf-hero-slide-crece-body">Nos propusimos crear un ambiente que acompañe cada etapa de la vida familiar, y después de mucho trabajo e investigación, la idea original de un gran arquitecto como Alvar Aalto nos dio la respuesta que buscábamos. Una vivienda que evoluciona junto a quienes la habitan.</p>
           <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>Ver más →</button>
         </div>
-        <div className="cf-steps-footer cf-steps-footer-left" style={{ bottom: '30px', left: '40px', zIndex: 10 }}>
-          <div className="cf-step-item" style={{ color: '#fff' }}>
-            <span className="cf-hero-arrow-pointer cf-hero-arrow-pointer-rotated" aria-hidden>&darr;</span>
-            4 SIMPLES PASOS PARA SER DUEÑO
-          </div>
-        </div>
       </div>
-      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '60px' }}>
+      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '40px' }}>
         <img src="/la-casa-que-crece.png" alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
       </div>
     </div>
@@ -275,7 +259,7 @@ function SlidePrincipal() {
 function SlideFlex({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split cf-slide-split-right">
-      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '60px' }}>
+      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '40px' }}>
         <img src="/Flex-Build-Suit.png" alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
       </div>
       <div className="cf-slide-split-image" style={{ backgroundImage: "url('/Fabrica-ARQUIMA.jpg')" }}>
@@ -433,8 +417,8 @@ function LineaModal({
     >
       <div className="cf-linea-modal-inner">
         <button type="button" className="cf-hero-modal-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <p className="cf-pn-eyebrow">Línea {linea.dbKey}</p>
-        <h2 className="cf-linea-modal-title">{linea.name}</h2>
+        <p className="cf-pn-eyebrow">Hausind</p>
+        <h2 className="cf-linea-modal-title">Línea {linea.name}</h2>
         <p className="cf-linea-modal-sub">{linea.sub}</p>
         {marqueePhotos.length > 0 && (
           <div className="cf-linea-modal-marquee">
@@ -450,15 +434,6 @@ function LineaModal({
           </div>
         )}
         <p className="cf-linea-modal-body">{linea.about}</p>
-        <div className="cf-hero-modal-cta-row">
-          <a
-            href={buildCotizarMailto({ linea: linea.name })}
-            className="cf-hero-modal-cta-primary"
-          >
-            Cotizar línea {linea.name} →
-          </a>
-          {/* "Hablar con un asesor" oculto temporalmente. */}
-        </div>
       </div>
     </dialog>
   )
@@ -469,9 +444,22 @@ function LineaModal({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HeroRow({
   brandContent = [],
+  lineas = [],
   growthPairs = [],
   lineaPhotosByName = {},
 }: HeroRowProps) {
+  // Resolver el "sub" (tagline) de cada línea contra el admin (lineas.tagline).
+  // Si la DB tiene tagline, override el hardcoded de LINEAS; sino, fallback.
+  const lineasResolved = useMemo(() => {
+    const taglineByName: Record<string, string> = {}
+    for (const l of lineas) {
+      if (l.tagline) taglineByName[l.name] = l.tagline
+    }
+    return LINEAS.map((l) => ({
+      ...l,
+      sub: taglineByName[l.dbKey] ?? l.sub,
+    }))
+  }, [lineas])
   const trackRef = useRef<HTMLDivElement>(null)
 
   // Modals state
@@ -632,7 +620,7 @@ export default function HeroRow({
       <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
         <SlideLineasIntro />
       </div>
-      {LINEAS.map((linea) => (
+      {lineasResolved.map((linea) => (
         <div key={`${keyPrefix}-linea-${linea.name}`} className="cf-hero-row-slide cf-hero-row-slide-linea">
           <SlideLineaCard
             name={linea.name}

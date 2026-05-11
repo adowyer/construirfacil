@@ -69,6 +69,10 @@ export type CatalogModel = {
   // null = no destacado. Menor = más destacado. Usado por el sort
   // "Más Relevante" y el helper getFeaturedModels del footer.
   featured_rank: number | null
+
+  // Flag de la marca dueña del grupo: si true, el catálogo público muestra
+  // precios de los SKUs; si false, muestra "Cotizar". Default false.
+  show_prices: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,7 +163,7 @@ export async function getGroupedCatalog(
 
   // 2) Agrupar por (linea, style_name, tipologia_code)
   const groupMap = new Map<string, ModelVariant[]>()
-  const groupMeta = new Map<string, { linea: string; segmento: string | null; style_name: string; estilo: string; tipologia_code: string }>()
+  const groupMeta = new Map<string, { linea: string; segmento: string | null; style_name: string; estilo: string; tipologia_code: string; marca_id: string | null }>()
 
   for (const row of (rows ?? [])) {
     const key = groupSlug(row.linea, row.style_name, row.tipologia_code)
@@ -171,6 +175,7 @@ export async function getGroupedCatalog(
         style_name: row.style_name,
         estilo: row.estilo,
         tipologia_code: row.tipologia_code,
+        marca_id: row.marca_id ?? null,
       })
     }
     groupMap.get(key)!.push({
@@ -278,6 +283,28 @@ export async function getGroupedCatalog(
     }
   }
 
+  // 3.5) Para cada marca presente en los grupos, traer su flag show_prices.
+  const marcaIds = [
+    ...new Set(
+      [...groupMeta.values()]
+        .map((m) => m.marca_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
+  const showPricesByMarca = new Map<string, boolean>()
+  if (marcaIds.length > 0) {
+    const { data: marcasData, error: marcasErr } = await supabase
+      .from('marcas')
+      .select('id, show_prices')
+      .in('id', marcaIds)
+    if (marcasErr) {
+      console.error('[getGroupedCatalog] marcas:', marcasErr.message)
+    }
+    for (const m of (marcasData ?? []) as { id: string; show_prices: boolean }[]) {
+      showPricesByMarca.set(m.id, m.show_prices ?? false)
+    }
+  }
+
   // 4) Construir CatalogModel por grupo
   const models: CatalogModel[] = []
 
@@ -319,6 +346,9 @@ export async function getGroupedCatalog(
       cover_url: cover?.url ?? null,
       lqip_color: cover?.lqip ?? '#d4d4cc',
       featured_rank: ranks.length ? Math.min(...ranks) : null,
+      show_prices: meta.marca_id
+        ? showPricesByMarca.get(meta.marca_id) ?? false
+        : false,
     })
   }
 

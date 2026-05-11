@@ -177,6 +177,27 @@ export function MarcaForm({
         </div>
       </fieldset>
 
+      <fieldset className="border border-[#E8E8E5] rounded-xl p-6 bg-white">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-500 px-2">
+          Catálogo público
+        </legend>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="show_prices"
+            defaultChecked={defaultValues?.show_prices ?? false}
+            className="mt-0.5 h-4 w-4 accent-[#ff003d]"
+          />
+          <span className="text-sm text-neutral-800">
+            Publicar precios en el catálogo
+            <span className="block text-xs text-neutral-500 mt-1">
+              Si está desactivado, todos los SKUs de esta marca muestran
+              &ldquo;Cotizar&rdquo; en lugar del precio.
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
       <div className="flex justify-end">
         <button
           type="submit"

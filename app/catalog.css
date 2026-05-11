@@ -531,6 +531,38 @@ body:has(.cf-row.cf-expanded) {
   margin: 0 0 10px;
 }
 
+/* Tipología en la ficha colapsada — entre la línea y el nombre, color
+   rojo CF para que se distinga de la línea (gris arriba). */
+.cf-row-tipologia {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff003d;
+  margin: 0 0 8px;
+}
+
+/* Precio en la ficha colapsada, debajo de dormitorios. "Precio:" en gris
+   chico + valor en negro. Cuando la marca no publica precios → "Cotizar". */
+.cf-row-precio {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  margin: 6px 0 0;
+  color: #0a0a0a;
+}
+
+.cf-row-precio-lbl {
+  font-weight: 500;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 9.5px;
+}
+
+.cf-row-precio-val {
+  font-weight: 600;
+}
+
 .cf-row-name {
   font-size: clamp(16px, 1.6vw, 22px);
   font-weight: 500;
@@ -1449,6 +1481,103 @@ body:has(.cf-row.cf-expanded) {
   color: #0a0a0a;
 }
 
+/* "Tipología 1" / "Tipología O" — pre-título grande del Panel3Tipologia.
+   Más prominente que cf-pn-eyebrow, más chico que cf-pn-title. */
+.cf-pn-tipo-code {
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: 0 0 10px;
+  /*color: #ff003d;*/
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Panel SC Columnas — replica el skin de los SlideLineaCard del HeroRow
+   (foto bg + overlay gradient + texto blanco). 1 a 3 columnas según los SCs
+   del modelo (Steel/Wood/Stone Plus). Cada columna es independiente y
+   conserva su propia foto bg.
+   ────────────────────────────────────────────────────────────────────── */
+.cf-pn-sc-cols {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  justify-content: stretch;
+  /* Sin padding vertical: las columnas llegan al borde superior/inferior
+     del slide. Solo padding horizontal para separar del slide adyacente. */
+  padding: 0 14px;
+  background: transparent;
+}
+
+/* Tres columnas angostas que ocupan TODA la altura del slide, con gap y
+   esquinas redondeadas. Replican el skin de los SlideLineaCard del Hero:
+   foto bg + overlay gradient + texto blanco abajo. */
+.cf-pn-sc-col {
+  position: relative;
+  flex: 1 1 0;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.cf-pn-sc-col-overlay {
+  position: absolute;
+  inset: 0;
+  /* Overlay olive sólido con texto negro — paleta editorial del catálogo,
+     contraste fuerte para legibilidad. La foto queda visible solo en los
+     bordes (vía gap entre columnas y border-radius). */
+  background: var(--cf-hero-olive, #969483);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 36px 24px 28px;
+  color: #0a0a0a;
+  border-radius: inherit;
+}
+
+.cf-pn-sc-col-eyebrow {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(10, 10, 10, 0.55);
+  margin: 0;
+}
+
+.cf-pn-sc-col-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0;
+  color: #0a0a0a;
+}
+
+/* Primera línea del body (copy/tagline) — se promueve a subtítulo. */
+.cf-pn-sc-col-sub {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #0a0a0a;
+  margin: 4px 0 0;
+}
+
+/* Resto del body. Sin line-clamp para que entre todo (el user pidió evitar
+   scroll) — confiamos en el padding del overlay y la altura del slide. */
+.cf-pn-sc-col-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(10, 10, 10, 0.85);
+  margin: 8px 0 0;
+}
+
 .cf-pn-tagline {
   font-size: clamp(15px, 1.4vw, 20px);
   font-weight: 500;
@@ -1481,11 +1610,9 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-pn-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  display: flex;
+  gap: 45px;
   margin: 18px 0 24px;
-  max-width: 360px;
 }
 
 .cf-pn-stat-num {
@@ -2210,6 +2337,160 @@ body:has(.cf-row.cf-expanded) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Variante light del cuadro comparativo: fondo blanco, font negra, wrapper
+   con borde fino estilo Casa que Crece, selector de SC arriba (pills),
+   selector de variante con highlight rojo CF, cotización inline al pie.
+   ────────────────────────────────────────────────────────────────────── */
+/* Variante "light": el WRAPPER conserva la foto bg (heredada de
+   .cf-pn-compare) — el cuadro blanco vive adentro como .cf-pn-compare-feature.
+   Aplicamos un overlay oscuro suave sobre la foto para que el contraste con
+   el cuadro blanco sea fuerte. */
+.cf-pn-compare-light {
+  position: relative;
+}
+
+.cf-pn-compare-light::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.45) 0%,
+      rgba(0, 0, 0, 0.3) 50%,
+      rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cf-pn-compare-feature {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 36px 44px;
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 14px;
+  margin: 24px;
+  overflow-y: auto;
+  max-width: calc(100% - 48px);
+  max-height: calc(100% - 48px);
+  box-sizing: border-box;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+}
+
+.cf-pn-compare-light .cf-pn-compare-header {
+  color: #0a0a0a;
+}
+
+.cf-pn-compare-light .cf-pn-compare-header .cf-pn-eyebrow {
+  color: #0a0a0a;
+}
+
+.cf-pn-compare-light .cf-pn-compare-sub {
+  color: #0a0a0a;
+}
+
+/* Pills selector de Sistema Constructivo arriba del cuadro. */
+.cf-pn-compare-sc-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Tabla light — celdas semi-transparentes para dejar respirar la foto detrás
+   del cuadro vidrio. El gap de 1px de .cf-pn-compare-table hereda el bg del
+   container, así que lo subimos a un olive translúcido. */
+.cf-pn-compare-light .cf-pn-compare-table {
+  background: rgba(208, 201, 179, 0.35);
+  border-color: rgba(208, 201, 179, 0.4);
+}
+
+.cf-pn-compare-light .cf-pn-compare-corner,
+.cf-pn-compare-light .cf-pn-compare-th {
+  background: rgba(240, 238, 230, 0.45);
+  color: #0a0a0a;
+}
+
+.cf-pn-compare-light .cf-pn-compare-corner {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+}
+
+.cf-pn-compare-light .cf-pn-compare-row-lbl {
+  background: rgba(240, 238, 230, 0.45);
+  color: #0a0a0a;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.cf-pn-compare-light .cf-pn-compare-row-lbl:hover {
+  background: rgba(232, 227, 208, 0.6);
+}
+
+.cf-pn-compare-light .cf-pn-compare-row-lbl.selected {
+  background: #ff003d;
+  color: #fff;
+}
+
+.cf-pn-compare-light .cf-pn-compare-cell {
+  background: rgba(255, 255, 255, 0.45);
+  color: #0a0a0a;
+}
+
+.cf-pn-compare-light .cf-pn-compare-cell.selected {
+  background: #fff5f7;
+  color: #0a0a0a;
+}
+
+/* Cotización inline al pie del cuadro. */
+.cf-pn-compare-inline-cotizar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  margin-top: 4px;
+  background: #f0eee6;
+  border-radius: 14px;
+}
+
+.cf-pn-compare-inline-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cf-pn-compare-inline-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.cf-pn-compare-inline-detail {
+  font-size: 16px;
+  font-weight: 500;
+  color: #0a0a0a;
+  letter-spacing: -0.01em;
 }
 
 /* ── Panel 8: Equipamiento ── */
@@ -3478,9 +3759,9 @@ body:has(.cf-row.cf-expanded) {
   border: 0;
   padding: 0;
   background: transparent;
-  max-width: min(720px, 92vw);
+  max-width: min(900px, 94vw);
   width: 100%;
-  max-height: 88vh;
+  max-height: 92vh;
   border-radius: 14px;
   margin: auto;
 }
@@ -3499,7 +3780,7 @@ body:has(.cf-row.cf-expanded) {
   border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 14px;
   padding: 48px 56px 48px;
-  max-height: 88vh;
+  max-height: 92vh;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
@@ -3910,6 +4191,20 @@ body:has(.cf-row.cf-expanded) {
 .cf-slide-solid-pasos {
   padding: 50px 40px 40px !important;
   text-align: left;
+  /* Override del cf-slide-solid (justify-content: center / align-items: center)
+     para que el grid de pasos se estire vertical y los step-items caigan al fondo
+     de cada columna, alineados con el StepsFooter del slide Principal. */
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+}
+
+.cf-slide-solid-pasos .cf-pasos-grid {
+  flex: 1;
+  /* Una sola fila estirada a 1fr — fuerza a que cada cf-paso-col tenga
+     toda la altura disponible del grid. Sin esto, las grid cells son
+     auto-height (sólo contenido) y el step-item no cae al fondo del slide. */
+  grid-template-rows: 1fr;
+  align-items: stretch;
 }
 
 .cf-slide-solid-olive {
@@ -4086,7 +4381,6 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-paso-col:hover {
   transform: translateY(-6px);
-  border-top-color: var(--cf-paso-accent);
 }
 
 .cf-paso-col .cf-pasos-text {
@@ -4107,7 +4401,7 @@ body:has(.cf-row.cf-expanded) {
    (1 → 2 → 3 → 4) y después el ciclo pausa antes de volver a empezar.
    Comunica "proceso secuencial" sin requerir interacción. */
 .cf-paso-col .cf-step-arrow-img {
-  animation: cfArrowFlow 7s ease-in-out infinite;
+  animation: cfArrowFlow 2.6s ease-in-out infinite;
   transform-origin: center;
 }
 
@@ -4116,15 +4410,15 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-paso-col:nth-child(2) .cf-step-arrow-img {
-  animation-delay: 1s;
+  animation-delay: 0.4s;
 }
 
 .cf-paso-col:nth-child(3) .cf-step-arrow-img {
-  animation-delay: 2s;
+  animation-delay: 0.8s;
 }
 
 .cf-paso-col:nth-child(4) .cf-step-arrow-img {
-  animation-delay: 3s;
+  animation-delay: 1.2s;
 }
 
 /* Peak ocupa ~1s (0%→7%→14%). Cycle 7s con delays 0/1/2/3 →
@@ -4133,13 +4427,12 @@ body:has(.cf-row.cf-expanded) {
 @keyframes cfArrowFlow {
 
   0%,
-  14%,
   100% {
-    transform: translateX(0) scale(1);
+    transform: translateX(0);
   }
 
-  7% {
-    transform: translateX(3px) scale(1.2);
+  50% {
+    transform: translateX(3px);
   }
 }
 
@@ -4158,11 +4451,11 @@ body:has(.cf-row.cf-expanded) {
 
 @keyframes cfArrowPulseHover {
   0% {
-    transform: translateX(0) scale(1);
+    transform: translateX(0);
   }
 
   100% {
-    transform: translateX(3px) scale(1.2);
+    transform: translateX(2px);
   }
 }
 
@@ -4412,7 +4705,7 @@ body:has(.cf-row.cf-expanded) {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 22px 20px;
+  padding: 22px 20px 40px;
   border-radius: inherit;
 }
 
@@ -4470,9 +4763,9 @@ body:has(.cf-row.cf-expanded) {
   padding: 0;
   background: #fff;
   border-radius: 18px;
-  max-width: 920px;
-  width: 92vw;
-  max-height: 90vh;
+  max-width: 1100px;
+  width: 94vw;
+  max-height: 94vh;
   overflow: hidden;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
   inset: 0;
@@ -4481,14 +4774,13 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-linea-modal::backdrop {
   background: rgba(10, 10, 10, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px) -webkit-backdrop-filter: blur(4px);
 }
 
 .cf-linea-modal-inner {
   position: relative;
   padding: 36px 36px 32px;
-  max-height: 88vh;
+  max-height: 92vh;
   overflow-y: auto;
 }
 
@@ -4513,8 +4805,6 @@ body:has(.cf-row.cf-expanded) {
 .cf-linea-modal-marquee {
   margin: 0 -36px 24px;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
 }
 
 .cf-linea-modal-marquee-track {
@@ -4690,15 +4980,15 @@ body:has(.cf-row.cf-expanded) {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  padding-right: 4px;
+  padding-right: 20px;
+  line-height: 1.2;
 }
 
 .cf-row-sticky-cta-eyebrow {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #999;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #888;
 }
 
 .cf-row-sticky-cta-name {
@@ -4710,6 +5000,14 @@ body:has(.cf-row.cf-expanded) {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 280px;
+}
+
+.cf-row-sticky-cta-linea {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #777;
+  margin-top: 1px;
 }
 
 .cf-row-sticky-cta-btn {
@@ -4849,6 +5147,21 @@ body:has(.cf-row.cf-expanded) {
 .cf-footer-cta-secondary:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: #fff;
+}
+
+/* Capa cierre "narrow" — el banner mismo es un cuadro olive de 75vw (mismo
+   ancho que los slides de fotos expandidas), NO un full-bleed. El wrapper
+   exterior queda transparente. */
+.cf-footer-cierre.cf-footer-cierre-narrow {
+  background: transparent;
+  padding: 56px 12vw;
+}
+
+.cf-footer-cierre.cf-footer-cierre-narrow .cf-footer-cierre-inner {
+  max-width: 75vw;
+  background: var(--cf-hero-olive, #b2a67a);
+  border-radius: 24px;
+  padding: 56px 48px;
 }
 
 /* ── Capa 2: Mini marquee continuo ────────────────────────────────────────── */
@@ -5039,6 +5352,41 @@ body:has(.cf-row.cf-expanded) {
   line-height: 1.1;
 }
 
+/* CF card — primera del marquee, similar a Brand pero con logo CF + tagline.
+   Mismo skin que brand para coherencia visual. */
+.cf-footer-marquee-card-cf {
+  width: 320px;
+  background: #fff;
+  border: 1px solid #e8e6dc;
+  padding: 32px 32px 28px;
+  justify-content: space-between;
+  text-decoration: none;
+}
+
+.cf-footer-marquee-card-cf-head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.cf-footer-marquee-card-cf-logo {
+  height: 48px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.cf-footer-marquee-card-cf-tagline {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #444;
+  margin-top: 18px;
+  border-top: 1px solid #efece2;
+  padding-top: 16px;
+}
+
 /* Brand card — más ancha, hero del marquee. Logo + datos de contacto. */
 .cf-footer-marquee-card-brand {
   width: 380px;
@@ -5114,17 +5462,18 @@ body:has(.cf-row.cf-expanded) {
   overflow: hidden;
 }
 
+/* Inner = todo el slide. Sin padding propio: el feature ocupa el slide entero
+   (igual ancho/alto que los demás slides de fotos). */
 .cf-pn-related-inner {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 56px 64px;
-  justify-content: center;
 }
 
 .cf-pn-related-header {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+  text-align: left;
 }
 
 .cf-pn-related-title {
@@ -5136,13 +5485,41 @@ body:has(.cf-row.cf-expanded) {
   margin: 6px 0 0;
 }
 
-.cf-pn-related-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 16px;
+/* Feature = cuadro con borde a tamaño completo del slide. Mantiene el skin
+   "Casa que Crece" (bg cream + borde olive + border-radius). */
+.cf-pn-related-feature {
+  background: #fff;
+  border: 1px solid #cfc8b3;
+  border-radius: 14px;
+  padding: 32px 40px 36px;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+/* Wrap del grid: centra el bloque 2x2 dentro del feature (vertical y
+   horizontalmente), permitiéndole achicarse cuando el slide es más chico. */
+.cf-pn-related-grid-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* Grid 2x2 con aspect 1:1 — cuadradas, ancla horizontal/vertical en el
+   feature. Tamaño calculado para que las 2 filas + gap entren en la altura
+   disponible. */
+.cf-pn-related-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 20px;
+  aspect-ratio: 1;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .cf-pn-related-card {
@@ -5150,7 +5527,6 @@ body:has(.cf-row.cf-expanded) {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 0;
   border-radius: 14px;
   background-color: #d4d4cc;
   background-size: cover;
@@ -5163,6 +5539,19 @@ body:has(.cf-row.cf-expanded) {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
+/* Placeholder gris cuando hay menos de 4 candidatos relacionados. */
+.cf-pn-related-card-placeholder {
+  background-color: #ebe8df;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+.cf-pn-related-card-placeholder:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .cf-pn-related-card:hover {
   transform: translateY(-6px) scale(1.015);
   box-shadow:
@@ -5173,12 +5562,10 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-related-card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.85) 0%,
-    rgba(0, 0, 0, 0.2) 55%,
-    rgba(0, 0, 0, 0) 100%
-  );
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(0, 0, 0, 0.2) 55%,
+      rgba(0, 0, 0, 0) 100%);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -5320,5 +5707,82 @@ body:has(.cf-row.cf-expanded) {
 @media (max-width: 580px) {
   .cf-footer-base-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Footer institucional — capa al pie estilo Ximia.ai. Logos partner +
+   copyright + links legales. Ancho contenido (no full-bleed crudo).
+   ────────────────────────────────────────────────────────────────────── */
+.cf-footer-inst {
+  background: #0a0a0a;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 28px 32px;
+}
+
+.cf-footer-inst-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.cf-footer-inst-logos {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cf-footer-inst-logo {
+  height: 65px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.cf-footer-inst-logo:hover {
+  opacity: 1;
+}
+
+.cf-footer-inst-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.cf-footer-inst-copy {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.cf-footer-inst-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cf-footer-inst-links a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cf-footer-inst-links a:hover {
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .cf-footer-inst-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
   }
 }

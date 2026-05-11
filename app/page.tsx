@@ -8,6 +8,7 @@ import {
   getAllCatalogAttributes,
 } from '@/lib/supabase/queries/catalog_panels'
 import { getFeaturedModels } from '@/lib/supabase/queries/featured'
+import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
@@ -40,6 +41,27 @@ export default async function HomePage() {
   // Solo marcas aprobadas en el footer público.
   const approvedMarcas = marcas.filter((m) => m.status === 'approved')
 
+  // Footer cards de las marcas aprobadas, indexadas por marca_id. Si la
+  // marca primaria no tiene cards, el CatalogFooter cae al hardcode.
+  const footerCardsByMarca: Record<string, FooterCardRow[]> = {}
+  if (approvedMarcas.length > 0) {
+    const { data: footerCards } = await supabase
+      .from('footer_card_content')
+      .select('*')
+      .in(
+        'marca_id',
+        approvedMarcas.map((m) => m.id),
+      )
+      .eq('status', 'active')
+      .order('sort_order', { ascending: true })
+
+    for (const c of (footerCards ?? []) as FooterCardRow[]) {
+      const arr = footerCardsByMarca[c.marca_id] ?? []
+      arr.push(c)
+      footerCardsByMarca[c.marca_id] = arr
+    }
+  }
+
   return (
     <CatalogPage
       models={models}
@@ -51,6 +73,7 @@ export default async function HomePage() {
       catalogImages={catalogImages}
       catalogAttributes={catalogAttributes}
       featuredModels={featuredModels}
+      footerCardsByMarca={footerCardsByMarca}
     />
   )
 }

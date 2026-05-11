@@ -25,6 +25,7 @@ import { buildCotizarMailto } from '@/lib/cta/mailto'
 interface BrandContentLite {
   key: string
   title: string | null
+  subtitle?: string | null
   body: string | null
 }
 interface LineContentLite {
@@ -72,6 +73,70 @@ function fmtRange(a: number | null, b: number | null) {
   if (!a) return '—'
   if (!b || a === b) return String(Math.round(a))
   return `${Math.round(a)}–${Math.round(b)}`
+}
+
+// Set ordenado de cantidades de dormitorios entre los SKUs activos.
+// Si un SKU tiene min_bedrooms=2/max_bedrooms=3, expande [2, 3].
+function bedroomsFromSkus(skus: CatalogModel['skus']): number[] {
+  const set = new Set<number>()
+  for (const sku of skus) {
+    const min = sku.min_bedrooms
+    const max = sku.max_bedrooms ?? min
+    if (min == null) continue
+    for (let n = min; n <= (max ?? min); n++) set.add(n)
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+// "Variantes con 1, 2, 3 o 4 dormitorios" — el copy completo, listo para
+// uso standalone (sin label "Dormitorios:" arriba).
+function fmtBedroomsLabeled(skus: CatalogModel['skus']): string {
+  const beds = bedroomsFromSkus(skus)
+  if (beds.length === 0) return '—'
+  if (beds.length === 1) return `${beds[0]} dormitorio${beds[0] > 1 ? 's' : ''}`
+  const last = beds[beds.length - 1]
+  const rest = beds.slice(0, -1).join(', ')
+  return `Variantes con ${rest} o ${last} dormitorios`
+}
+
+// "1, 2, 3 o 4" — solo la lista, para usar debajo de un label "Dormitorios".
+function fmtBedroomsList(skus: CatalogModel['skus']): string {
+  const beds = bedroomsFromSkus(skus)
+  if (beds.length === 0) return '—'
+  if (beds.length === 1) return String(beds[0])
+  const last = beds[beds.length - 1]
+  const rest = beds.slice(0, -1).join(', ')
+  return `${rest} o ${last}`
+}
+
+// Set de superficies discretas (cada SKU es un valor, no un rango).
+function areasFromSkus(skus: CatalogModel['skus']): number[] {
+  const set = new Set<number>()
+  for (const sku of skus) {
+    const a = sku.area_m2 ?? 0
+    if (a > 0) set.add(Math.round(a))
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+// "40, 58 y 80 m²" debajo de un label "Superficie".
+function fmtAreasList(skus: CatalogModel['skus']): string {
+  const areas = areasFromSkus(skus)
+  if (areas.length === 0) return '—'
+  if (areas.length === 1) return `${areas[0]} m²`
+  const last = areas[areas.length - 1]
+  const rest = areas.slice(0, -1).join(', ')
+  return `${rest} y ${last} m²`
+}
+
+// Precio mostrado en la ficha: si la marca no publica precios (Hausind),
+// muestra "Cotizar". Si publica y hay min, muestra "desde USD X".
+function fmtPrecioFicha(model: CatalogModel): string {
+  if (!model.show_prices) return 'Cotizar'
+  if (model.price_from && model.price_from > 0) {
+    return `desde USD ${Math.round(model.price_from).toLocaleString('es-AR')}`
+  }
+  return 'Cotizar'
 }
 
 export default function ModelRow({
@@ -293,7 +358,7 @@ export default function ModelRow({
       {/* ── COL 1: Info (Left) ── */}
       <div className="cf-row-info" onClick={e => isExpanded && e.stopPropagation()}>
         {!isExpanded ? (
-          /* Collapsed: ícono + línea + NOMBRE + dormitorios */
+          /* Collapsed: ícono + línea + tipología + NOMBRE + dormitorios */
           <div className="cf-meta-collapsed">
             {lineaIconUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -305,10 +370,16 @@ export default function ModelRow({
               />
             )}
             <p className="cf-row-tag">{displayLinea(model.linea)}</p>
+            {model.tipologia_code && (
+              <p className="cf-row-tipologia">Tipología {model.tipologia_code}</p>
+            )}
             <h3 className="cf-row-name cf-row-name-collapsed">{model.display_name}</h3>
             <p className="cf-row-bedrooms">
-              {fmtRange(model.beds_min, model.beds_max)} dormitorio
-              {model.beds_max && model.beds_max > 1 ? 's' : ''}
+              {fmtBedroomsLabeled(activeSkus ?? model.skus)}
+            </p>
+            <p className="cf-row-precio">
+              <span className="cf-row-precio-lbl">Precio:</span>{' '}
+              <span className="cf-row-precio-val">{fmtPrecioFicha(model)}</span>
             </p>
           </div>
         ) : (
@@ -334,15 +405,19 @@ export default function ModelRow({
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Superficie</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtRange(model.area_min, model.area_max)} m²</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtAreasList(activeSkus ?? model.skus)}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Dormitorios</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtRange(model.beds_min, model.beds_max)}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtBedroomsList(activeSkus ?? model.skus)}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Sistema</span>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{model.systems.join(' / ')}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Precio</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtPrecioFicha(model)}</span>
               </div>
             </div>
           </div>
@@ -375,7 +450,7 @@ export default function ModelRow({
                 <div className="cf-row-overlay" style={{ opacity: hovered ? 1 : 0 }}>
                   <div className="cf-row-overlay-content">
                     <p className="cf-row-overlay-name">{model.display_name}</p>
-                    <p className="cf-row-overlay-sub">{fmtRange(model.area_min, model.area_max)} m²</p>
+                    <p className="cf-row-overlay-sub">{fmtAreasList(activeSkus ?? model.skus)}</p>
                   </div>
                 </div>
               )}
@@ -418,10 +493,13 @@ export default function ModelRow({
           >
             <div className="cf-row-sticky-cta-info">
               <span className="cf-row-sticky-cta-eyebrow">
-                {displayLinea(model.linea)}
+                Estás viendo la
               </span>
               <span className="cf-row-sticky-cta-name">
-                {model.display_name}
+                Casa {model.display_name}
+              </span>
+              <span className="cf-row-sticky-cta-linea">
+                {displayLinea(model.linea)}
               </span>
             </div>
             <a

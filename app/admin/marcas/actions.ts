@@ -38,6 +38,7 @@ type MarcaPayload = {
   phone: string | null
   city: string | null
   province: string | null
+  show_prices: boolean
 }
 
 // NOTA: `logo_url` NO se incluye acá. Lo gestiona el uploader dedicado
@@ -55,6 +56,7 @@ function buildPayload(formData: FormData): MarcaPayload {
     phone: parseOptionalText(formData.get('phone')),
     city: parseOptionalText(formData.get('city')),
     province: parseOptionalText(formData.get('province')),
+    show_prices: formData.get('show_prices') === 'on',
   }
 }
 
