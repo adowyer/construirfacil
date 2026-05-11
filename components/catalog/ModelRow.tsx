@@ -139,6 +139,67 @@ function fmtPrecioFicha(model: CatalogModel): string {
   return 'Cotizar'
 }
 
+// Render del valor de precio en la ficha: cuando es "Cotizar", es un mailto
+// clickeable; cuando es un precio real ("desde USD …"), span plano.
+function PrecioOrCotizar({
+  model,
+  className,
+  style,
+}: {
+  model: CatalogModel
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const value = fmtPrecioFicha(model)
+  if (value === 'Cotizar') {
+    return (
+      <a
+        href={buildCotizarMailto({
+          modelName: model.display_name,
+          linea: displayLinea(model.linea),
+        })}
+        className={className}
+        style={style}
+        onClick={(e) => e.stopPropagation()}
+      >
+        Cotizar
+      </a>
+    )
+  }
+  return (
+    <span className={className} style={style}>
+      {value}
+    </span>
+  )
+}
+
+// Normaliza el nombre del SC para el rebrand vigente (Hormigón/Concrete → Stone).
+function displaySCName(sc: string): string {
+  const u = sc.toUpperCase().trim()
+  if (u === 'HORMIGÓN PLUS' || u === 'HORMIGON PLUS' || u === 'CONCRETE PLUS')
+    return 'Stone Plus'
+  return sc.toLowerCase().replace(/(?:^|\s)\S/g, (c) => c.toUpperCase())
+}
+
+// Cada línea tiene su SC principal; las demás son alternativas.
+const LINEA_TO_PRIMARY_SC: Record<string, string> = {
+  BOSQUE: 'Wood Plus',
+  ATLAS: 'Steel Plus',
+  TERRA: 'Stone Plus',
+}
+
+function orderSystemsByLinea(
+  systems: string[],
+  linea: string | null | undefined,
+): { primary: string | null; secondary: string[] } {
+  const primary = LINEA_TO_PRIMARY_SC[(linea ?? '').toUpperCase()] ?? null
+  const normalized = systems.map(displaySCName)
+  if (!primary) return { primary: null, secondary: normalized }
+  const primaryFound = normalized.find((s) => s === primary) ?? null
+  const others = normalized.filter((s) => s !== primary)
+  return { primary: primaryFound, secondary: others }
+}
+
 export default function ModelRow({
   model,
   index,
@@ -379,7 +440,7 @@ export default function ModelRow({
             </p>
             <p className="cf-row-precio">
               <span className="cf-row-precio-lbl">Precio:</span>{' '}
-              <span className="cf-row-precio-val">{fmtPrecioFicha(model)}</span>
+              <PrecioOrCotizar model={model} className="cf-row-precio-val" />
             </p>
           </div>
         ) : (
@@ -413,11 +474,28 @@ export default function ModelRow({
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Sistema</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{model.systems.join(' / ')}</span>
+                {(() => {
+                  const { primary, secondary } = orderSystemsByLinea(model.systems, model.linea)
+                  return (
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>
+                      {primary && <strong style={{ fontWeight: 700 }}>{primary}</strong>}
+                      {primary && secondary.length > 0 && (
+                        <span style={{ color: '#888' }}> — </span>
+                      )}
+                      {secondary.length > 0 && (
+                        <span style={{ color: '#888' }}>{secondary.join(' / ')}</span>
+                      )}
+                      {!primary && <span>{secondary.join(' / ')}</span>}
+                    </span>
+                  )
+                })()}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Precio</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtPrecioFicha(model)}</span>
+                <PrecioOrCotizar
+                  model={model}
+                  style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}
+                />
               </div>
             </div>
           </div>

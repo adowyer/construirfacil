@@ -11,6 +11,7 @@ import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
+import { useInViewport } from '@/lib/hooks/useInViewport'
 
 type HeroBullet = { name: string; body: string }
 type HeroSection = {
@@ -28,6 +29,18 @@ export interface GrowthPair {
   img2: string
 }
 
+/** Modelo único de una línea (agrupado por style_name) — usado por LineaModal
+ *  para renderizar la grid de modelos disponibles en cada línea. */
+export interface LineaModelo {
+  style_name: string
+  display_name: string
+  cover_url: string | null
+  lqip_color: string
+  estilo: string
+  tipologias: string[]
+  group_slugs: string[]
+}
+
 interface HeroRowProps {
   brandContent?: BrandContent[]
   lineContent?: LineContent[]
@@ -37,6 +50,9 @@ interface HeroRowProps {
   /** Map de nombre de línea (UPPERCASE) → array de URLs de fotos del catálogo
    *  para esa línea. Usado por LineaModal para el marquee infinito. */
   lineaPhotosByName?: Record<string, string[]>
+  /** Map de nombre de línea (UPPERCASE) → modelos únicos por style_name de
+   *  esa línea. Usado por LineaModal para mostrar la grid de modelos. */
+  modelosByLineaName?: Record<string, LineaModelo[]>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,9 +62,11 @@ function HouseGrowBg({ pairs }: { pairs: GrowthPair[] }) {
   const images = useMemo(() => pairs.flatMap((p) => [p.img1, p.img2]), [pairs])
   const [activeIdx, setActiveIdx] = useState(0)
   const [prevIdx, setPrevIdx] = useState(-1)
+  const { ref, inView } = useInViewport<HTMLDivElement>()
 
   useEffect(() => {
     if (images.length <= 1) return
+    if (!inView) return // pausamos el cross-fade fuera del viewport
     const id = setInterval(() => {
       setActiveIdx((current) => {
         setPrevIdx(current)
@@ -56,12 +74,13 @@ function HouseGrowBg({ pairs }: { pairs: GrowthPair[] }) {
       })
     }, 2400)
     return () => clearInterval(id)
-  }, [images.length])
+  }, [images.length, inView])
 
-  if (images.length === 0) return <div className="cf-hero-crece-bg cf-hero-crece-bg-empty" />
+  if (images.length === 0)
+    return <div ref={ref} className="cf-hero-crece-bg cf-hero-crece-bg-empty" />
 
   return (
-    <>
+    <div ref={ref} style={{ position: 'absolute', inset: 0 }}>
       {images.map((url, i) => {
         const isActive = i === activeIdx
         const isPrev = i === prevIdx
@@ -73,7 +92,7 @@ function HouseGrowBg({ pairs }: { pairs: GrowthPair[] }) {
           />
         )
       })}
-    </>
+    </div>
   )
 }
 
@@ -206,7 +225,7 @@ function SlideCrece({ growthPairs, onOpenModal }: { growthPairs: GrowthPair[], o
           <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>Ver más →</button>
         </div>
       </div>
-      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '40px' }}>
+      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
         <img src="/la-casa-que-crece.png" alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
       </div>
     </div>
@@ -259,19 +278,18 @@ function SlidePrincipal() {
 function SlideFlex({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split cf-slide-split-right">
-      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '40px' }}>
+      <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
         <img src="/Flex-Build-Suit.png" alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
       </div>
       <div className="cf-slide-split-image" style={{ backgroundImage: "url('/Fabrica-ARQUIMA.jpg')" }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.4)', zIndex: 1 }} />
         <div className="cf-glass-card right" style={{ zIndex: 10, justifyContent: 'center' }}>
           <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Sistema</p>
           <h3 className="cf-hero-slide-crece-title">Flex Build Suit</h3>
           <p className="cf-hero-slide-crece-body">Quienes hacemos Hausind® ya hemos acompañado a miles de familias a tener hogares eficientes, modernos y accesibles, en todo el país. Más de 50.000 M2 de experiencia nos avalan.</p>
           <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>Ver más →</button>
         </div>
-        <div className="cf-steps-footer cf-steps-footer-right" style={{ zIndex: 10 }}>
-          <div className="cf-step-item">
+        <div className="cf-steps-footer cf-steps-footer-right" style={{ zIndex: 10, bottom: 28, alignItems: 'flex-end' }}>
+          <div className="cf-step-item" style={{ color: '#fff', lineHeight: 1, alignItems: 'flex-end', textShadow: '0 1px 2px rgba(0, 0, 0, 0.80)' }}>
             DEFINÍ TU BÚSQUEDA EN EL MENÚ
             <span className="cf-hero-arrow-pointer cf-hero-arrow-pointer-down" aria-hidden>&darr;</span>
           </div>
@@ -289,7 +307,7 @@ function SlideLineasIntro() {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-lineas-intro">
       <p className="cf-pn-eyebrow" style={{ color: '#aaa' }}>TRES LÍNEAS, TRES MUNDOS</p>
-      <h3 className="cf-slide-lineas-title">Encontrá la<br />línea que<br />mejor se<br />adapta a vos</h3>
+      <h3 className="cf-slide-lineas-title">Descubrí la línea que mejor se adapta a tu estilo.</h3>
       <p className="cf-slide-lineas-body">De casas premium a soluciones modulares. Cada línea responde a un estilo de vida diferente.</p>
     </div>
   )
@@ -313,7 +331,7 @@ function SlideLineaCard({
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-linea-card" style={{ backgroundImage: `url('${bg}')` }}>
       <div className="cf-slide-linea-overlay">
-        <h4 className="cf-slide-linea-name">{name}</h4>
+        <h4 className="cf-slide-linea-name">Línea {name}</h4>
         <p className="cf-slide-linea-sub">{sub}</p>
         <p className="cf-slide-linea-teaser">{teaser}</p>
         <button type="button" className="cf-slide-linea-more-btn" onClick={onOpenModal}>
@@ -374,12 +392,12 @@ function LineaModal({
   open,
   onClose,
   linea,
-  photos,
+  modelos,
 }: {
   open: boolean
   onClose: () => void
   linea: LineaInfo | null
-  photos: string[]
+  modelos: LineaModelo[]
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -402,9 +420,18 @@ function LineaModal({
 
   if (!linea) return null
 
-  // Duplicamos el array para que el marquee loopee sin "salto" cuando vuelve
-  // al inicio (la animación translateX(-50%) cae justo en el final del primer set).
-  const marqueePhotos = photos.length > 0 ? [...photos, ...photos] : []
+  const handleModelClick = (m: LineaModelo) => {
+    // Cierra la modal y scrollea al row del primer group_slug del modelo
+    // en el catálogo. Doble RAF para esperar el reflow tras el close.
+    const targetSlug = m.group_slugs[0]
+    onClose()
+    if (!targetSlug) return
+    window.setTimeout(() => {
+      const el = document.getElementById(`row-${targetSlug}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 220)
+  }
 
   return (
     <dialog
@@ -420,20 +447,46 @@ function LineaModal({
         <p className="cf-pn-eyebrow">Hausind</p>
         <h2 className="cf-linea-modal-title">Línea {linea.name}</h2>
         <p className="cf-linea-modal-sub">{linea.sub}</p>
-        {marqueePhotos.length > 0 && (
-          <div className="cf-linea-modal-marquee">
-            <div className="cf-linea-modal-marquee-track">
-              {marqueePhotos.map((src, i) => (
-                <div
-                  key={`${src}-${i}`}
-                  className="cf-linea-modal-marquee-photo"
-                  style={{ backgroundImage: `url('${src}')` }}
-                />
+        <p className="cf-linea-modal-body">{linea.about}</p>
+
+        {modelos.length > 0 && (
+          <section className="cf-linea-modal-modelos">
+            <header className="cf-linea-modal-modelos-header">
+              <p className="cf-pn-eyebrow">Modelos disponibles</p>
+              <h3 className="cf-linea-modal-modelos-title">
+                {modelos.length} modelo{modelos.length !== 1 ? 's' : ''} en la
+                línea {linea.name}
+              </h3>
+            </header>
+            <div className="cf-linea-modal-modelos-grid">
+              {modelos.map((m) => (
+                <button
+                  key={m.style_name}
+                  type="button"
+                  className="cf-linea-modal-modelo-card"
+                  onClick={() => handleModelClick(m)}
+                  style={{
+                    backgroundImage: m.cover_url ? `url('${m.cover_url}')` : undefined,
+                    backgroundColor: m.cover_url ? undefined : m.lqip_color,
+                  }}
+                >
+                  <div className="cf-linea-modal-modelo-card-overlay">
+                    <span className="cf-linea-modal-modelo-card-name">
+                      {m.display_name}
+                    </span>
+                    {m.tipologias.length > 0 && (
+                      <span className="cf-linea-modal-modelo-card-tipo">
+                        {m.tipologias
+                          .map((t) => `Tipología ${t}`)
+                          .join(' · ')}
+                      </span>
+                    )}
+                  </div>
+                </button>
               ))}
             </div>
-          </div>
+          </section>
         )}
-        <p className="cf-linea-modal-body">{linea.about}</p>
       </div>
     </dialog>
   )
@@ -447,6 +500,7 @@ export default function HeroRow({
   lineas = [],
   growthPairs = [],
   lineaPhotosByName = {},
+  modelosByLineaName = {},
 }: HeroRowProps) {
   // Resolver el "sub" (tagline) de cada línea contra el admin (lineas.tagline).
   // Si la DB tiene tagline, override el hardcoded de LINEAS; sino, fallback.
@@ -461,6 +515,21 @@ export default function HeroRow({
     }))
   }, [lineas])
   const trackRef = useRef<HTMLDivElement>(null)
+
+  // Pausamos el auto-carousel marquee cuando el track no está en viewport.
+  // Cuando el user scrollea más abajo del Hero, no tiene sentido seguir
+  // moviendo el track con rAF.
+  const [trackInView, setTrackInView] = useState(true)
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const obs = new IntersectionObserver(
+      ([entry]) => setTrackInView(entry.isIntersecting),
+      { threshold: 0.01 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   // Modals state
   const [modalSection, setModalSection] = useState<HeroSection | null>(null)
@@ -567,6 +636,10 @@ export default function HeroRow({
   useEffect(() => { pausedRef.current = paused }, [paused])
 
   useEffect(() => {
+    // Si el track no está visible, no arrancamos el rAF — evitamos consumir
+    // CPU continuo cuando el user scrolleó fuera del Hero.
+    if (!trackInView) return
+
     const SPEED = 1.4 // px por frame ≈ 84 px/s a 60fps
     const START_DELAY = 5000 // ms — deja que el typewriter del Principal termine
     let rafId = 0
@@ -599,7 +672,7 @@ export default function HeroRow({
       clearTimeout(startTimer)
       if (started && rafId) cancelAnimationFrame(rafId)
     }
-  }, [numSlides])
+  }, [numSlides, trackInView])
 
   // Renderiza el set de 8 slides una vez. Se llama dos veces (set A + set B)
   // para que el rAF loop pueda hacer wraparound invisible.
@@ -667,7 +740,7 @@ export default function HeroRow({
         open={!!modalLinea}
         onClose={() => setModalLinea(null)}
         linea={modalLinea}
-        photos={modalLinea ? (lineaPhotosByName[modalLinea.dbKey] ?? []) : []}
+        modelos={modalLinea ? (modelosByLineaName[modalLinea.dbKey] ?? []) : []}
       />
     </div>
   )

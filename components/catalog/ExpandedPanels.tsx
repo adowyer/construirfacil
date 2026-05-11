@@ -440,14 +440,14 @@ function PanelImageSlider({
         isPdf
           ? { backgroundColor: '#ffffff' }
           : {
-              backgroundImage: `url('${current.storage_url}')`,
-              backgroundSize: bgSize,
-              // En paneles light (Axos/Planos), subir la imagen al ~32%
-              // para que no choque con los pills de abajo.
-              backgroundPosition: bgSize === 'contain' ? 'center 32%' : 'center',
-              backgroundRepeat: 'no-repeat',
-              backgroundColor: bgSize === 'contain' ? '#ffffff' : undefined,
-            }
+            backgroundImage: `url('${current.storage_url}')`,
+            backgroundSize: bgSize,
+            // En paneles light (Axos/Planos), subir la imagen al ~32%
+            // para que no choque con los pills de abajo.
+            backgroundPosition: bgSize === 'contain' ? 'center 32%' : 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundColor: bgSize === 'contain' ? '#ffffff' : undefined,
+          }
       }
     >
       {isPdf && (
@@ -936,19 +936,19 @@ export function Panel7Comparativo({
     label: string
     get: (v: CatalogModel['skus'][number]) => string
   }[] = [
-    { key: 'area', label: 'Sup.', get: (v) => (v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—') },
-    { key: 'floors', label: 'Plantas', get: (v) => (v.floors ? String(v.floors) : '—') },
-    { key: 'beds', label: 'Dorm.', get: (v) => v.bedrooms_label ?? '—' },
-    { key: 'baths', label: 'Baños', get: (v) => (v.bathrooms != null ? String(v.bathrooms) : '—') },
-    { key: 'toilette', label: 'Toilette', get: (v) => (v.toilette ? '✓' : '—') },
-    { key: 'parrilla', label: 'Parrilla', get: (v) => (v.parrilla ? '✓' : '—') },
-    { key: 'lavadero', label: 'Lavadero', get: (v) => fmtLavadero(v.lavadero) },
-    {
-      key: 'precio',
-      label: 'Precio',
-      get: (v) => fmtPrecio(skuForVarSC(v), showPrices),
-    },
-  ]
+      { key: 'area', label: 'Sup.', get: (v) => (v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—') },
+      { key: 'floors', label: 'Plantas', get: (v) => (v.floors ? String(v.floors) : '—') },
+      { key: 'beds', label: 'Dorm.', get: (v) => v.bedrooms_label ?? '—' },
+      { key: 'baths', label: 'Baños', get: (v) => (v.bathrooms != null ? String(v.bathrooms) : '—') },
+      { key: 'toilette', label: 'Toilette', get: (v) => (v.toilette ? '✓' : '—') },
+      { key: 'parrilla', label: 'Parrilla', get: (v) => (v.parrilla ? '✓' : '—') },
+      { key: 'lavadero', label: 'Lavadero', get: (v) => fmtLavadero(v.lavadero) },
+      {
+        key: 'precio',
+        label: 'Precio',
+        get: (v) => fmtPrecio(skuForVarSC(v), showPrices),
+      },
+    ]
 
   const selectedVar = uniqueVars[selectedVarIdx] ?? uniqueVars[0]
   const cotizarHref = buildCotizarMailto({
@@ -1193,10 +1193,10 @@ const CANONICAL_SCS: {
   title: string
   preferredLinea: string
 }[] = [
-  { sc: 'STEEL PLUS', key: 'system_steel', title: 'Steel Plus', preferredLinea: 'BOSQUE' },
-  { sc: 'WOOD PLUS', key: 'system_wood', title: 'Wood Plus', preferredLinea: 'ATLAS' },
-  { sc: 'STONE PLUS', key: 'system_concrete', title: 'Stone Plus', preferredLinea: 'TERRA' },
-]
+    { sc: 'STEEL PLUS', key: 'system_steel', title: 'Steel Plus', preferredLinea: 'BOSQUE' },
+    { sc: 'WOOD PLUS', key: 'system_wood', title: 'Wood Plus', preferredLinea: 'ATLAS' },
+    { sc: 'STONE PLUS', key: 'system_concrete', title: 'Stone Plus', preferredLinea: 'TERRA' },
+  ]
 
 // Splittea body en primera línea (copy/tagline) + resto. La primera línea
 // se promueve a subtítulo estilizado; el resto sigue como body normal.
@@ -1549,54 +1549,54 @@ function PanelRelated({
           <header className="cf-pn-related-header">
             <p className="cf-pn-eyebrow">Más opciones</p>
             <h3 className="cf-pn-related-title">
-              Casas similares a {model.display_name} en otros estilos
+              Casas similares a {model.display_name}
             </h3>
           </header>
           <div className="cf-pn-related-grid-wrap">
             <div className="cf-pn-related-grid">
-            {slots.map((r, i) =>
-            r ? (
-              <a
-                key={r.group_slug}
-                href={`#row-${r.group_slug}`}
-                className="cf-pn-related-card"
-                style={{
-                  backgroundImage: r.cover_url
-                    ? `url('${r.cover_url}')`
-                    : undefined,
-                  backgroundColor: r.cover_url ? undefined : r.lqip_color,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  const id = `row-${r.group_slug}`
-                  const el = document.getElementById(id)
-                  if (!el) return
-                  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  window.setTimeout(() => {
-                    document
-                      .getElementById(id)
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }, 1300)
-                }}
-              >
-                <div className="cf-pn-related-card-overlay">
-                  <span className="cf-pn-related-card-linea">
-                    {displayLinea(r.linea)} · {r.estilo}
-                  </span>
-                  <span className="cf-pn-related-card-name">
-                    {r.display_name}
-                  </span>
-                </div>
-              </a>
-            ) : (
-              <div
-                key={`placeholder-${i}`}
-                className="cf-pn-related-card cf-pn-related-card-placeholder"
-                aria-hidden="true"
-              />
-            ),
-          )}
+              {slots.map((r, i) =>
+                r ? (
+                  <a
+                    key={r.group_slug}
+                    href={`#row-${r.group_slug}`}
+                    className="cf-pn-related-card"
+                    style={{
+                      backgroundImage: r.cover_url
+                        ? `url('${r.cover_url}')`
+                        : undefined,
+                      backgroundColor: r.cover_url ? undefined : r.lqip_color,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      const id = `row-${r.group_slug}`
+                      const el = document.getElementById(id)
+                      if (!el) return
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      window.setTimeout(() => {
+                        document
+                          .getElementById(id)
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }, 1300)
+                    }}
+                  >
+                    <div className="cf-pn-related-card-overlay">
+                      <span className="cf-pn-related-card-linea">
+                        {displayLinea(r.linea)} · {r.estilo}
+                      </span>
+                      <span className="cf-pn-related-card-name">
+                        {r.display_name}
+                      </span>
+                    </div>
+                  </a>
+                ) : (
+                  <div
+                    key={`placeholder-${i}`}
+                    className="cf-pn-related-card cf-pn-related-card-placeholder"
+                    aria-hidden="true"
+                  />
+                ),
+              )}
             </div>
           </div>
         </div>
@@ -1659,12 +1659,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         />
       </div>
 
-      {/* 6. Tipología arquitectónica */}
-      <div className="cf-station-slide cf-slide-text">
-        <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
-      </div>
-
-      {/* 7. Sistema Constructivo en columnas — foto + overlay + texto.
+      {/* 6. Sistema Constructivo en columnas — foto + overlay + texto.
           Una columna por SC presente en el modelo (Steel/Wood/Stone Plus).
           Reemplaza al panel de Sistema Constructivo de texto. */}
       <div className="cf-station-slide cf-slide-image">
@@ -1677,7 +1672,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         />
       </div>
 
-      {/* 8. Comparativo de variantes — tabla + cotización inline. */}
+      {/* 7. Comparativo de variantes — tabla + cotización inline. */}
       <div className="cf-station-slide cf-slide-image">
         <Panel7Comparativo
           model={props.model}
@@ -1687,12 +1682,12 @@ export default function ExpandedPanels(props: PanelsProps) {
         />
       </div>
 
-      {/* 9. La Casa que Crece — feature único (text + GIF) sin variants. */}
+      {/* 8. La Casa que Crece — feature único (text + GIF) sin variants. */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-xwide">
         <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
       </div>
 
-      {/* 10. Materiales / Equipamiento — solo si el modelo tiene atributos
+      {/* 9. Materiales / Equipamiento — solo si el modelo tiene atributos
           cargados. Si está vacío, ocultamos el slide entero. */}
       {props.attributesForCatalogIds.length > 0 && (
         <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
@@ -1703,19 +1698,26 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 11. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
+      {/* 10. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
           <PanelPlanos images={props.images} activeSkus={props.activeSkus} />
         </div>
       )}
 
-      {/* 12. Axonometrías — solo si hay. Slide angosto con bg blanco. */}
+      {/* 11. Axonometrías — solo si hay. Slide angosto con bg blanco. */}
       {hasAxos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
           <PanelAxos images={props.images} activeSkus={props.activeSkus} />
         </div>
       )}
+
+      {/* 12. Tipología arquitectónica — al final, justo antes de Related.
+          Hablar de la distribución tiene más sentido cuando el usuario
+          ya vio los planos y axonometrías. */}
+      <div className="cf-station-slide cf-slide-text">
+        <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
+      </div>
 
       {/* 13. También podría interesarte — modelos relacionados al final. */}
       {props.allModels && props.allModels.length > 1 && (

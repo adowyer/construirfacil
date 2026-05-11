@@ -26,7 +26,29 @@ import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { Marca } from '@/types/database'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
+import { useInViewport } from '@/lib/hooks/useInViewport'
 import { Ruler, BadgeCheck, ShieldCheck, Factory, Globe, Phone } from 'lucide-react'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CfMarqueeLogo — logo animado de ConstruirFácil en la card del marquee.
+// Swappea el GIF por el PNG estático cuando está fuera de viewport: los GIFs
+// consumen CPU continuo decodificando frames, incluso scrolleados afuera. El
+// swap libera ese laburo y, al volver, retoma la animación desde frame 0.
+// ─────────────────────────────────────────────────────────────────────────────
+function CfMarqueeLogo() {
+  const { ref, inView } = useInViewport<HTMLImageElement>({
+    initialInView: false, // el footer arranca debajo del fold
+  })
+  return (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      ref={ref}
+      src={inView ? '/ConstruirFacil.gif' : '/cf_logo_gris.png'}
+      alt="ConstruirFácil"
+      className="cf-footer-marquee-card-cf-logo"
+    />
+  )
+}
 
 // Map de icon_key (DB) → componente lucide-react. Default factory.
 const ICON_BY_KEY: Record<string, typeof Ruler> = {
@@ -235,9 +257,28 @@ function FooterMarquee({
 
   const cards = buildMarqueeCards(featuredModels, marcas, footerCardsByMarca)
 
+  // Pausamos el rAF cuando el track no está en viewport — el footer queda
+  // fuera de pantalla mientras el user navega el catálogo, no hay razón para
+  // gastar ciclos animando el marquee.
+  const [trackInView, setTrackInView] = useState(false)
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setTrackInView(true)
+      return
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => setTrackInView(entry.isIntersecting),
+      { threshold: 0.01 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
   // rAF marquee: scrollLeft +0.7 px/frame, wraparound invisible cuando pasa
   // del inicio del set B (= inicio de la 2ª copia de las cards).
   useEffect(() => {
+    if (!trackInView) return // pausado fuera de viewport
     const SPEED = 0.7
     let rafId = 0
     const tick = () => {
@@ -259,7 +300,7 @@ function FooterMarquee({
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [cards.length])
+  }, [cards.length, trackInView])
 
   const renderCard = (card: MarqueeCard, keyPrefix: string, idx: number) => {
     const key = `${keyPrefix}-${idx}-${card.kind}`
@@ -271,12 +312,7 @@ function FooterMarquee({
           href="/"
         >
           <div className="cf-footer-marquee-card-cf-head">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/ConstruirFacil.gif"
-              alt="ConstruirFácil"
-              className="cf-footer-marquee-card-cf-logo"
-            />
+            <CfMarqueeLogo />
           </div>
           <span className="cf-footer-marquee-card-cf-tagline">
             Encontrá la casa que mejor se adapta a vos.

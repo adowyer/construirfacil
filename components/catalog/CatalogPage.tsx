@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import SiteHeader from '@/components/SiteHeader'
-import HeroRow, { type GrowthPair } from './HeroRow'
+import HeroRow, { type GrowthPair, type LineaModelo } from './HeroRow'
 import StickyFilters from './StickyFilters'
 import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
@@ -220,11 +220,11 @@ export default function CatalogPage({
   // El nombre de la línea en `lineas.name` está en MAYÚSCULAS (normalizado por
   // el action) y coincide con `house_catalog.linea` (poblada por el trigger).
   //
-  // Para BOSQUE/ATLAS/TERRA usamos los SVG/PNG curados en /public como
-  // override sobre lo que tenga el admin (los iconos del admin estaban
-  // desactualizados). Para cualquier otra línea (Patagonia, futuras), se
-  // respeta `icon_url` del admin.
-  const LINEA_ICON_OVERRIDE: Record<string, string> = {
+  // Prioridad: lo que esté cargado en el admin (`l.icon_url`) gana siempre.
+  // Si una línea no tiene icon_url cargado, caemos a los archivos curados en
+  // /public para las 3 líneas Hausind. Para otras líneas (Patagonia, futuras)
+  // sin icon_url y sin fallback, queda null y no se muestra ícono.
+  const LINEA_ICON_FALLBACK: Record<string, string> = {
     BOSQUE: '/bosque-icon.png',
     ATLAS: '/atlas-icon.png',
     TERRA: '/terra-icon.png',
@@ -232,7 +232,7 @@ export default function CatalogPage({
   const iconByLineaName: Record<string, string | null> = lineas.reduce(
     (acc, l) => {
       const key = l.name.toUpperCase()
-      acc[l.name] = LINEA_ICON_OVERRIDE[key] ?? l.icon_url
+      acc[l.name] = l.icon_url ?? LINEA_ICON_FALLBACK[key] ?? null
       return acc
     },
     {} as Record<string, string | null>,
@@ -266,6 +266,48 @@ export default function CatalogPage({
     const out: Record<string, string[]> = {}
     for (const [k, m] of Object.entries(byLinea)) {
       out[k] = Array.from(m.values())
+    }
+    return out
+  })()
+
+  // ── Modelos únicos por linea (agrupados por style_name). Cada modelo
+  // del catálogo es por (linea, style_name, tipologia_code); acá los
+  // consolidamos por style_name y junteamos las tipologías disponibles.
+  // Se usa en el grid de la LineaModal del HeroRow.
+  const modelosByLineaName: Record<string, LineaModelo[]> = (() => {
+    const byLinea: Record<string, Map<string, LineaModelo>> = {}
+    for (const m of models) {
+      const lineaKey = m.linea.toUpperCase()
+      if (!byLinea[lineaKey]) byLinea[lineaKey] = new Map()
+      const bucket = byLinea[lineaKey]
+      const existing = bucket.get(m.style_name)
+      if (!existing) {
+        bucket.set(m.style_name, {
+          style_name: m.style_name,
+          display_name: m.display_name,
+          cover_url: m.cover_url ?? null,
+          lqip_color: m.lqip_color ?? '#d4d4cc',
+          estilo: m.estilo ?? '',
+          tipologias: m.tipologia_code ? [m.tipologia_code] : [],
+          group_slugs: [m.group_slug],
+        })
+      } else {
+        if (m.tipologia_code && !existing.tipologias.includes(m.tipologia_code)) {
+          existing.tipologias.push(m.tipologia_code)
+        }
+        if (!existing.group_slugs.includes(m.group_slug)) {
+          existing.group_slugs.push(m.group_slug)
+        }
+        // Preferimos la cover_url más rica (cualquiera con valor).
+        if (!existing.cover_url && m.cover_url) existing.cover_url = m.cover_url
+      }
+    }
+    const out: Record<string, LineaModelo[]> = {}
+    for (const [k, m] of Object.entries(byLinea)) {
+      const arr = Array.from(m.values())
+      arr.forEach((x) => x.tipologias.sort())
+      arr.sort((a, b) => a.display_name.localeCompare(b.display_name))
+      out[k] = arr
     }
     return out
   })()
@@ -413,6 +455,7 @@ export default function CatalogPage({
         lineaCoverByName={coverByLineaName}
         growthPairs={growthPairs}
         lineaPhotosByName={lineaPhotosByName}
+        modelosByLineaName={modelosByLineaName}
       />
 
       {/* ── Filtros sticky en color CF ── */}

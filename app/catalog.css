@@ -563,6 +563,20 @@ body:has(.cf-row.cf-expanded) {
   font-weight: 600;
 }
 
+/* Cuando el valor es un mailto "Cotizar", lo mostramos como link discreto:
+   subrayado fino y color CF en hover. */
+a.cf-row-precio-val {
+  color: #ff003d;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 0, 61, 0.35);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s ease;
+}
+
+a.cf-row-precio-val:hover {
+  text-decoration-color: #ff003d;
+}
+
 .cf-row-name {
   font-size: clamp(16px, 1.6vw, 22px);
   font-weight: 500;
@@ -1538,7 +1552,7 @@ body:has(.cf-row.cf-expanded) {
   justify-content: flex-start;
   gap: 10px;
   padding: 36px 24px 28px;
-  color: #0a0a0a;
+  color: #ffffff;
   border-radius: inherit;
 }
 
@@ -1557,7 +1571,7 @@ body:has(.cf-row.cf-expanded) {
   letter-spacing: -0.02em;
   line-height: 1.05;
   margin: 0;
-  color: #0a0a0a;
+  color: #ffffff;
 }
 
 /* Primera línea del body (copy/tagline) — se promueve a subtítulo. */
@@ -1565,7 +1579,7 @@ body:has(.cf-row.cf-expanded) {
   font-size: 14px;
   line-height: 1.4;
   font-weight: 500;
-  color: #0a0a0a;
+  color: #ffffff;
   margin: 4px 0 0;
 }
 
@@ -1574,7 +1588,7 @@ body:has(.cf-row.cf-expanded) {
 .cf-pn-sc-col-body {
   font-size: 14px;
   line-height: 1.5;
-  color: rgba(10, 10, 10, 0.85);
+  color: #ffffff;
   margin: 8px 0 0;
 }
 
@@ -2022,9 +2036,12 @@ body:has(.cf-row.cf-expanded) {
   display: flex;
   flex-direction: column;
   padding: 28px 28px 0;
-  background: rgba(255, 255, 255, 0.18);
+  /* Capa oscura translúcida — el texto blanco necesita contraste fuerte
+     sobre fotos con cielo claro o fachadas blancas. */
+  background: rgba(0, 0, 0, 0.4);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   color: #fff;
   overflow: hidden;
@@ -2364,6 +2381,9 @@ body:has(.cf-row.cf-expanded) {
   z-index: 0;
 }
 
+/* Feature ahora transparente — la foto bg se ve detrás. La tabla de
+   variantes y el bloque de cotización inline (sus propios hijos) mantienen
+   su bg propio, así quedan como "tarjetas" sobre la foto. */
 .cf-pn-compare-feature {
   position: relative;
   z-index: 1;
@@ -2373,29 +2393,32 @@ body:has(.cf-row.cf-expanded) {
   flex-direction: column;
   gap: 22px;
   padding: 36px 44px;
-  background: rgba(255, 255, 255, 0.70);
-  backdrop-filter: blur(22px) saturate(1.15);
-  -webkit-backdrop-filter: blur(22px) saturate(1.15);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-radius: 14px;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 0;
+  border-radius: 0;
   margin: 24px;
   overflow-y: auto;
   max-width: calc(100% - 48px);
   max-height: calc(100% - 48px);
   box-sizing: border-box;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
+/* Header sobre la foto: texto blanco con sombra suave para legibilidad. */
 .cf-pn-compare-light .cf-pn-compare-header {
-  color: #0a0a0a;
+  color: #fff;
 }
 
 .cf-pn-compare-light .cf-pn-compare-header .cf-pn-eyebrow {
-  color: #0a0a0a;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .cf-pn-compare-light .cf-pn-compare-sub {
-  color: #0a0a0a;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 /* Pills selector de Sistema Constructivo arriba del cuadro. */
@@ -2403,6 +2426,25 @@ body:has(.cf-row.cf-expanded) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Pills SC sobre foto bg — más opacidad que el default (.cf-pn-pill 0.18)
+   para asegurar contraste sobre cielo claro/fachadas blancas. Activo
+   solido blanco con texto negro mantiene la jerarquía. */
+.cf-pn-compare-light .cf-pn-compare-sc-pills .cf-pn-pill {
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.cf-pn-compare-light .cf-pn-compare-sc-pills .cf-pn-pill:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.cf-pn-compare-light .cf-pn-compare-sc-pills .cf-pn-pill.active {
+  background: #fff;
+  color: #0a0a0a;
+  border-color: #fff;
 }
 
 /* Tabla light — celdas semi-transparentes para dejar respirar la foto detrás
@@ -4705,7 +4747,10 @@ body:has(.cf-row.cf-expanded) {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 22px 20px 40px;
+  /* Bottom 30px — alineado con los logos y el texto "DEFINÍ TU BÚSQUEDA"
+     de los slides Crece/Flex (todos los elementos del Hero a la misma
+     línea inferior del slide). */
+  padding: 22px 20px 30px;
   border-radius: inherit;
 }
 
@@ -4845,6 +4890,93 @@ body:has(.cf-row.cf-expanded) {
   line-height: 1.65;
   color: #444;
   margin: 0;
+}
+
+/* ── Grid de modelos disponibles en la línea ── */
+.cf-linea-modal-modelos {
+  margin-top: 28px;
+  border-top: 1px solid #ebe8df;
+  padding-top: 24px;
+}
+
+.cf-linea-modal-modelos-header {
+  margin-bottom: 18px;
+}
+
+.cf-linea-modal-modelos-title {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #0a0a0a;
+  margin: 6px 0 0;
+}
+
+.cf-linea-modal-modelos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .cf-linea-modal-modelos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.cf-linea-modal-modelo-card {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #d4d4cc;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-family: inherit;
+  text-align: left;
+}
+
+.cf-linea-modal-modelo-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cf-linea-modal-modelo-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(0, 0, 0, 0.25) 55%,
+      rgba(0, 0, 0, 0) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 14px 16px;
+  gap: 3px;
+  color: #fff;
+}
+
+.cf-linea-modal-modelo-card-name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.cf-linea-modal-modelo-card-tipo {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
 }
 
 /* ── Footer Steps ── */
@@ -5463,6 +5595,11 @@ body:has(.cf-row.cf-expanded) {
   overflow: hidden;
 }
 
+.cf-slide-image .cf-pn-related {
+  width: 67% !important;
+}
+
+
 /* Inner = todo el slide. Sin padding propio: el feature ocupa el slide entero
    (igual ancho/alto que los demás slides de fotos). */
 .cf-pn-related-inner {
@@ -5490,9 +5627,8 @@ body:has(.cf-row.cf-expanded) {
    "Casa que Crece" (bg cream + borde olive + border-radius). */
 .cf-pn-related-feature {
   background: #fff;
-  border: 1px solid #cfc8b3;
   border-radius: 14px;
-  padding: 32px 40px 36px;
+  padding: 32px 0px 0px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -5505,7 +5641,7 @@ body:has(.cf-row.cf-expanded) {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: left;
   min-height: 0;
 }
 

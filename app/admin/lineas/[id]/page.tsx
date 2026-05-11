@@ -10,12 +10,14 @@ import { createClient } from '@/lib/supabase/server'
 import {
   getLineaById,
   getLineContentForLinea,
+  getLineContentTipologiasForLinea,
 } from '@/lib/supabase/queries/lineas'
 import { getAllMarcas } from '@/lib/supabase/queries/marcas'
 import { LineaForm } from '@/components/admin/LineaForm'
 import { LineaIconUploader } from '@/components/admin/LineaIconUploader'
 import { DeleteLineaButton } from '@/components/admin/DeleteLineaButton'
-import { updateLinea } from '@/app/admin/lineas/actions'
+import { LineContentTipologiaForm } from '@/components/admin/LineContentTipologiaForm'
+import { updateLinea, updateLineContentTipologia } from '@/app/admin/lineas/actions'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -28,9 +30,10 @@ export default async function AdminLineaEditPage({ params }: PageProps) {
 
   if (!linea) notFound()
 
-  const [marcas, content] = await Promise.all([
+  const [marcas, content, tipologiaRows] = await Promise.all([
     getAllMarcas(supabase),
     getLineContentForLinea(supabase, linea.name),
+    getLineContentTipologiasForLinea(supabase, linea.name),
   ])
   const approved = marcas.filter((m) => m.status === 'approved')
 
@@ -79,6 +82,46 @@ export default async function AdminLineaEditPage({ params }: PageProps) {
         defaultContent={content}
         submitLabel="Guardar cambios"
       />
+
+      {/* ── Editores secundarios: line_content por tipologia_code ─────────── */}
+      {tipologiaRows.length > 0 && (
+        <section className="mt-12">
+          <header className="mb-6">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Textos por tipología
+            </h2>
+            <p className="text-xs text-neutral-500 mt-1">
+              Editorial extra que el catálogo público consume en slides
+              específicos del expandido (ej. <code>estilos_intro</code> en
+              el panel de Estilos).
+            </p>
+          </header>
+
+          <div className="space-y-8">
+            {tipologiaRows.map((row) => {
+              if (!row.tipologia_code) return null
+              const boundAction = updateLineContentTipologia.bind(
+                null,
+                linea.name,
+                row.tipologia_code,
+                id,
+              )
+              return (
+                <div
+                  key={row.id}
+                  className="border border-[#E8E8E5] rounded-xl p-6 bg-white"
+                >
+                  <LineContentTipologiaForm
+                    action={boundAction}
+                    tipologiaCode={row.tipologia_code}
+                    defaultValues={row}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

@@ -350,7 +350,7 @@ function SlideSistemas({ systems }: { systems: BrandContent[] }) {
     <div className="cf-slide-edu">
       <div className="cf-slide-edu-left">
         <p className="cf-slide-edu-eyebrow">Sistemas constructivos</p>
-        <h2 className="cf-slide-edu-title">Wood, Steel, Hormigón</h2>
+        <h2 className="cf-slide-edu-title">Wood, Steel, Stone</h2>
         <p className="cf-slide-edu-text">El sistema constructivo define la estructura, los tiempos de obra y el costo. Todos los sistemas cumplen los mismos estándares de calidad y eficiencia.</p>
       </div>
       <div className="cf-slide-edu-right">

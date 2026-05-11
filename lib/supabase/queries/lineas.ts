@@ -138,3 +138,26 @@ export async function getLineContentForLinea(
   }
   return (data ?? null) as LineContentRow | null
 }
+
+/**
+ * Trae las filas de `line_content` que tienen `tipologia_code` definido
+ * (ej. 'estilos_intro', 'planos_intro'). Usado por el admin para exponer
+ * editores secundarios además del editorial principal de la línea.
+ */
+export async function getLineContentTipologiasForLinea(
+  supabase: SupabaseClient,
+  lineaName: string,
+): Promise<LineContentRow[]> {
+  const { data, error } = await supabase
+    .from('line_content')
+    .select('*')
+    .eq('linea', lineaName)
+    .not('tipologia_code', 'is', null)
+    .order('tipologia_code', { ascending: true })
+
+  if (error) {
+    console.error('[getLineContentTipologiasForLinea]', error.message)
+    return []
+  }
+  return (data ?? []) as LineContentRow[]
+}

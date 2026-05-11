@@ -412,3 +412,53 @@ export async function deleteLinea(id: string): Promise<{ error: string | null }>
   revalidateLineas()
   redirect('/admin/lineas')
 }
+
+// ---------------------------------------------------------------------------
+// updateLineContentTipologia
+// Guarda title/subtitle/body para una fila de line_content keyed por
+// (linea, tipologia_code) — ej. ('TERRA','estilos_intro'). Es la versión
+// "secundaria" del editorial de línea: contenido por tipología que el
+// catálogo público lee para slides específicos del expandido.
+//
+// La fila se crea si no existe (upsert con onConflict (linea,tipologia_code)
+// declarado en 0005). Bound al (lineaName, tipologiaCode) desde el page
+// con .bind para que el form solo envíe title/subtitle/body.
+// ---------------------------------------------------------------------------
+
+export async function updateLineContentTipologia(
+  lineaName: string,
+  tipologiaCode: string,
+  lineaId: string, // para revalidar la page edit
+  _prev: LineaResult,
+  formData: FormData,
+): Promise<LineaResult> {
+  if (!lineaName || !tipologiaCode) {
+    return { error: 'Falta linea o tipologia_code.' }
+  }
+
+  const admin = createAdminClient()
+
+  const row = {
+    linea: normalizeLineaName(lineaName),
+    tipologia_code: tipologiaCode,
+    title: parseOptionalText(formData.get('title')),
+    subtitle: parseOptionalText(formData.get('subtitle')),
+    body: parseOptionalText(formData.get('body')),
+    sort_order: parseSortOrder(formData.get('sort_order')),
+    status: (parseOptionalText(formData.get('status')) ?? 'active') as
+      | 'active'
+      | 'inactive'
+      | 'archived',
+  }
+
+  const { error } = await admin
+    .from('line_content')
+    .upsert(row, { onConflict: 'linea,tipologia_code' })
+
+  if (error) {
+    return { error: `Error al guardar: ${error.message}` }
+  }
+
+  revalidateLineas(lineaId)
+  return { error: null }
+}
