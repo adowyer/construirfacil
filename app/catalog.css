@@ -4774,7 +4774,8 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-linea-modal::backdrop {
   background: rgba(10, 10, 10, 0.6);
-  backdrop-filter: blur(4px) -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .cf-linea-modal-inner {
