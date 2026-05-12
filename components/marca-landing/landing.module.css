@@ -1870,6 +1870,16 @@
   object-fit: cover;
 }
 
+/* Overlay sobre el video — oscurece el video uniformemente para
+   integrarlo con el negro de las secciones siguientes (Solutions
+   slider). Más fuerte que el del hero porque la home es oscura. */
+.videoStoryVideoOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(10, 10, 10, 0.6);
+}
+
 /* Capa 2: SVG mask. Cubre todo en negro EXCEPTO donde el texto
    perfora (agujero). El video debajo se ve a través del agujero.
    Sin transform-box el text del mask escala desde el centro. */

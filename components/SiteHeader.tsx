@@ -3,20 +3,23 @@
 /**
  * components/SiteHeader.tsx
  *
- * Header sticky del sitio: logo HAUSIND a la izquierda + logo ConstruirFácil
- * a la derecha. Fondo blanco, padding generoso. Se queda pegado arriba
- * mientras se hace scroll en el catálogo.
+ * Header sticky del sitio: logo HAUSIND a la izquierda (clickeable → /)
+ * + logo ConstruirFácil a la derecha. Fondo blanco, padding generoso.
  */
+
+import Link from 'next/link'
 
 export default function SiteHeader() {
   return (
     <header className="cf-site-header">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/Hausind-Logo.png"
-        alt="HAUSIND — La construcción inteligente"
-        className="cf-site-header-hausind"
-      />
+      <Link href="/" aria-label="Hausind — Volver al inicio" className="cf-site-header-hausind-link">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/Hausind-Logo.png"
+          alt="HAUSIND — La construcción inteligente"
+          className="cf-site-header-hausind"
+        />
+      </Link>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/cf_logo_gris.png"

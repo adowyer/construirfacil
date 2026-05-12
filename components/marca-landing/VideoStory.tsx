@@ -100,7 +100,9 @@ export default function VideoStory({ content }: VideoStoryProps) {
     >
       <div className={styles.videoStoryPin}>
         {/* Capa 1: video MP4 local, autoplay/loop/muted. Más liviano que
-            iframe YouTube y permite control directo de play/pause. */}
+            iframe YouTube y permite control directo de play/pause.
+            Tiene un overlay con gradient sutil estilo Hero — suaviza
+            colores planos del video y le da peso editorial. */}
         <div className={styles.videoStoryVideo}>
           <video
             className={styles.videoStoryFrame}
@@ -112,6 +114,7 @@ export default function VideoStory({ content }: VideoStoryProps) {
             preload="auto"
             aria-hidden="true"
           />
+          <div className={styles.videoStoryVideoOverlay} aria-hidden="true" />
         </div>
 
         {/* Capa 2: SVG mask. El <rect> negro cubre todo el viewport y

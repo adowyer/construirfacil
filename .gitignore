@@ -68,3 +68,5 @@ CATALOG_AUDIT.md
 !/public/**/*.jpeg
 !/public/**/*.svg
 !/public/**/*.webp
+!/public/**/*.mp4
+!/public/**/*.gif
