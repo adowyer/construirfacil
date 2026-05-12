@@ -1,12 +1,18 @@
+'use client'
+
 /**
  * components/marca-landing/System.tsx
  *
- * Sección oscura con el sistema constructivo (Flex Build Suit).
- * Imagen técnica + 8 atributos en grid.
+ * Sección Interactive Explorer (Apple-style).
+ * Reemplaza al antiguo Flex Build Suit de scroll narrativo.
+ * Un acordeón a la izquierda permite explorar características,
+ * actualizando la imagen inmensa a la derecha.
  */
 
+import { useState } from 'react'
 import type { MarcaSystemContent } from '@/lib/content/marca-landing/types'
-import Reveal from './Reveal'
+import TypewriterText from './TypewriterText'
+import { useParallax } from './useParallax'
 import styles from './landing.module.css'
 
 interface SystemProps {
@@ -14,42 +20,85 @@ interface SystemProps {
 }
 
 export default function System({ content }: SystemProps) {
+  const [activeIdx, setActiveIdx] = useState(0)
+  const { ref: headerRef, offset: headerOffset } =
+    useParallax<HTMLDivElement>(0.12)
+
   return (
-    <section className={styles.system} id="sistema">
-      <Reveal className={styles.systemHeader}>
-        <span className={styles.eyebrowLight}>{content.eyebrow}</span>
-        <h2 className={styles.systemTitle}>{content.title}</h2>
-        <p className={styles.systemIntro}>{content.intro}</p>
-      </Reveal>
+    <section className={styles.explorer} id="sistema">
+      <div className={styles.explorerInner}>
+        <div
+          ref={headerRef}
+          className={styles.explorerHeader}
+          style={{ transform: `translateY(${headerOffset}px)` }}
+        >
+          <span className={styles.eyebrowLight}>{content.eyebrow}</span>
+          <h2 className={styles.explorerTitle}>
+            <TypewriterText text={content.title} speedMs={75} />
+          </h2>
+          {content.intro && (
+            <p className={styles.explorerIntro}>{content.intro}</p>
+          )}
+        </div>
 
-      {content.image && (
-        <Reveal className={styles.systemImageWrap} delay={120}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className={styles.systemImage}
-            src={content.image}
-            alt={content.title}
-            loading="lazy"
-          />
-        </Reveal>
-      )}
+        <div className={styles.explorerInteractiveWrap}>
+          {/* Background Images Layer */}
+          <div className={styles.explorerBackgrounds}>
+            {content.attributes.map((attr, i) => {
+              const isActive = i === activeIdx
+              if (!attr.image) return null
+              return (
+                <div 
+                  key={`img-${attr.label}`} 
+                  className={`${styles.explorerBgImage} ${isActive ? styles.explorerBgActive : ''}`}
+                  aria-hidden={!isActive}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={attr.image} 
+                    alt={attr.label} 
+                    loading={i === 0 ? "eager" : "lazy"}
+                  />
+                </div>
+              )
+            })}
+            <div className={styles.explorerBgOverlay} />
+          </div>
 
-      <div className={styles.systemAttrs}>
-        {content.attributes.map((attr, i) => (
-          <Reveal
-            key={attr.label}
-            className={styles.systemAttr}
-            delay={i * 60}
-          >
-            <span className={styles.systemAttrIndex}>
-              {String(i + 1).padStart(2, '0')}
-            </span>
-            <h3 className={styles.systemAttrLabel}>{attr.label}</h3>
-            {attr.body && (
-              <p className={styles.systemAttrBody}>{attr.body}</p>
-            )}
-          </Reveal>
-        ))}
+          {/* Accordion Layer (Foreground) */}
+          <div className={styles.explorerAccordionWrap}>
+            <div className={styles.explorerAccordion}>
+              {content.attributes.map((attr, i) => {
+                const isActive = i === activeIdx
+                return (
+                  <div 
+                    key={attr.label}
+                    className={`${styles.accordionItem} ${isActive ? styles.accordionItemActive : ''}`}
+                  >
+                    <button 
+                      type="button" 
+                      className={styles.accordionHeader}
+                      onClick={() => setActiveIdx(i)}
+                      aria-expanded={isActive}
+                    >
+                      <span className={styles.accordionIcon}>
+                        {isActive ? '−' : '+'}
+                      </span>
+                      <span className={styles.accordionLabel}>{attr.label}</span>
+                    </button>
+                    <div className={styles.accordionBodyWrap}>
+                      <div className={styles.accordionBody}>
+                        <div className={styles.accordionBodyInner}>
+                          {attr.body}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )

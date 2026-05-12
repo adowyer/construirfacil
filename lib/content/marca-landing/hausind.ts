@@ -14,7 +14,7 @@ export const hausindContent: MarcaLandingContent = {
     subheadline:
       'Casas industrializadas diseñadas para crecer con quienes las habitan.',
     backgroundImage: '/bosque.jpg',
-    ctaPrimary: { label: 'Ver casas', href: '#modelos' },
+    ctaPrimary: { label: 'Ver casas', href: '/catalogo' },
     ctaSecondary: { label: 'El sistema', href: '#sistema' },
   },
 
@@ -56,7 +56,7 @@ export const hausindContent: MarcaLandingContent = {
         tagline: 'Lo esencial, en pocos m².',
         body:
           'Módulos compactos para usos secundarios: estudio, oficina, hospedaje, refugio. Listos en semanas, instalados en días.',
-        image: '/atlas.jpg',
+        image: '/atlas-slide.png',
       },
       {
         key: 'smart-house',
@@ -64,8 +64,8 @@ export const hausindContent: MarcaLandingContent = {
         tagline: 'Tu casa terminada.',
         body:
           'El catálogo completo de viviendas industrializadas. Crece con tu familia, se adapta a tu terreno, conserva su valor.',
-        image: '/bosque.jpg',
-        cta: { label: 'Ver el catálogo', href: '#modelos' },
+        image: '/bosque-slide.png',
+        cta: { label: 'Ver el catálogo', href: '/catalogo' },
       },
       {
         key: 'smart-build',
@@ -73,7 +73,7 @@ export const hausindContent: MarcaLandingContent = {
         tagline: 'Proyectos a escala.',
         body:
           'Para desarrollos, organismos públicos y obras de gran envergadura. Volumen, plazos y precisión industrial — sin sorpresas.',
-        image: '/terra.jpg',
+        image: '/terra-slide.png',
         cta: {
           label: 'Hablar con el equipo',
           href: 'mailto:cotizar@hausind.com?subject=Proyecto%20a%20escala%20%E2%80%94%20Smart%20Build',
@@ -92,22 +92,22 @@ export const hausindContent: MarcaLandingContent = {
         slug: 'atlas',
         label: 'Atlas',
         tagline: 'Geografía y arquitectura.',
-        image: '/atlas.jpg',
-        href: '/?linea=ATLAS',
+        image: '/atlas-slide.png',
+        href: '/catalogo?linea=ATLAS',
       },
       {
         slug: 'bosque',
         label: 'Bosque',
         tagline: 'Vivir entre árboles.',
-        image: '/bosque.jpg',
-        href: '/?linea=BOSQUE',
+        image: '/bosque-slide.png',
+        href: '/catalogo?linea=BOSQUE',
       },
       {
         slug: 'terra',
         label: 'Terra',
         tagline: 'Modular, esencial, infinita.',
-        image: '/terra.jpg',
-        href: '/?linea=TERRA',
+        image: '/terra-slide.png',
+        href: '/catalogo?linea=TERRA',
       },
     ],
   },
@@ -115,14 +115,14 @@ export const hausindContent: MarcaLandingContent = {
   featured: {
     eyebrow: 'Catálogo',
     title: 'Casas en producción.',
-    ctaAll: { label: 'Ver catálogo completo', href: '/' },
+    ctaAll: { label: 'Ver catálogo completo', href: '/catalogo' },
   },
 
   closeout: {
     title: '¿Querés tu casa?',
     body:
       'Empezamos por lo simple: contanos cómo querés vivir. Te mostramos los modelos que mejor encajan.',
-    ctaB2C: { label: 'Ver modelos', href: '/' },
+    ctaB2C: { label: 'Ver modelos', href: '/catalogo' },
     ctaB2B: {
       label: 'Proyectos a escala',
       href: 'mailto:cotizar@hausind.com?subject=Proyecto%20a%20escala%20%E2%80%94%20Hausind',

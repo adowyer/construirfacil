@@ -1,79 +1,70 @@
+/**
+ * app/page.tsx
+ *
+ * Home pública de ConstruirFácil — landing editorial.
+ *
+ * Reusa los componentes de marca-landing (Hero / System / Solutions /
+ * Lineas / Featured / Closeout) con contenido específico para CF:
+ * mostrar Flex Build Suit, las 8 ventajas del sistema, soluciones
+ * (Smart Box / House / Build) y teaser del catálogo (líneas + featured).
+ *
+ * El catálogo completo está en /catalogo. La sección "Proyectos a gran
+ * escala" del sitio viejo (Argentina/China) queda omitida.
+ */
+
+import type { Metadata } from 'next'
+import LandingHeader from '@/components/LandingHeader'
+import MarcaLanding from '@/components/marca-landing/MarcaLanding'
 import { createClient } from '@/lib/supabase/server'
-import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
-import { getAllLineas } from '@/lib/supabase/queries/lineas'
-import { getAllMarcas } from '@/lib/supabase/queries/marcas'
-import {
-  getAllModelContentMap,
-  getAllCatalogImages,
-  getAllCatalogAttributes,
-} from '@/lib/supabase/queries/catalog_panels'
 import { getFeaturedModels } from '@/lib/supabase/queries/featured'
-import type { FooterCardRow } from '@/lib/supabase/queries/footer'
-import CatalogPage from '@/components/catalog/CatalogPage'
+import { homeLandingContent } from '@/lib/content/landing/home'
+import type { Marca } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
+export const metadata: Metadata = {
+  title: 'ConstruirFácil — Construir más rápido, eficiente, rentable',
+  description:
+    'La única solución constructiva 100% industrializada del mercado. Catálogo de casas Hausind con sistema Flex Build Suit.',
+}
+
+// Marca dummy para MarcaLanding — el componente solo usa `slug` para un
+// data-attribute. Hoy CF como agregador no es una "marca" propia en DB,
+// pero el shape lo necesitamos para reusar el componente.
+const cfMarca = {
+  id: 'construirfacil',
+  name: 'ConstruirFácil',
+  slug: 'construirfacil',
+  status: 'approved',
+  description: null,
+  logo_url: null,
+  website_url: null,
+  phone: null,
+  email: null,
+  city: null,
+  province: null,
+  country: null,
+  show_prices: false,
+  owner_id: null,
+  rejection_reason: null,
+  approved_at: null,
+  approved_by: null,
+  created_at: '',
+  updated_at: '',
+} as unknown as Marca
+
 export default async function HomePage() {
   const supabase = await createClient()
-
-  const [
-    models,
-    { data: brandContent },
-    { data: lineContent },
-    lineas,
-    marcas,
-    modelContentMap,
-    catalogImages,
-    catalogAttributes,
-    featuredModels,
-  ] = await Promise.all([
-    getGroupedCatalog(supabase),
-    supabase.from('brand_content').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('line_content').select('*').eq('status', 'active').order('sort_order'),
-    getAllLineas(supabase),
-    getAllMarcas(supabase),
-    getAllModelContentMap(supabase),
-    getAllCatalogImages(supabase),
-    getAllCatalogAttributes(supabase),
-    getFeaturedModels(supabase, 8),
-  ])
-
-  // Solo marcas aprobadas en el footer público.
-  const approvedMarcas = marcas.filter((m) => m.status === 'approved')
-
-  // Footer cards de las marcas aprobadas, indexadas por marca_id. Si la
-  // marca primaria no tiene cards, el CatalogFooter cae al hardcode.
-  const footerCardsByMarca: Record<string, FooterCardRow[]> = {}
-  if (approvedMarcas.length > 0) {
-    const { data: footerCards } = await supabase
-      .from('footer_card_content')
-      .select('*')
-      .in(
-        'marca_id',
-        approvedMarcas.map((m) => m.id),
-      )
-      .eq('status', 'active')
-      .order('sort_order', { ascending: true })
-
-    for (const c of (footerCards ?? []) as FooterCardRow[]) {
-      const arr = footerCardsByMarca[c.marca_id] ?? []
-      arr.push(c)
-      footerCardsByMarca[c.marca_id] = arr
-    }
-  }
+  const featuredModels = await getFeaturedModels(supabase, 6)
 
   return (
-    <CatalogPage
-      models={models}
-      brandContent={brandContent ?? []}
-      lineContent={lineContent ?? []}
-      lineas={lineas}
-      marcas={approvedMarcas}
-      modelContentMap={modelContentMap}
-      catalogImages={catalogImages}
-      catalogAttributes={catalogAttributes}
-      featuredModels={featuredModels}
-      footerCardsByMarca={footerCardsByMarca}
-    />
+    <>
+      <LandingHeader />
+      <MarcaLanding
+        marca={cfMarca}
+        content={homeLandingContent}
+        featuredModels={featuredModels}
+      />
+    </>
   )
 }

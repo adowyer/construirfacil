@@ -10,6 +10,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+type RevealVariant = 'up' | 'left' | 'right' | 'scale' | 'fade'
+
 interface RevealProps {
   children: React.ReactNode
   /** Delay en ms antes de revelar (para staggers). */
@@ -20,6 +22,8 @@ interface RevealProps {
   as?: 'div' | 'section' | 'article'
   /** id para anclas. */
   id?: string
+  /** Tipo de animación de entrada. Default 'up' (slide up + fade). */
+  variant?: RevealVariant
 }
 
 export default function Reveal({
@@ -28,6 +32,7 @@ export default function Reveal({
   className,
   as = 'div',
   id,
+  variant = 'up',
 }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -66,6 +71,7 @@ export default function Reveal({
       id={id}
       className={className}
       data-revealed={revealed ? 'true' : 'false'}
+      data-reveal-variant={variant}
     >
       {children}
     </Tag>

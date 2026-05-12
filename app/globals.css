@@ -28,7 +28,9 @@ body {
   font-family: var(--font-geist), 'Roboto', sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  overflow-x: hidden;
+  /* NO `overflow-x: hidden/clip` en body — rompe `position: sticky` que
+     usamos en VideoStory y Featured (scroll-driven horizontal). El
+     clipping horizontal se hace en cada sección individualmente. */
 }
 
 a {

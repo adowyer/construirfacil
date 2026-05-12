@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.3.1",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.0",
     "csv-parse": "^6.2.1",

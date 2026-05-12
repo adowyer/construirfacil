@@ -11,6 +11,9 @@ import type { Marca } from '@/types/database'
 import Hero from './Hero'
 import Manifesto from './Manifesto'
 import System from './System'
+import Features from './Features'
+import Video from './Video'
+import VideoStory from './VideoStory'
 import Solutions from './Solutions'
 import Lineas from './Lineas'
 import Featured from './Featured'
@@ -32,8 +35,17 @@ export default function MarcaLanding({
     <main className={styles.root} data-marca={marca.slug}>
       {content.hero && <Hero content={content.hero} />}
       {content.manifesto && <Manifesto content={content.manifesto} />}
+      {content.features && <Features content={content.features} />}
       {content.system && <System content={content.system} />}
-      {content.solutions && <Solutions content={content.solutions} />}
+      {content.video &&
+        (content.video.story ? (
+          <VideoStory content={content.video} />
+        ) : (
+          <Video content={content.video} />
+        ))}
+      {content.solutions && (
+        <Solutions content={content.solutions} models={featuredModels} />
+      )}
       {content.lineas && <Lineas content={content.lineas} />}
       {content.featured && (
         <Featured content={content.featured} models={featuredModels} />

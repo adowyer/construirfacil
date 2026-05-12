@@ -6071,3 +6071,117 @@ a.cf-row-precio-val:hover {
     font-size: 20px;
   }
 }
+
+/* ============================================================================
+   LandingHeader — header sticky de la landing pública (/). Transparente
+   sobre el hero al inicio; al scrollear pasa a blanco con backdrop-blur
+   y borde inferior (class .cf-landing-header-scrolled, toggleada por JS).
+   ============================================================================ */
+
+.cf-landing-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px clamp(20px, 4vw, 48px);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease,
+    padding 0.3s ease,
+    backdrop-filter 0.3s ease;
+}
+
+.cf-landing-header-scrolled {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  border-bottom-color: rgba(10, 10, 10, 0.05);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.cf-landing-header-logo-link {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cf-landing-header-hausind {
+  display: block;
+  height: 95px;
+  width: auto;
+  object-fit: contain;
+  /* Logo grande sobre la foto del hero. Al scrollear se achica
+     suavemente con la transición. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+  transition: filter 0.3s ease, height 0.3s ease;
+}
+
+.cf-landing-header-scrolled .cf-landing-header-hausind {
+  filter: none;
+  height: 60px;
+}
+
+/* CTA con look diferente según scroll: sobre la foto va blanco translúcido
+   con texto blanco para que se lea sin pelearse con el header; al scrollear
+   pasa a pill negro sólido. */
+.cf-landing-header-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.2s ease;
+}
+
+.cf-landing-header-cta:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.cf-landing-header-scrolled .cf-landing-header-cta {
+  background: #0a0a0a;
+  color: #ffffff;
+  border-color: #0a0a0a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.cf-landing-header-scrolled .cf-landing-header-cta:hover {
+  background: #1a1a1a;
+}
+
+@media (max-width: 480px) {
+  .cf-landing-header-hausind {
+    height: 70px;
+  }
+
+  .cf-landing-header-scrolled .cf-landing-header-hausind {
+    height: 46px;
+  }
+
+  .cf-landing-header-cta {
+    padding: 8px 14px;
+    font-size: 11px;
+  }
+}

@@ -29,7 +29,8 @@ export default function Lineas({ content }: LineasProps) {
           <Reveal
             key={item.slug}
             className={styles.lineaCardWrap}
-            delay={i * 90}
+            delay={i * 110}
+            variant="scale"
           >
             <a className={styles.lineaCard} href={item.href}>
               <div
