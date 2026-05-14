@@ -37,7 +37,13 @@ export async function getAllModelContentMap(
 
 export interface CatalogImage {
   id: string
+  /** URL original (fallback). NO usarla en componentes públicos si hay
+   *  thumb_url / webp_url — drena egress. */
   storage_url: string
+  /** WebP ~400px wide. Usar en cards/listados. Null si aún no optimizada. */
+  thumb_url: string | null
+  /** WebP ~1920px max. Usar en galerías/expandido. Null si aún no optimizada. */
+  webp_url: string | null
   is_exterior: boolean | null
   image_type: string | null
   view_label: string | null
@@ -51,6 +57,15 @@ export interface CatalogImage {
   variante: string | null
   linea: string | null
   tipologia_code: string | null
+}
+
+/** Helper para componentes — pickea la mejor URL disponible.
+ *  Cards/listados: `pickThumb`. Galerías/expandido: `pickFull`. */
+export function pickThumb(img: { thumb_url: string | null; webp_url: string | null; storage_url: string }): string {
+  return img.thumb_url ?? img.webp_url ?? img.storage_url
+}
+export function pickFull(img: { webp_url: string | null; storage_url: string }): string {
+  return img.webp_url ?? img.storage_url
 }
 
 /**
@@ -99,7 +114,7 @@ export async function getAllCatalogImages(
     supabase
       .from('model_images')
       .select(
-        'id, storage_url, is_exterior, image_type, view_label, sort_order, style_name, variante, linea, tipologia_code',
+        'id, storage_url, thumb_url, webp_url, is_exterior, image_type, view_label, sort_order, style_name, variante, linea, tipologia_code',
       )
       .neq('status', 'archived')
       .order('sort_order', { ascending: true }),

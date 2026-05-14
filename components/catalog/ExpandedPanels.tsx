@@ -22,13 +22,12 @@ import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
-import type {
-  CatalogImage,
-  CatalogAttributeRow,
-} from '@/lib/supabase/queries/catalog_panels'
 import {
+  type CatalogImage,
+  type CatalogAttributeRow,
   imagesForSkus,
   groupAttributesByType,
+  pickFull,
 } from '@/lib/supabase/queries/catalog_panels'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,7 +260,10 @@ export function Panel1Description({
     <div className="cf-pn cf-pn-desc">
       <div className="cf-pn-desc-grid">
         <div className="cf-pn-desc-left">
-          <p className="cf-pn-eyebrow">{displayLinea(model.linea)} · {estilo}</p>
+          <p className="cf-pn-eyebrow">
+            {model.marca_name ? `${model.marca_name} · ` : ''}
+            {displayLinea(model.linea)} · {estilo}
+          </p>
           <h2 className="cf-pn-title">{model.display_name}</h2>
 
           <div className="cf-pn-stats">
@@ -340,12 +342,14 @@ function PanelImageSlider({
   activeSkus,
   label,
   bgSize = 'cover',
+  bgSizeCss,
   pillFallback,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   label: string
   bgSize?: 'cover' | 'contain'
+  bgSizeCss?: string
   pillFallback: (i: number) => string
 }) {
   // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
@@ -440,8 +444,10 @@ function PanelImageSlider({
         isPdf
           ? { backgroundColor: '#ffffff' }
           : {
-            backgroundImage: `url('${current.storage_url}')`,
-            backgroundSize: bgSize,
+            backgroundImage: `url('${pickFull(current)}')`,
+            // bgSizeCss permite override raw (ej. "75% auto" en Planos);
+            // sino cae al modo declarativo (cover/contain).
+            backgroundSize: bgSizeCss ?? bgSize,
             // En paneles light (Axos/Planos), subir la imagen al ~32%
             // para que no choque con los pills de abajo.
             backgroundPosition: bgSize === 'contain' ? 'center 32%' : 'center',
@@ -574,6 +580,7 @@ export function PanelPlanos({
       activeSkus={activeSkus}
       label="Planos"
       bgSize="contain"
+      bgSizeCss="75% auto"
       pillFallback={(i) => `Plano ${i + 1}`}
     />
   )
@@ -978,7 +985,7 @@ export function Panel7Comparativo({
     <div
       className="cf-pn cf-pn-compare cf-pn-compare-light"
       style={{
-        backgroundImage: heroImg ? `url('${heroImg.storage_url}')` : undefined,
+        backgroundImage: heroImg ? `url('${pickFull(heroImg)}')` : undefined,
         backgroundColor: heroImg ? undefined : model.lqip_color,
       }}
     >
@@ -1269,10 +1276,13 @@ export function PanelSCColumns({
   // Stone→Terra). Tomamos un modelo de esa línea del catálogo global y
   // preferimos la casa más grande de 2 plantas. Devolvemos {cover_url} en
   // un shape compatible con CatalogImage para reusar el render.
+  // Shape mínimo compatible con pickFull. `cover_url` ya viene optimizado
+  // desde getGroupedCatalog (thumb_url → webp_url → storage_url), así que
+  // populamos webp_url con el mismo valor para que pickFull lo retorne.
+  type PhotoLike = { storage_url: string; webp_url: string | null }
+
   const usedUrls = new Set<string>()
-  const photoForLinea = (
-    targetLinea: string,
-  ): { storage_url: string } | null => {
+  const photoForLinea = (targetLinea: string): PhotoLike | null => {
     const candidates = allModels.filter(
       (m) => m.linea?.toUpperCase().trim() === targetLinea && m.cover_url,
     )
@@ -1287,11 +1297,13 @@ export function PanelSCColumns({
     for (const c of ranked) {
       if (c.cover_url && !usedUrls.has(c.cover_url)) {
         usedUrls.add(c.cover_url)
-        return { storage_url: c.cover_url }
+        return { storage_url: c.cover_url, webp_url: c.cover_url }
       }
     }
     // Todas usadas: tomar la primera igual.
-    if (ranked[0]?.cover_url) return { storage_url: ranked[0].cover_url }
+    if (ranked[0]?.cover_url) {
+      return { storage_url: ranked[0].cover_url, webp_url: ranked[0].cover_url }
+    }
     return null
   }
 
@@ -1330,7 +1342,7 @@ export function PanelSCColumns({
           className="cf-pn-sc-col"
           style={{
             backgroundImage: col.photo
-              ? `url('${col.photo.storage_url}')`
+              ? `url('${pickFull(col.photo)}')`
               : undefined,
             backgroundColor: col.photo ? undefined : model.lqip_color,
           }}

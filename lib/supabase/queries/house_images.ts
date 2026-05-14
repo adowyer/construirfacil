@@ -53,15 +53,35 @@ export async function getHouseImagesByVariantCodes(
     return {}
   }
 
+  // La vista no expone thumb_url/webp_url. Hacemos un join post-fetch a
+  // model_images para que los consumidores reciban URLs optimizadas
+  // (ahorra egress; el original queda como fallback).
+  const imageIds = [
+    ...new Set((data ?? []).map((r: any) => r.image_id).filter(Boolean)),
+  ]
+  const optimizedById = new Map<string, { webp_url: string | null }>()
+  if (imageIds.length > 0) {
+    const { data: optRows } = await supabase
+      .from('model_images')
+      .select('id, webp_url')
+      .in('id', imageIds)
+    for (const r of (optRows ?? []) as { id: string; webp_url: string | null }[]) {
+      optimizedById.set(r.id, { webp_url: r.webp_url })
+    }
+  }
+
   const grouped: Record<string, HouseImage[]> = {}
   for (const img of data ?? []) {
     const key = (img as any).sku
     if (!grouped[key]) grouped[key] = []
 
+    const opt = optimizedById.get((img as any).image_id)
+    const url = opt?.webp_url ?? (img as any).storage_url
+
     grouped[key].push({
       id: (img as any).image_id,
       variant_code: key,
-      storage_path: (img as any).storage_url,   // ya es URL pública completa
+      storage_path: url,   // URL pública (webp_url si está, sino original)
       alt_text: null,
       order_idx: (img as any).sort_order ?? 0,
       lqip_color: (img as any).lqip_color ?? null,

@@ -15,9 +15,10 @@ import { createPortal } from 'react-dom'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
-import type {
-  CatalogImage,
-  CatalogAttributeRow,
+import {
+  type CatalogImage,
+  type CatalogAttributeRow,
+  pickFull,
 } from '@/lib/supabase/queries/catalog_panels'
 import ExpandedPanels from './ExpandedPanels'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
@@ -251,13 +252,14 @@ export default function ModelRow({
   }, [isExpanded])
 
   // Precarga de imágenes al expandir: evita el flash blanco al cambiar de pill.
-  // Los PDFs (planos) no se precargan — solo se renderizan como link.
+  // Usa la versión WebP optimizada (egress-friendly).
   useEffect(() => {
     if (!isExpanded || images.length === 0) return
     for (const img of images) {
-      if (!/\.(png|jpe?g|webp)$/i.test(img.storage_url)) continue
+      const url = pickFull(img)
+      if (!/\.(png|jpe?g|webp)$/i.test(url)) continue
       const preloader = new window.Image()
-      preloader.src = img.storage_url
+      preloader.src = url
     }
   }, [isExpanded, images])
 
@@ -419,30 +421,44 @@ export default function ModelRow({
       {/* ── COL 1: Info (Left) ── */}
       <div className="cf-row-info" onClick={e => isExpanded && e.stopPropagation()}>
         {!isExpanded ? (
-          /* Collapsed: ícono + línea + tipología + NOMBRE + dormitorios */
-          <div className="cf-meta-collapsed">
-            {lineaIconUrl && (
+          <>
+            {/* Collapsed: ícono + línea + tipología + NOMBRE + dormitorios */}
+            <div className="cf-meta-collapsed">
+              {lineaIconUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={lineaIconUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="cf-row-icon"
+                />
+              )}
+              <p className="cf-row-tag">{displayLinea(model.linea)}</p>
+              {model.tipologia_code && (
+                <p className="cf-row-tipologia">Tipología {model.tipologia_code}</p>
+              )}
+              <h3 className="cf-row-name cf-row-name-collapsed">{model.display_name}</h3>
+              <p className="cf-row-bedrooms">
+                {fmtBedroomsLabeled(activeSkus ?? model.skus)}
+              </p>
+              <p className="cf-row-precio">
+                <span className="cf-row-precio-lbl">Precio:</span>{' '}
+                <PrecioOrCotizar model={model} className="cf-row-precio-val" />
+              </p>
+            </div>
+
+            {/* Logo de marca — hermano directo de .cf-row-info (no hijo del
+                .cf-meta-collapsed) para que margin-top: auto lo empuje al pie
+                de la columna, que está estirada al alto del row (=alto foto). */}
+            {model.marca_logo_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={lineaIconUrl}
-                alt=""
-                aria-hidden="true"
-                className="cf-row-icon"
+                src={model.marca_logo_url}
+                alt={model.marca_name ?? ''}
+                className="cf-row-marca-logo"
               />
             )}
-            <p className="cf-row-tag">{displayLinea(model.linea)}</p>
-            {model.tipologia_code && (
-              <p className="cf-row-tipologia">Tipología {model.tipologia_code}</p>
-            )}
-            <h3 className="cf-row-name cf-row-name-collapsed">{model.display_name}</h3>
-            <p className="cf-row-bedrooms">
-              {fmtBedroomsLabeled(activeSkus ?? model.skus)}
-            </p>
-            <p className="cf-row-precio">
-              <span className="cf-row-precio-lbl">Precio:</span>{' '}
-              <PrecioOrCotizar model={model} className="cf-row-precio-val" />
-            </p>
-          </div>
+          </>
         ) : (
           /* Expanded: detailed info panel (like cf-info-col in OLD) */
           <div className="cf-info-expanded" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-end', textAlign: 'right', width: '100%', animation: 'cfSlideFade 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
@@ -574,9 +590,10 @@ export default function ModelRow({
                 Estás viendo la
               </span>
               <span className="cf-row-sticky-cta-name">
-                Casa {model.display_name}
+                {model.display_name}
               </span>
               <span className="cf-row-sticky-cta-linea">
+                {model.marca_name ? `${model.marca_name} · ` : ''}
                 {displayLinea(model.linea)}
               </span>
             </div>

@@ -362,10 +362,14 @@ body:has(.cf-row.cf-expanded) {
   border-color: #0a0a0a;
 }
 
-/* ── Grilla ── */
+/* ── Grilla ──
+   Padding lateral con clamp en lugar de 15% fijo: en pantallas grandes
+   (>1600px) usa 80px, en medianas baja proporcional al viewport, y nunca
+   menos de 24px. Soluciona el "contenido apretado" en MacBooks 1280-1440px
+   donde 15% = ~190-220px laterales y dejaba muy poco espacio para los rows. */
 .cf-grid {
   background: #fff;
-  padding: 80px 15%;
+  padding: 80px clamp(24px, 5vw, 80px);
 }
 
 .cf-group-header {
@@ -489,7 +493,7 @@ body:has(.cf-row.cf-expanded) {
   padding-top: 0;
 }
 
-/* Collapsed meta: ícono + línea + NOMBRE + dormitorios, alineado a la derecha */
+/* Collapsed meta: ícono + línea + NOMBRE + dormitorios, alineado a la derecha. */
 .cf-meta-collapsed {
   display: flex;
   flex-direction: column;
@@ -497,6 +501,21 @@ body:has(.cf-row.cf-expanded) {
   text-align: right;
   gap: 10px;
   width: 100%;
+}
+
+/* Logo de marca — hermano directo del .cf-meta-collapsed dentro de
+   .cf-row-info (flex column, justify-content: flex-start). margin-top: auto
+   lo empuja al borde inferior de la columna, que se estira al alto 420px del
+   row via flex stretch. align-self: flex-end mantiene alineación derecha. */
+.cf-row-marca-logo {
+  margin-top: auto;
+  align-self: flex-end;
+  max-width: 100px;
+  max-height: 40px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
 }
 
 .cf-row-icon {
@@ -6183,5 +6202,258 @@ a.cf-row-precio-val:hover {
   .cf-landing-header-cta {
     padding: 8px 14px;
     font-size: 11px;
+  }
+}
+
+/* ============================================================================
+   Site header — modo breadcrumb (catálogo agregador + catálogo de marca)
+   Activado cuando SiteHeader recibe `marcaContext`. Layout flex 2-bloques:
+     left  → logo de marca (si hay) + breadcrumb, pegados a la izquierda
+     right → sello CF, siempre visible (mismo lugar que en Hausind)
+   Mismo padding que el header legacy (35px 56px) para que se sienta el
+   mismo header en /catalogo y en /catalogo/[marca].
+   ============================================================================ */
+.cf-site-header--with-crumb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 35px 56px;
+}
+
+.cf-site-header-left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-width: 0;
+  /* permite que el breadcrumb wrappee si falta espacio */
+}
+
+.cf-site-header-brand-link,
+.cf-site-header-cf-link {
+  display: block;
+  line-height: 0;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cf-site-header-brand-link:hover,
+.cf-site-header-cf-link:hover {
+  opacity: 0.7;
+}
+
+.cf-site-header-brand-logo {
+  height: 90px;
+  width: auto;
+  display: block;
+}
+
+.cf-site-header-brand-text {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+  line-height: 1;
+}
+
+/* ── Breadcrumb plano ────────────────────────────────────────────
+   Estilo "Inicio > Todas las marcas ▾ > Marca", sin chips, todo en línea.
+   El item activo (marca actual, o "Todas las marcas" en agregador) va
+   en naranja institucional + bold para señalar dónde estás parado. */
+.cf-crumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  font-family: var(--font-geist), -apple-system, system-ui, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.005em;
+}
+
+.cf-crumb-link {
+  font-weight: 500;
+  color: #6b6b6b;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.cf-crumb-link:hover {
+  color: #0a0a0a;
+}
+
+.cf-crumb-sep {
+  color: #c8c8c8;
+  font-weight: 300;
+  user-select: none;
+}
+
+.cf-crumb-current {
+  font-weight: 700;
+  color: #ff9933;
+}
+
+/* ── Wrapper del select: texto plano + chevron ──────────────────── */
+.cf-crumb-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font: inherit;
+  font-weight: 500;
+  color: #6b6b6b;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.cf-crumb-select-wrap:hover {
+  color: #0a0a0a;
+}
+
+.cf-crumb-select-wrap:hover .cf-crumb-select-chevron {
+  color: #0a0a0a;
+}
+
+/* Modo "activo": el agregador estamos parados en Todas las marcas */
+.cf-crumb-select-wrap--active {
+  color: #ff9933;
+  font-weight: 700;
+}
+
+.cf-crumb-select-wrap--active:hover {
+  color: #ff9933;
+}
+
+.cf-crumb-select-wrap:focus-within {
+  outline: 2px solid #549084;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* El <select> real es invisible y cubre TODO el wrapper, así un click en
+   cualquier parte del chip abre el dropdown nativo del browser. El texto
+   visible vive en `.cf-crumb-select-value` debajo. */
+.cf-crumb-select--invisible {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: transparent;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+.cf-crumb-select--invisible:focus-visible {
+  outline: none;
+}
+
+.cf-crumb-select-value {
+  color: inherit;
+  pointer-events: none;
+}
+
+.cf-crumb-select option {
+  color: #0a0a0a;
+  background: #fff;
+  font-weight: 500;
+}
+
+.cf-crumb-select-chevron {
+  font-size: 16px !important;
+  color: inherit;
+  pointer-events: none;
+  transition: color 0.2s ease;
+  margin-left: 2px;
+}
+
+@media (max-width: 800px) {
+  .cf-site-header--with-crumb {
+    padding: 20px 20px;
+    gap: 16px;
+  }
+
+  .cf-site-header-left {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .cf-site-header-brand-logo {
+    height: 48px;
+  }
+
+  .cf-site-header-cf {
+    height: 36px;
+  }
+
+  .cf-crumb {
+    gap: 6px;
+    font-size: 13px;
+  }
+}
+
+/* ============================================================================
+   Responsive medianas (1024-1400px) — "zona gris" desktop chico / tablet grande
+   ============================================================================
+   El catálogo se diseñó full-bleed pensando en MacBook 16" / 4K. Entre 1024
+   y 1400px los paddings fijos (32-56px) + max-widths sin breakpoint dejaban
+   los filtros sticky en overflow-x feo (el "menú en dos líneas" que reportó
+   el user) y el breadcrumb wrappeando con nombre de marca largo. Acá bajamos
+   paddings, gaps y tipografías para que el mismo layout entre sin sacrificar
+   identidad visual. */
+@media (max-width: 1400px) {
+  /* Sticky filters — fix principal del reporte. */
+  .cf-sticky-filters {
+    padding: 0 16px;
+  }
+
+  .cf-sticky-filters-inner {
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .cf-stf-group {
+    gap: 3px;
+  }
+
+  .cf-stf-lbl {
+    font-size: 10px;
+    margin-right: 4px;
+  }
+
+  .cf-stf-pill {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .cf-stf-select {
+    padding: 5px 22px 5px 11px;
+    font-size: 13px;
+  }
+
+  /* SiteHeader con breadcrumb — evita wrapping del nombre de marca. */
+  .cf-site-header--with-crumb {
+    padding: 24px 32px;
+    gap: 20px;
+  }
+
+  .cf-site-header-left {
+    gap: 20px;
+  }
+
+  .cf-site-header-brand-logo {
+    height: 72px;
+  }
+
+  .cf-crumb {
+    gap: 8px;
+    font-size: 13px;
   }
 }

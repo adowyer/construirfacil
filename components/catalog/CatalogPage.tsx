@@ -28,9 +28,11 @@ import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import type { Marca } from '@/types/database'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
-import type {
-  CatalogImage,
-  CatalogAttributeRow,
+import {
+  type CatalogImage,
+  type CatalogAttributeRow,
+  pickThumb,
+  pickFull,
 } from '@/lib/supabase/queries/catalog_panels'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import CatalogFooter from './CatalogFooter'
@@ -57,6 +59,9 @@ interface PageProps {
   /** Footer cards editables por marca, indexadas por marca_id. Si una marca
    *  no tiene cards, el CatalogFooter usa el fallback hardcoded. */
   footerCardsByMarca?: Record<string, FooterCardRow[]>
+  /** Marca activa (en /catalogo/[marca]). Null/undefined en el agregador.
+   *  Controla logo, breadcrumb y filtros de contenido contextual. */
+  selectedMarca?: { id: string; name: string; slug: string; logo_url: string | null } | null
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -86,6 +91,7 @@ export default function CatalogPage({
   catalogAttributes = [],
   featuredModels = [],
   footerCardsByMarca = {},
+  selectedMarca = null,
 }: PageProps) {
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
@@ -261,7 +267,7 @@ export default function CatalogPage({
       if (img.is_exterior !== true) continue
       const key = img.linea.toUpperCase()
       if (!byLinea[key]) byLinea[key] = new Map()
-      byLinea[key].set(img.id, img.storage_url)
+      byLinea[key].set(img.id, pickThumb(img))
     }
     const out: Record<string, string[]> = {}
     for (const [k, m] of Object.entries(byLinea)) {
@@ -329,7 +335,7 @@ export default function CatalogPage({
           img.image_type !== 'plano' &&
           img.sku_ids.includes(skuId),
       )
-      return candidates[0]?.storage_url
+      return candidates[0] ? pickFull(candidates[0]) : undefined
     }
 
     for (const model of bosque) {
@@ -445,7 +451,16 @@ export default function CatalogPage({
   return (
     <>
       {/* ── Header del sitio (NO sticky) ── */}
-      <SiteHeader />
+      <SiteHeader
+        marcaContext={{
+          selectedMarca,
+          availableMarcas: marcas.map((m) => ({
+            name: m.name,
+            slug: m.slug,
+            logo_url: m.logo_url,
+          })),
+        }}
+      />
 
       {/* ── Hero row: primera fila siempre desplegada ── */}
       <HeroRow
@@ -514,8 +529,9 @@ export default function CatalogPage({
                     )
                     .sort((a, b) => a.sku_ids.length - b.sku_ids.length)[0]
                 : null
-              const dynamicCoverUrl =
-                dynamicCoverImg?.storage_url ?? model.cover_url
+              const dynamicCoverUrl = dynamicCoverImg
+                ? pickThumb(dynamicCoverImg)
+                : model.cover_url
 
               // Otros modelos en la misma (linea, tipologia_code) — para panel 5.
               // Usa `models` raw (no `filtered`) porque el panel Estilos quiere

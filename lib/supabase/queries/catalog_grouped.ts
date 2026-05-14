@@ -73,6 +73,13 @@ export type CatalogModel = {
   // Flag de la marca dueña del grupo: si true, el catálogo público muestra
   // precios de los SKUs; si false, muestra "Cotizar". Default false.
   show_prices: boolean
+
+  // Datos de la marca dueña del grupo (para mostrar en CTA flotante,
+  // breadcrumbs cross-marca en /catalogo, etc.). null si el grupo no tiene
+  // marca asociada en DB.
+  marca_id: string | null
+  marca_name: string | null
+  marca_logo_url: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +150,7 @@ function groupSlug(linea: string, style_name: string, tipologia_code: string): s
 
 export async function getGroupedCatalog(
   supabase: SupabaseClient,
-  opts: { linea?: string } = {}
+  opts: { linea?: string; marcaId?: string } = {}
 ): Promise<CatalogModel[]> {
 
   // 1) Traer todos los SKUs activos
@@ -154,6 +161,7 @@ export async function getGroupedCatalog(
     .order('linea').order('style_name').order('tipologia_code').order('variante')
 
   if (opts.linea) query = query.eq('linea', opts.linea)
+  if (opts.marcaId) query = query.eq('marca_id', opts.marcaId)
 
   const { data: rows, error } = await query
   if (error) {
@@ -235,7 +243,7 @@ export async function getGroupedCatalog(
     loadAllLinks(),
     supabase
       .from('model_images')
-      .select('id, storage_url, lqip_color, sort_order')
+      .select('id, storage_url, thumb_url, webp_url, lqip_color, sort_order')
       .neq('status', 'archived')
       .eq('is_exterior', true)
       .eq('image_type', 'render')
@@ -245,13 +253,15 @@ export async function getGroupedCatalog(
   if (imgsRes.error) console.error('[getGroupedCatalog] imgs:', imgsRes.error.message)
 
   // Index image_id → image (solo exteriores tipo render).
+  // El cover del catálogo se usa en cards/listados → preferimos thumb_url
+  // (~400px WebP). Fallback a webp_url (full) y por último al original.
   const imgById = new Map<
     string,
     { url: string; lqip: string; sort_order: number }
   >()
   for (const img of imgsRes.data ?? []) {
     imgById.set(img.id, {
-      url: img.storage_url,
+      url: img.thumb_url ?? img.webp_url ?? img.storage_url,
       lqip: img.lqip_color ?? '#d4d4cc',
       sort_order: img.sort_order,
     })
@@ -292,16 +302,20 @@ export async function getGroupedCatalog(
     ),
   ]
   const showPricesByMarca = new Map<string, boolean>()
+  const nameByMarca = new Map<string, string>()
+  const logoByMarca = new Map<string, string | null>()
   if (marcaIds.length > 0) {
     const { data: marcasData, error: marcasErr } = await supabase
       .from('marcas')
-      .select('id, show_prices')
+      .select('id, name, logo_url, show_prices')
       .in('id', marcaIds)
     if (marcasErr) {
       console.error('[getGroupedCatalog] marcas:', marcasErr.message)
     }
-    for (const m of (marcasData ?? []) as { id: string; show_prices: boolean }[]) {
+    for (const m of (marcasData ?? []) as { id: string; name: string; logo_url: string | null; show_prices: boolean }[]) {
       showPricesByMarca.set(m.id, m.show_prices ?? false)
+      nameByMarca.set(m.id, m.name)
+      logoByMarca.set(m.id, m.logo_url ?? null)
     }
   }
 
@@ -349,6 +363,9 @@ export async function getGroupedCatalog(
       show_prices: meta.marca_id
         ? showPricesByMarca.get(meta.marca_id) ?? false
         : false,
+      marca_id: meta.marca_id,
+      marca_name: meta.marca_id ? nameByMarca.get(meta.marca_id) ?? null : null,
+      marca_logo_url: meta.marca_id ? logoByMarca.get(meta.marca_id) ?? null : null,
     })
   }
 
@@ -391,10 +408,28 @@ export async function getGroupDetail(
   // Fotos exteriores (sin room_type) e interiores (con room_type)
   const { data: imgs } = await supabase
     .from('house_images_resolved')
-    .select('sku, storage_url, lqip_color, is_exterior, room_type, sort_order, specificity')
+    .select('sku, image_id, storage_url, lqip_color, is_exterior, room_type, sort_order, specificity')
     .in('sku', skus)
     .order('specificity', { ascending: false })
     .order('sort_order', { ascending: true })
+
+  // La vista `house_images_resolved` no expone thumb_url/webp_url. Hacemos
+  // un join post-fetch a model_images para traer las versiones optimizadas.
+  // Galería expandida usa webp_url (~1920px); thumb_url no se usa aquí.
+  const imageIds = [...new Set((imgs ?? []).map((i) => i.image_id).filter(Boolean))]
+  const optimizedById = new Map<string, { webp_url: string | null }>()
+  if (imageIds.length > 0) {
+    const { data: optRows } = await supabase
+      .from('model_images')
+      .select('id, webp_url')
+      .in('id', imageIds)
+    for (const r of (optRows ?? []) as { id: string; webp_url: string | null }[]) {
+      optimizedById.set(r.id, { webp_url: r.webp_url })
+    }
+  }
+
+  const pickFull = (img: { image_id: string; storage_url: string }) =>
+    optimizedById.get(img.image_id)?.webp_url ?? img.storage_url
 
   // Deduplicar por URL (misma foto puede aparecer en múltiples SKUs del grupo)
   const extUrls = new Set<string>()
@@ -403,13 +438,14 @@ export async function getGroupDetail(
   const interior_images: GroupDetail['interior_images'] = []
 
   for (const img of (imgs ?? [])) {
-    if (img.is_exterior && !extUrls.has(img.storage_url)) {
-      extUrls.add(img.storage_url)
-      exterior_images.push({ url: img.storage_url, lqip: img.lqip_color ?? '#d4d4cc', room_type: null, sort_order: img.sort_order })
+    const url = pickFull(img)
+    if (img.is_exterior && !extUrls.has(url)) {
+      extUrls.add(url)
+      exterior_images.push({ url, lqip: img.lqip_color ?? '#d4d4cc', room_type: null, sort_order: img.sort_order })
     }
-    if (!img.is_exterior && !intUrls.has(img.storage_url)) {
-      intUrls.add(img.storage_url)
-      interior_images.push({ url: img.storage_url, lqip: img.lqip_color ?? '#d4d4cc', room_type: img.room_type ?? 'interior', sort_order: img.sort_order })
+    if (!img.is_exterior && !intUrls.has(url)) {
+      intUrls.add(url)
+      interior_images.push({ url, lqip: img.lqip_color ?? '#d4d4cc', room_type: img.room_type ?? 'interior', sort_order: img.sort_order })
     }
   }
 
