@@ -108,6 +108,10 @@ interface CatalogFooterProps {
   footerCardsByMarca?: Record<string, FooterCardRow[]>
   /** Callback cuando se hace click en una card de modelo. */
   onOpenModel?: (model: CatalogModel) => void
+  /** Si true (vista agregador: `/` o `/catalogo` sin marca), oculta las cards
+   *  de marca del marquee. Esas cards solo tienen sentido cuando el visitante
+   *  está dentro del catálogo de una marca específica. */
+  hideMarcaCards?: boolean
 }
 
 export default function CatalogFooter({
@@ -115,6 +119,7 @@ export default function CatalogFooter({
   marcas = [],
   footerCardsByMarca = {},
   onOpenModel,
+  hideMarcaCards = false,
 }: CatalogFooterProps) {
   return (
     <footer className="cf-footer">
@@ -144,6 +149,7 @@ export default function CatalogFooter({
         marcas={marcas}
         footerCardsByMarca={footerCardsByMarca}
         onOpenModel={onOpenModel}
+        hideMarcaCards={hideMarcaCards}
       />
 
       {/* ── Capa institucional: logos partner + copyright + legales ──── */}
@@ -205,14 +211,20 @@ function buildMarqueeCards(
   _featured: CatalogModel[],
   marcas: Marca[],
   footerCardsByMarca: Record<string, FooterCardRow[]>,
+  hideMarcaCards: boolean,
 ): MarqueeCard[] {
   // Orden fijo a pedido del user (item 18):
   //   CF → Marca → cards 3-6 (Garantía/100%/Fábrica/50.000) → Hablemos.
   // Cards 3-6 son trust cards: si la marca primaria tiene cards en DB,
   // las usamos; sino fallback al hardcode.
+  // En vista agregador (hideMarcaCards=true), saltamos TODAS las cards
+  // de marca — solo tienen sentido cuando el visitante está dentro del
+  // catálogo de una marca específica.
   const cards: MarqueeCard[] = []
   cards.push({ kind: 'cf' })
-  if (marcas[0]) cards.push({ kind: 'brand', brand: marcas[0] })
+  if (!hideMarcaCards && marcas[0]) {
+    cards.push({ kind: 'brand', brand: marcas[0] })
+  }
 
   const primary = marcas[0]
   const dbCards = primary ? footerCardsByMarca[primary.id] ?? [] : []
@@ -232,8 +244,10 @@ function buildMarqueeCards(
   }
 
   cards.push({ kind: 'cta-hablemos' })
-  // Marcas extra al final si hay más de una.
-  for (const b of marcas.slice(1)) cards.push({ kind: 'brand', brand: b })
+  // Marcas extra al final si hay más de una (también ocultadas en agregador).
+  if (!hideMarcaCards) {
+    for (const b of marcas.slice(1)) cards.push({ kind: 'brand', brand: b })
+  }
   return cards
 }
 
@@ -242,11 +256,13 @@ function FooterMarquee({
   marcas,
   footerCardsByMarca,
   onOpenModel,
+  hideMarcaCards = false,
 }: {
   featuredModels: CatalogModel[]
   marcas: Marca[]
   footerCardsByMarca: Record<string, FooterCardRow[]>
   onOpenModel?: (model: CatalogModel) => void
+  hideMarcaCards?: boolean
 }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [paused, setPaused] = useState(false)
@@ -255,7 +271,12 @@ function FooterMarquee({
     pausedRef.current = paused
   }, [paused])
 
-  const cards = buildMarqueeCards(featuredModels, marcas, footerCardsByMarca)
+  const cards = buildMarqueeCards(
+    featuredModels,
+    marcas,
+    footerCardsByMarca,
+    hideMarcaCards,
+  )
 
   // Pausamos el rAF cuando el track no está en viewport — el footer queda
   // fuera de pantalla mientras el user navega el catálogo, no hay razón para

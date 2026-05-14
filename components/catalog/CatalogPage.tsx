@@ -36,7 +36,7 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import CatalogFooter from './CatalogFooter'
-import HomeSlider from './HomeSlider'
+import HomeRow from './HomeRow'
 import { LANDING_B2C } from '@/lib/content/landing-cf'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -663,23 +663,26 @@ export default function CatalogPage({
         </div>
       </div>
 
-      {/* ── HomeSlider: SIEMPRE montado, después del shell del catálogo.
-          Cuando el catálogo está cerrado (phase=home), el HomeSlider se ve
-          justo abajo del HeroRow. Cuando el catálogo se abre, lo empuja
-          hacia abajo y queda fuera del viewport — pero sigue en el DOM
-          renderizándose. No lo desmontamos para que la "bajada" se vea
-          como flow natural, no como un slide que desaparece. ── */}
-      <HomeSlider
+      {/* ── HomeRow: SIEMPRE montado, después del shell del catálogo.
+          Réplica del HeroRow superior pero con contenido editorial (5
+          beneficios) y autoplay en sentido INVERSO. Cuando el catálogo
+          está cerrado, se ve justo abajo del HeroRow. Cuando el catálogo
+          se abre, lo empuja hacia abajo (flow natural). ── */}
+      <HomeRow
         items={LANDING_B2C.items}
         onVerCatalogo={goToCatalog}
       />
 
-      {/* ── Footer del catálogo (cierre + marquee + base) ── */}
+      {/* ── Footer del catálogo (cierre + marquee + base) ──
+          hideMarcaCards: en vista agregador (sin marca seleccionada), las
+          cards de marca del marquee desaparecen — solo tienen sentido en
+          el catálogo de una marca específica. */}
       <CatalogFooter
         featuredModels={featuredModels}
         marcas={marcas}
         footerCardsByMarca={footerCardsByMarca}
         onOpenModel={openDetail}
+        hideMarcaCards={!selectedMarca}
       />
 
       {/* ── Detail slider overlay ── */}

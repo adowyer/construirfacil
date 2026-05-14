@@ -431,11 +431,18 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-row {
-  display: flex;
+  /* Grid 1fr / auto / 1fr → la FOTO queda en la columna `auto` central,
+     centrada horizontalmente en el viewport. La info se ancla en la
+     columna 1fr de la izquierda (justify-self: end), pegada a la foto
+     pero offset hacia la izquierda. La col 1fr derecha queda vacía.
+     Resultado: foto centrada en viewport, info satélite a su izquierda. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 48px;
+  padding: 0;
   height: 420px;
   cursor: pointer;
   overflow: hidden;
@@ -455,6 +462,9 @@ body:has(.cf-row.cf-expanded) {
    la ficha info queda pegada al viewport edge y la fila se encoge hacia
    ahí cuando el usuario scroleea, dando la sensación BIG-like de cierre. */
 .cf-row.cf-expanded {
+  /* En expandido volvemos a flex para que los slides horizontales fluyan
+     correctamente (el grid 1fr/auto/1fr es solo para el listado colapsado). */
+  display: flex;
   height: 85vh;
   width: max-content;
   min-width: 100%;
@@ -484,6 +494,10 @@ body:has(.cf-row.cf-expanded) {
   padding: 0 18px 0 0;
   width: 200px;
   flex-shrink: 0;
+  /* En el grid 1fr/auto/1fr del .cf-row, la info vive en la col 1fr
+     izquierda. justify-self: end la ancla al borde derecho de esa
+     columna, quedando pegada a la foto del centro. */
+  justify-self: end;
   transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -702,7 +716,9 @@ a.cf-row-precio-val:hover {
   display: flex;
   align-items: stretch;
   justify-content: flex-start;
-  flex: 1;
+  /* En el grid del .cf-row, la foto vive en la columna `auto` central,
+     que se ajusta a su tamaño natural (672px = 420 × 16/10). El grid
+     centra esa columna en el viewport gracias a los `1fr` laterales. */
   gap: 16px;
   padding: 0;
   overflow: hidden;
@@ -2890,7 +2906,10 @@ a.cf-row-precio-val:hover {
   display: flex;
   align-items: stretch;
   gap: 16px;
-  padding: 0 48px;
+  /* Mismo clamp que .cf-grid para que el HeroRow se alinee con la grilla
+     de modelos en todos los tamaños (antes era 48px fijo y se desfasaba
+     en medianas/grandes). */
+  padding: 0 clamp(24px, 5vw, 80px);
   height: 420px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -3396,7 +3415,9 @@ a.cf-row-precio-val:hover {
   position: sticky;
   top: 16px;
   z-index: 40;
-  padding: 0 32px;
+  /* Mismo clamp que .cf-grid y .cf-hero-row-track → barra alineada con
+     la grilla en cualquier viewport. */
+  padding: 0 clamp(24px, 5vw, 80px);
 }
 
 .cf-sticky-filters-inner {
@@ -5888,7 +5909,6 @@ a.cf-row-precio-val:hover {
    copyright + links legales. Ancho contenido (no full-bleed crudo).
    ────────────────────────────────────────────────────────────────────── */
 .cf-footer-inst {
-  background: #0a0a0a;
   color: rgba(255, 255, 255, 0.7);
   padding: 28px 32px;
 }
@@ -5932,14 +5952,14 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-footer-inst-copy {
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(0, 0, 0, 0.55);
 }
 
 .cf-footer-inst-links {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(0, 0, 0, 0.7);
 }
 
 .cf-footer-inst-links a {
@@ -5949,7 +5969,7 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-footer-inst-links a:hover {
-  color: #fff;
+  color: #000;
 }
 
 @media (max-width: 720px) {
@@ -6409,10 +6429,10 @@ a.cf-row-precio-val:hover {
    paddings, gaps y tipografías para que el mismo layout entre sin sacrificar
    identidad visual. */
 @media (max-width: 1400px) {
-  /* Sticky filters — fix principal del reporte. */
-  .cf-sticky-filters {
-    padding: 0 16px;
-  }
+  /* Sticky filters — el padding lateral SE MANTIENE igual que .cf-grid
+     y .cf-hero-row-track (clamp en la regla base) para que estén alineados.
+     Solo reducimos paddings/gaps INTERIORES del inner para que entren los
+     4 grupos sin overflow. */
 
   .cf-sticky-filters-inner {
     gap: 12px;
@@ -6537,6 +6557,7 @@ a.cf-row-precio-val:hover {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -6546,6 +6567,7 @@ a.cf-row-precio-val:hover {
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
@@ -6567,6 +6589,107 @@ a.cf-row-precio-val:hover {
   overflow: hidden;
 }
 
+/* ============================================================================
+   HomeRow — segundo slider que replica al HeroRow superior con autoplay
+   INVERSO. Comparte la mayoría de classes (.cf-hero-row, .cf-hero-row-track,
+   .cf-hero-row-slide) para tener el mismo look — solo agregamos clases
+   específicas para los slides del contenido editorial (eyebrow, title, body,
+   CTA con variantes primary/ghost).
+   ============================================================================ */
+
+.cf-home-row {
+  /* Hereda padding/overflow de .cf-hero-row. Background light para diferenciar
+     del HeroRow (que es blanco): este es ligeramente cálido. */
+  background: #f5f5f3;
+}
+
+.cf-home-row-slide {
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+/* Overlay oscuro para slides con foto de fondo, para legibilidad del texto. */
+.cf-home-row-slide-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  pointer-events: none;
+}
+
+/* Contenido del slide: alineado al pie + padding generoso, similar a los
+   slides del HeroRow. */
+.cf-home-row-slide-content {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 36px 32px;
+  gap: 12px;
+}
+
+.cf-home-row-slide-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.cf-home-row-slide-title {
+  font-size: clamp(24px, 2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.cf-home-row-slide-body {
+  font-size: 14.5px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 36ch;
+}
+
+.cf-home-row-slide-cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 22px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.cf-home-row-slide-cta--primary {
+  background: #ff003d;
+  color: #ffffff;
+}
+
+.cf-home-row-slide-cta--primary:hover {
+  background: #e6003a;
+  transform: translateY(-1px);
+}
+
+.cf-home-row-slide-cta--ghost:hover {
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  border-color: #0a0a0a !important;
+}
+
 /* Track con scroll horizontal nativo (drag funciona como en HeroRow).
    El autoplay lo maneja un rAF en JS que avanza scrollLeft. Esto permite
    que el user dragguee el track con mouse/trackpad y la animación pausa
@@ -6586,7 +6709,8 @@ a.cf-row-precio-val:hover {
 
 /* Base de todas las cards. Cada variant override colores, anchos y bg. */
 .cf-home-slider-card {
-  flex: 0 0 clamp(300px, 28vw, 380px); /* default; variants pueden override */
+  flex: 0 0 clamp(300px, 28vw, 380px);
+  /* default; variants pueden override */
   scroll-snap-align: start;
   position: relative;
   background: #ffffff;
@@ -6612,12 +6736,10 @@ a.cf-row-precio-val:hover {
 .cf-home-slider-card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.15) 0%,
-    rgba(0, 0, 0, 0.35) 50%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(0, 0, 0, 0.15) 0%,
+      rgba(0, 0, 0, 0.35) 50%,
+      rgba(0, 0, 0, 0.7) 100%);
   pointer-events: none;
 }
 
@@ -6636,13 +6758,15 @@ a.cf-row-precio-val:hover {
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin: 0;
-  color: #0a0a0a; /* variants oscuros override a blanco */
+  color: #0a0a0a;
+  /* variants oscuros override a blanco */
 }
 
 .cf-home-slider-card-body {
   font-size: 14.5px;
   line-height: 1.5;
-  color: #444; /* variants oscuros override a blanco translúcido */
+  color: #444;
+  /* variants oscuros override a blanco translúcido */
   margin: 0;
 }
 
