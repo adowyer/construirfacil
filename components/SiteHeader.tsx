@@ -34,9 +34,17 @@ interface SiteHeaderProps {
     selectedMarca: MarcaLite | null
     availableMarcas: MarcaLite[]
   }
+  /** Si está, el link "Inicio" del breadcrumb se comporta como un button que
+   *  llama este callback en vez de navegar a `/`. Lo usa el catálogo en `/`
+   *  cuando está en modo catálogo abierto, para volver al modo home sin
+   *  recargar la página. */
+  onInicioClick?: () => void
 }
 
-export default function SiteHeader({ marcaContext }: SiteHeaderProps = {}) {
+export default function SiteHeader({
+  marcaContext,
+  onInicioClick,
+}: SiteHeaderProps = {}) {
   const router = useRouter()
 
   // ── Modo legacy (sin breadcrumb) ────────────────────────────────────
@@ -108,9 +116,19 @@ export default function SiteHeader({ marcaContext }: SiteHeaderProps = {}) {
         )}
 
         <nav className="cf-crumb" aria-label="Navegación de catálogo">
-          <Link href="/" className="cf-crumb-link">
-            Inicio
-          </Link>
+          {onInicioClick ? (
+            <button
+              type="button"
+              className="cf-crumb-link cf-crumb-link--btn"
+              onClick={onInicioClick}
+            >
+              Inicio
+            </button>
+          ) : (
+            <Link href="/" className="cf-crumb-link">
+              Inicio
+            </Link>
+          )}
           <span className="cf-crumb-sep" aria-hidden="true">
             ›
           </span>

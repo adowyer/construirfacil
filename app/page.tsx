@@ -1,23 +1,118 @@
 /**
  * app/page.tsx
  *
- * Landing B2C de ConstruirFácil (default). Para compradores finales: el
- * mensaje gira alrededor de elegir casa, financiación, garantía y atención.
- * La versión B2B vive en /b2b.
+ * Home de ConstruirFácil. No es una landing separada — el catálogo VIVE acá,
+ * solo que arranca con `initialHomeMode={true}`: la grilla de modelos está
+ * oculta y se muestra el HomeSlider (segundo slider con copy editorial) entre
+ * el HeroRow y donde irían los filtros sticky.
  *
- * Comparte el componente <LandingCF> con la B2B — solo cambia la copy.
+ * Click en cualquier CTA "Ver catálogo" dentro del HomeSlider → toggle a modo
+ * catálogo (grilla aparece). Click en "Inicio" del breadcrumb (cuando estamos
+ * en modo catálogo) → vuelve a modo home. La transición es client-side, no
+ * hay navegación.
+ *
+ * Si alguien entra directo via /catalogo o /catalogo/{marca}, ese page hace
+ * el mismo fetch pero con `initialHomeMode={false}` → entra directo al
+ * catálogo desplegado.
+ *
+ * Landings v1 (single-screen 5 items) y v2 (slideshow + Mac mockup) ambas
+ * archivadas en _archive/ por si hay que recuperarlas.
  */
 
 import type { Metadata } from 'next'
-import LandingCF from '@/components/landing/LandingCF'
-import { LANDING_B2C } from '@/lib/content/landing-cf'
+import { createClient } from '@/lib/supabase/server'
+import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
+import { getAllLineas } from '@/lib/supabase/queries/lineas'
+import { getAllMarcas } from '@/lib/supabase/queries/marcas'
+import {
+  getAllModelContentMap,
+  getAllCatalogImages,
+  getAllCatalogAttributes,
+} from '@/lib/supabase/queries/catalog_panels'
+import { getFeaturedModels } from '@/lib/supabase/queries/featured'
+import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import CatalogPage from '@/components/catalog/CatalogPage'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'ConstruirFácil — Elegí tu casa, en un solo lugar',
+  title: 'ConstruirFácil — La manera más inteligente de Construir',
   description:
-    'La manera más inteligente y fácil de Construir. Explorá cientos de modelos de las mejores marcas de casas industrializadas, con financiación, garantía y atención 24/7.',
+    'Explorá cientos de diseños de casas industrializadas de las mejores marcas. Compará líneas, estilos y precios, encontrá tu casa ideal en un solo lugar.',
 }
 
-export default function HomePage() {
-  return <LandingCF content={LANDING_B2C} />
+export default async function HomePage() {
+  const supabase = await createClient()
+
+  // Mismo fetch que /catalogo/[[...marca]]/page.tsx pero sin marcaSlug —
+  // queremos todos los modelos de todas las marcas aprobadas, igual que el
+  // agregador. La única diferencia es `initialHomeMode={true}` al final.
+  const [
+    models,
+    { data: brandContentAll },
+    { data: lineContentAll },
+    lineas,
+    marcas,
+    modelContentMap,
+    catalogImages,
+    catalogAttributes,
+    featuredModels,
+  ] = await Promise.all([
+    getGroupedCatalog(supabase, {}),
+    supabase
+      .from('brand_content')
+      .select('*')
+      .eq('status', 'active')
+      .order('sort_order'),
+    supabase
+      .from('line_content')
+      .select('*')
+      .eq('status', 'active')
+      .order('sort_order'),
+    getAllLineas(supabase),
+    getAllMarcas(supabase),
+    getAllModelContentMap(supabase),
+    getAllCatalogImages(supabase),
+    getAllCatalogAttributes(supabase),
+    getFeaturedModels(supabase, 8),
+  ])
+
+  const brandContent = brandContentAll ?? []
+  const lineContent = lineContentAll ?? []
+  const approvedMarcas = marcas.filter((m) => m.status === 'approved')
+
+  // Footer cards de todas las marcas aprobadas (como en el agregador).
+  const footerCardsByMarca: Record<string, FooterCardRow[]> = {}
+  const marcaIdsForFooter = approvedMarcas.map((m) => m.id)
+  if (marcaIdsForFooter.length > 0) {
+    const { data: footerCards } = await supabase
+      .from('footer_card_content')
+      .select('*')
+      .in('marca_id', marcaIdsForFooter)
+      .eq('status', 'active')
+      .order('sort_order', { ascending: true })
+
+    for (const c of (footerCards ?? []) as FooterCardRow[]) {
+      const arr = footerCardsByMarca[c.marca_id] ?? []
+      arr.push(c)
+      footerCardsByMarca[c.marca_id] = arr
+    }
+  }
+
+  return (
+    <CatalogPage
+      models={models}
+      brandContent={brandContent}
+      lineContent={lineContent}
+      lineas={lineas}
+      marcas={approvedMarcas}
+      modelContentMap={modelContentMap}
+      catalogImages={catalogImages}
+      catalogAttributes={catalogAttributes}
+      featuredModels={featuredModels}
+      footerCardsByMarca={footerCardsByMarca}
+      selectedMarca={null}
+      initialHomeMode={true}
+    />
+  )
 }

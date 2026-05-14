@@ -36,6 +36,8 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import CatalogFooter from './CatalogFooter'
+import HomeSlider from './HomeSlider'
+import { LANDING_B2C } from '@/lib/content/landing-cf'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -62,6 +64,11 @@ interface PageProps {
   /** Marca activa (en /catalogo/[marca]). Null/undefined en el agregador.
    *  Controla logo, breadcrumb y filtros de contenido contextual. */
   selectedMarca?: { id: string; name: string; slug: string; logo_url: string | null } | null
+  /** Modo inicial: si true, la grilla del catálogo arranca OCULTA y se
+   *  muestra el HomeSlider (5 cards editoriales con CTA "Ver catálogo").
+   *  Se usa en `/` (home) — entrar al catálogo es un toggle interno, no una
+   *  navegación. Default false (modo catálogo normal, ej. /catalogo/[marca]). */
+  initialHomeMode?: boolean
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -92,7 +99,51 @@ export default function CatalogPage({
   featuredModels = [],
   footerCardsByMarca = {},
   selectedMarca = null,
+  initialHomeMode = false,
 }: PageProps) {
+  // Máquina de estados de transición home ↔ catálogo.
+  //
+  //   home    → HomeSlider visible. Catálogo desmontado.
+  //   opening → HomeSlider shell se cierra (persiana arriba). Catálogo shell
+  //             se abre con un PLACEHOLDER vacío de altura fija (1 viewport)
+  //             — eso da al shell altura visible durante la persiana,
+  //             evitando que el footer "suba" porque no hay contenido.
+  //   catalog → Placeholder reemplazado por el catálogo real, que entra con
+  //             fade-in (solo opacity, sin movimiento vertical).
+  //   closing → Catálogo fade-out, luego phase=home cierra todo.
+  //
+  // El truco del placeholder resuelve el bug del shell vacío: como React
+  // tarda en montar 100+ ModelRow, mientras tanto el placeholder mantiene la
+  // altura. Después se monta el catálogo en su lugar sin saltos.
+  type LandingPhase = 'home' | 'opening' | 'catalog' | 'closing'
+  const [phase, setPhase] = useState<LandingPhase>(
+    initialHomeMode ? 'home' : 'catalog',
+  )
+
+  const SHELL_MS = 900 // duración persiana (sincronizado con CSS)
+  const FADE_MS = 400 // duración fade-in/out del catálogo
+
+  const goToCatalog = () => {
+    if (phase !== 'home') return
+    setPhase('opening')
+    window.setTimeout(() => setPhase('catalog'), SHELL_MS)
+  }
+  const goToHome = () => {
+    if (phase !== 'catalog') return
+    setPhase('closing')
+    window.setTimeout(() => setPhase('home'), FADE_MS)
+  }
+
+  // Booleanos derivados para JSX
+  const homeShellOpen = phase === 'home'
+  const showHomeSlider = phase === 'home'
+  const catalogShellOpen = phase !== 'home'
+  // El catálogo SE MONTA tarde (después de la persiana). El placeholder
+  // ocupa su lugar durante 'opening' para que el shell tenga altura visible.
+  const catalogMounted = phase === 'catalog' || phase === 'closing'
+  const showPlaceholder = phase === 'opening'
+  const catalogFadingOut = phase === 'closing'
+
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
   // '' significa "sin filtrar" (mostrar todos). Antes había un valor 'ALL'
@@ -450,7 +501,10 @@ export default function CatalogPage({
 
   return (
     <>
-      {/* ── Header del sitio (NO sticky) ── */}
+      {/* ── Header del sitio (NO sticky) ──
+          Cuando estamos en home (`/` + initialHomeMode=true), el link "Inicio"
+          del breadcrumb se convierte en un button que vuelve al modo home
+          desde el modo catálogo, sin navegación. */}
       <SiteHeader
         marcaContext={{
           selectedMarca,
@@ -460,6 +514,11 @@ export default function CatalogPage({
             logo_url: m.logo_url,
           })),
         }}
+        onInicioClick={
+          initialHomeMode && phase !== 'home' && phase !== 'closing'
+            ? goToHome
+            : undefined
+        }
       />
 
       {/* ── Hero row: primera fila siempre desplegada ── */}
@@ -473,24 +532,42 @@ export default function CatalogPage({
         modelosByLineaName={modelosByLineaName}
       />
 
-      {/* ── Filtros sticky en color CF ── */}
-      <StickyFilters
-        estiloFilter={estiloFilter}
-        bedFilters={bedFilters}
-        sizeFilters={sizeFilters}
-        sortOrder={sortOrder}
-        availableEstilos={availableEstilos}
-        enabledBeds={enabledBeds}
-        enabledSizes={enabledSizes}
-        enabledEstilos={enabledEstilos}
-        onEstiloChange={setEstiloFilter}
-        onBedToggle={toggleBed}
-        onSizeToggle={toggleSize}
-        onSortChange={setSortOrder}
-      />
+      {/* ── Catálogo en shell expandible, ARRIBA del HomeSlider.
+          Cuando se abre, empuja al HomeSlider hacia abajo (flow natural).
+          Como el catálogo es muy alto, el HomeSlider queda fuera del
+          viewport — no necesitamos colapsarlo. Al cerrar, el catálogo se
+          cierra de abajo hacia arriba (shell colapsa) y el HomeSlider
+          vuelve a su lugar empujado por el flow. ── */}
+      <div
+        className={`cf-section-shell${catalogShellOpen ? ' is-open' : ''}`}
+        aria-hidden={!catalogShellOpen}
+      >
+        <div className="cf-section-shell-inner">
+          {showPlaceholder && (
+            <div className="cf-catalog-placeholder" aria-hidden="true" />
+          )}
+          {catalogMounted && (
+          <div
+            className={`cf-catalog-content${
+              catalogFadingOut ? ' is-out' : ''
+            }`}
+          >
+          <StickyFilters
+            estiloFilter={estiloFilter}
+            bedFilters={bedFilters}
+            sizeFilters={sizeFilters}
+            sortOrder={sortOrder}
+            availableEstilos={availableEstilos}
+            enabledBeds={enabledBeds}
+            enabledSizes={enabledSizes}
+            enabledEstilos={enabledEstilos}
+            onEstiloChange={setEstiloFilter}
+            onBedToggle={toggleBed}
+            onSizeToggle={toggleSize}
+            onSortChange={setSortOrder}
+          />
 
-      {/* ── Grilla agrupada por línea (sin group-header) ── */}
-      <div className="cf-grid">
+          <div className="cf-grid">
         {Object.entries(grouped).map(([line, items], gi) => (
           <div key={line}>
             {/* Filas */}
@@ -580,7 +657,22 @@ export default function CatalogPage({
             )}
           </div>
         ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ── HomeSlider: SIEMPRE montado, después del shell del catálogo.
+          Cuando el catálogo está cerrado (phase=home), el HomeSlider se ve
+          justo abajo del HeroRow. Cuando el catálogo se abre, lo empuja
+          hacia abajo y queda fuera del viewport — pero sigue en el DOM
+          renderizándose. No lo desmontamos para que la "bajada" se vea
+          como flow natural, no como un slide que desaparece. ── */}
+      <HomeSlider
+        items={LANDING_B2C.items}
+        onVerCatalogo={goToCatalog}
+      />
 
       {/* ── Footer del catálogo (cierre + marquee + base) ── */}
       <CatalogFooter

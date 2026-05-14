@@ -1,0 +1,400 @@
+/* ────────────────────────────────────────────────────────────────────────
+   ConstruirFácil — Landing CF (B2B + B2C)
+   ──────────────────────────────────────────────────────────────────────── */
+
+.cf-landing {
+  height: 100vh;
+  overflow: hidden;
+  background: #969483;
+  /* olive del catálogo (--cf-hero-olive) */
+  color: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+}
+
+/* ── Top bar: link a la variante alternativa ───────────────────────── */
+.cf-landing-topbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px 48px;
+}
+
+.cf-landing-flip {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: rgba(10, 10, 10, 0.55);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cf-landing-flip:hover {
+  color: #ff003d;
+}
+
+/* ── Hero: ocupa el espacio sobrante entre topbar y footer ─────────── */
+.cf-landing-hero {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 20px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.cf-landing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0px;
+  align-items: stretch;
+}
+
+/* ── IZQ: items con chevron ────────────────────────────────────────── */
+.cf-landing-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  align-self: center;
+}
+
+.cf-landing-item {
+  /* Triple cinturón para que el button sea fit-content y el hover SOLO se
+     dispare sobre el texto+flecha, no en toda la línea horizontal:
+       - align-self: flex-start → no se estira por flex stretch del nav.
+       - display: inline-flex   → button como inline-level (respeta contenido).
+       - width: fit-content     → ancho explícito al contenido.  */
+  align-self: flex-start;
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 22px;
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  font-size: clamp(26px, 3.6vw, 55px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-align: left;
+  cursor: pointer;
+  /* El button NO anima entrada — solo el label adentro. Así las flechas
+     se mantienen visibles desde el primer frame, como pidió el user. */
+}
+
+/* Flecha siempre visible desde el load. Cuando entra su título, hace un
+   "swoosh" — se mueve a la derecha y vuelve. Sin estela blanca (probamos
+   con drop-shadows y al user le quedó raro). El hover/active mantiene la
+   flecha desplazada a la derecha mientras dure. */
+.cf-landing-arrow {
+  width: clamp(28px, 2.6vw, 40px);
+  height: auto;
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Sin `both`/`forwards`: después del swoosh la flecha vuelve a su style
+     default, así el hover puede tomar control. */
+  animation: cfArrowSwoosh 1.1s cubic-bezier(0.16, 1, 0.3, 1) var(--cf-item-delay, 0ms);
+}
+
+@keyframes cfArrowSwoosh {
+  0% {
+    transform: translateX(0);
+  }
+
+  35% {
+    transform: translateX(18px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Hover/active: flecha desplazada hacia la derecha mientras dure el hover. */
+.cf-landing-item:hover .cf-landing-arrow,
+.cf-landing-item.is-active .cf-landing-arrow {
+  transform: translateX(14px);
+}
+
+/* Label: aparece blanco con stagger, se apaga a gris a medida que cargan los
+   siguientes. Duración 4.5s — el user pidió que la entrada de los textos sea
+   aún más lenta para que se sienta contemplativa. */
+.cf-landing-item-label {
+  white-space: nowrap;
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.7);
+  opacity: 0;
+  /* transform-origin: left para que el scale del hover crezca desde la
+     izquierda (la flecha) y no desde el centro del texto. */
+  transform-origin: left center;
+  transition: color 0.25s ease,
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cfLabelLoad 4.5s cubic-bezier(0.16, 1, 0.3, 1) var(--cf-item-delay, 0ms) forwards;
+}
+
+@keyframes cfLabelLoad {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
+    color: #ffffff;
+  }
+
+  12% {
+    opacity: 1;
+    transform: translateX(0);
+    color: #ffffff;
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+/* Hover/active: texto pasa a gris oscuro + pequeño grow (scale anclado al
+   borde izquierdo para que no "rebote" hacia ambos lados).
+   `!important` es necesario porque la animation cfLabelLoad con
+   `animation-fill-mode: forwards` mantiene el style del último keyframe con
+   prioridad de "animation origin" — gana sobre styles normales del hover.
+   Es la única forma estándar de override una animation forwards. */
+.cf-landing-item:hover .cf-landing-item-label,
+.cf-landing-item.is-active .cf-landing-item-label {
+  color: #2a2a2a !important;
+  transform: scale(1.06) !important;
+}
+
+/* ── DER: columna derecha = panel apilado con CTAs ─────────────────── */
+.cf-landing-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 45px;
+  min-width: 0;
+}
+
+.cf-landing-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Min-height aprox = altura de los 5 items izquierdos (font ~55 × 5 +
+     padding/gap). Cuando ambas columnas tienen ~la misma altura interna,
+     el CTA debajo del panel queda al nivel del último item izquierdo. */
+  min-height: 320px;
+}
+
+/* Título por default — grande, blanco, peso pesado. Tipografía editorial. */
+.cf-landing-title {
+  font-size: clamp(36px, 5.5vw, 95px);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0;
+  max-width: 720px;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.cf-landing-title.is-hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+/* Cursor titilante al final del título tipeado. Rosa CF, fino, alto
+   relativo al font-size del padre. Cuando el título se oculta (item activo),
+   el cursor desaparece con él porque es hijo del h1. */
+.cf-landing-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 0.85em;
+  margin-left: 8px;
+  margin-bottom: -2px;
+  background: #ff003d;
+  vertical-align: baseline;
+  /* steps(2) hace el blink "binario" (on/off) como cursor de terminal,
+     en vez del fade suave de ease. */
+  animation: cfCursorBlink 0.9s steps(2) infinite;
+}
+
+@keyframes cfCursorBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Detail: aparece encima del título cuando hay item activo. */
+.cf-landing-detail {
+  max-width: 640px;
+  animation: cfLandingFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cfLandingFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cf-landing-detail-title {
+  font-size: clamp(26px, 2.6vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #2a2a2a;
+  margin: 0 0 14px;
+}
+
+.cf-landing-detail-body {
+  font-size: 18px;
+  line-height: 1.55;
+  color: #2a2a2a;
+  margin: 0;
+}
+
+/* ── CTAs ──────────────────────────────────────────────────────────── */
+/* Alineados a la izquierda del panel (=alineados con el título de arriba). */
+.cf-landing-ctas {
+  display: flex;
+  justify-content: flex-start;
+  gap: 16px;
+  margin-top: 0;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.cf-landing-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+/* CTA primario al 50% del ancho de la columna derecha (boceto del user). */
+.cf-landing-cta-primary {
+  background: #ff003d;
+  color: #ffffff;
+  width: 50%;
+  min-width: 220px;
+}
+
+.cf-landing-cta-primary:hover {
+  background: #e6003a;
+  transform: translateY(-1px);
+}
+
+.cf-landing-cta-secondary {
+  background: transparent;
+  color: #0a0a0a;
+  border: 1px solid rgba(10, 10, 10, 0.35);
+}
+
+.cf-landing-cta-secondary:hover {
+  background: #0a0a0a;
+  color: #ffffff;
+  border-color: #0a0a0a;
+}
+
+/* ── Footer: logo CF gigante con círculos de colores. 30vh, centrado
+   vertical y horizontalmente, con borde superior blanco. ────────────── */
+.cf-landing-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 30vh;
+  padding: 24px 48px;
+  margin: 0 5%;
+  border-top: 1px solid #ffffff;
+}
+
+.cf-landing-logo {
+  max-width: 560px;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ── Mobile / tablet ───────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cf-landing-topbar {
+    padding: 18px 24px;
+  }
+
+  .cf-landing-hero {
+    padding: 32px 24px 24px;
+  }
+
+  .cf-landing-grid {
+    grid-template-columns: 1fr;
+    gap: 0px;
+    min-height: 0;
+  }
+
+  .cf-landing-nav {
+    gap: 14px;
+    align-self: start;
+  }
+
+  .cf-landing-item {
+    font-size: 18px;
+  }
+
+  .cf-landing-chevron {
+    width: 20px;
+    height: 20px;
+    font-size: 22px;
+  }
+
+  .cf-landing-panel {
+    min-height: 400px;
+    align-items: flex-start;
+  }
+
+  .cf-landing-title {
+    font-size: clamp(28px, 8vw, 44px);
+  }
+
+  .cf-landing-detail-body {
+    font-size: 15px;
+  }
+
+  .cf-landing-ctas {
+    margin-top: 32px;
+    justify-content: flex-start;
+  }
+
+  .cf-landing-cta {
+    padding: 12px 22px;
+    font-size: 14px;
+  }
+
+  .cf-landing-footer {
+    padding: 48px 24px 40px;
+    margin-top: 24px;
+  }
+
+  .cf-landing-logo {
+    max-width: 92%;
+  }
+}

@@ -3,200 +3,226 @@
 /**
  * components/landing/LandingCF.tsx
  *
- * Landing genérica de ConstruirFácil. Renderiza dos variantes (B2B y B2C)
- * con el mismo layout: 5 items con chevron a la izquierda + panel grande a
- * la derecha que muestra el título por default y el body del item activo.
+ * Landing v2 de ConstruirFácil (B2C en /, B2B en /empresas). Comparte el
+ * mismo layout entre ambas variantes — solo cambia copy.
  *
- * Interacción:
- *   - Desktop (hover capability): mouseenter activa, mouseleave desactiva
- *     (vuelve al título). Más fluido para exploración.
- *   - Mobile / touch: tap toggle. Sin hover, el panel se "queda" en el
- *     último item tocado hasta que toques otro o el item activo.
+ * Estructura (scroll vertical, NO single-screen como la v1 que se sentía
+ * "sitio en construcción"):
  *
- * Detección via `matchMedia('(hover: hover) and (pointer: fine)')`. iPads
- * con trackpad cuentan como hover; iPhones puros no.
+ *   1. HERO full-viewport
+ *      - Slideshow fade entre 4 fotos editoriales (/public/home/{1,3,4,7}.jpeg)
+ *      - Logo CF arriba a la izquierda + link a la variante alterna
+ *      - Headline sobreimpreso grande, centrado
+ *
+ *   2. BODY editorial (fondo blanco, columna centrada estilo catálogo)
+ *      - Título "La manera más inteligente y fácil de Construir"
+ *      - "Three chips" → grid de 5 cards con los beneficios del catálogo
+ *      - Sección Mac mockup + foto del catálogo encima (espera PNG del user)
+ *
+ *   3. FOOTER institucional
+ *      - Logos partners (Link / AD / Marketeam)
+ *      - Copyright + links Privacidad / Términos
+ *
+ * Versión anterior archivada en _archive/landing-cf-v1/.
  */
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { LandingContent } from '@/lib/content/landing-cf'
-// CSS importado directo desde el componente — más confiable que @import en
-// globals.css (que requiere que todas las reglas vivan antes del @import).
 import '@/app/landing-cf.css'
+
+const HERO_IMAGES = [
+  '/home/1.jpeg',
+  '/home/3.jpeg',
+  '/home/4.jpeg',
+  '/home/7.jpeg',
+]
+const SLIDE_INTERVAL_MS = 5500
 
 interface Props {
   content: LandingContent
 }
 
-// Velocidad del typewriter del título (ms por caracter). 60ms × ~47 chars =
-// ~2820ms. Después de eso hay una pausa breve antes de arrancar los items.
-const TYPEWRITER_MS = 60
-// Espera total antes de que arranque el stagger de items. Suficiente para
-// que el typewriter termine + una pausa contemplativa antes de seguir.
-const ITEMS_START_AFTER_MS = 3300
-// Delay entre items: chico para que "casi carguen todos juntos" como pidió
-// el user. Combinado con duración larga por item (2.8s en CSS) crea la
-// cascada donde un item ya está apareciendo cuando el anterior empieza a
-// apagarse.
-const STAGGER_MS = 90
-
 export default function LandingCF({ content }: Props) {
-  const [activeKey, setActiveKey] = useState<string | null>(null)
-  const [isHoverable, setIsHoverable] = useState(false)
-  const [typedTitle, setTypedTitle] = useState('')
+  const [activeSlide, setActiveSlide] = useState(0)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
-    setIsHoverable(mq.matches)
-    const onChange = (e: MediaQueryListEvent) => setIsHoverable(e.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-
-  // Typewriter del título al primer mount. Si el user ya está
-  // interactuando con un item, el título igual está oculto — no afecta.
-  useEffect(() => {
-    setTypedTitle('')
-    const text = content.title
-    let i = 0
     const id = window.setInterval(() => {
-      i++
-      setTypedTitle(text.slice(0, i))
-      if (i >= text.length) window.clearInterval(id)
-    }, TYPEWRITER_MS)
+      setActiveSlide((s) => (s + 1) % HERO_IMAGES.length)
+    }, SLIDE_INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [content.title])
-
-  const activeItem =
-    activeKey !== null
-      ? content.items.find((i) => i.key === activeKey) ?? null
-      : null
-
-  const handleEnter = (key: string) => {
-    if (isHoverable) setActiveKey(key)
-  }
-  const handleLeave = () => {
-    if (isHoverable) setActiveKey(null)
-  }
-  const handleClick = (key: string) => {
-    // En desktop también funciona el click (toggle); en mobile es el único
-    // mecanismo. Si re-tocás el item activo, se cierra.
-    setActiveKey((prev) => (prev === key ? null : key))
-  }
+  }, [])
 
   const otherVariantHref = content.variant === 'b2b' ? '/' : '/empresas'
   const otherVariantLabel =
     content.variant === 'b2b' ? 'Quiero Construir' : 'Soy Proveedor'
 
+  // Copy del hero — varía según B2C/B2B. Lo dejamos hardcoded acá para
+  // iterar rápido; si crece, mover a lib/content/landing-cf.ts.
+  const heroHeadline =
+    content.variant === 'b2c' ? (
+      <>
+        La casa que querés,
+        <br />
+        al precio que necesitás.
+      </>
+    ) : (
+      <>
+        Tu marca,
+        <br />
+        frente al mercado más grande.
+      </>
+    )
+
   return (
-    <main className="cf-landing">
-      {/* Top bar: link a la otra variante. Discreto, sin nav. */}
-      <header className="cf-landing-topbar">
-        <Link href={otherVariantHref} className="cf-landing-flip">
-          {otherVariantLabel} →
-        </Link>
-      </header>
+    <main className="cf-l">
+      {/* ════════════════════════════════════════════════════════════════
+          HERO full-viewport con slideshow fade
+          ════════════════════════════════════════════════════════════════ */}
+      <section className="cf-l-hero">
+        {/* Slideshow background: 4 capas con fade entre ellas via opacity. */}
+        <div className="cf-l-hero-slides" aria-hidden="true">
+          {HERO_IMAGES.map((src, i) => (
+            <div
+              key={src}
+              className={`cf-l-hero-slide${
+                i === activeSlide ? ' is-active' : ''
+              }`}
+              style={{ backgroundImage: `url('${src}')` }}
+            />
+          ))}
+        </div>
 
-      <section className="cf-landing-hero">
-        <div className="cf-landing-grid">
-          {/* IZQ: 5 items con flecha roja (asset compartido con el catálogo).
-              onMouseLeave en el container (no en cada item) para que el
-              "salto" entre items no resetee. */}
-          <nav
-            className="cf-landing-nav"
-            onMouseLeave={handleLeave}
-            aria-label="Beneficios"
-          >
-            {content.items.map((it, i) => (
-              <button
-                key={it.key}
-                type="button"
-                className={`cf-landing-item${
-                  activeKey === it.key ? ' is-active' : ''
-                }`}
-                // Stagger: cada item entra con delay incremental. Se setea
-                // como CSS var para que los hijos (label + flecha) compartan
-                // el timing en sus respectivas animaciones.
-                style={
-                  {
-                    '--cf-item-delay': `${
-                      ITEMS_START_AFTER_MS + i * STAGGER_MS
-                    }ms`,
-                  } as React.CSSProperties
-                }
-                onMouseEnter={() => handleEnter(it.key)}
-                onClick={() => handleClick(it.key)}
-                aria-pressed={activeKey === it.key}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/Flecha-Roja.png"
-                  alt=""
-                  aria-hidden="true"
-                  className="cf-landing-arrow"
-                />
-                <span className="cf-landing-item-label">{it.label}</span>
-              </button>
+        {/* Overlay oscuro para que el texto blanco sea legible sobre las fotos */}
+        <div className="cf-l-hero-overlay" aria-hidden="true" />
+
+        {/* Topbar dentro del hero: logo CF a la izquierda + flip variant */}
+        <header className="cf-l-topbar">
+          <Link href="/" aria-label="ConstruirFácil — Inicio" className="cf-l-logo-link">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cf_logo_gris.png"
+              alt="ConstruirFácil"
+              className="cf-l-logo"
+            />
+          </Link>
+          <Link href={otherVariantHref} className="cf-l-flip">
+            {otherVariantLabel} <span aria-hidden="true">→</span>
+          </Link>
+        </header>
+
+        {/* Headline sobreimpreso */}
+        <h1 className="cf-l-hero-headline">{heroHeadline}</h1>
+
+        {/* Dots indicators */}
+        <div className="cf-l-hero-dots" role="tablist">
+          {HERO_IMAGES.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === activeSlide}
+              aria-label={`Imagen ${i + 1} de ${HERO_IMAGES.length}`}
+              className={`cf-l-hero-dot${
+                i === activeSlide ? ' is-active' : ''
+              }`}
+              onClick={() => setActiveSlide(i)}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════
+          BODY editorial — fondo blanco, columna centrada
+          ════════════════════════════════════════════════════════════════ */}
+      <section className="cf-l-body">
+        <div className="cf-l-container">
+          <h2 className="cf-l-body-title">{content.title}</h2>
+
+          {/* "Three chips" — grid de cards con los beneficios. 5 items, en
+              desktop 3+2 o auto-fit; en mobile colapsa a 1 columna. */}
+          <div className="cf-l-chips">
+            {content.items.map((it) => (
+              <article key={it.key} className="cf-l-chip">
+                <h3 className="cf-l-chip-title">{it.label}</h3>
+                <p className="cf-l-chip-body">{it.body}</p>
+              </article>
             ))}
-          </nav>
+          </div>
+        </div>
 
-          {/* DER: panel + CTAs apilados verticalmente. CTAs viven dentro
-              de esta columna para quedar alineados a la izquierda del
-              título de arriba. */}
-          <div className="cf-landing-right">
-            <div className="cf-landing-panel">
-              <h1
-                className={`cf-landing-title${activeItem ? ' is-hidden' : ''}`}
-                aria-label={content.title}
-              >
-                {typedTitle}
-                {/* Cursor titilante al final del texto tipeado. Solo visible
-                    mientras el título está activo (sin item hover). */}
-                <span className="cf-landing-cursor" aria-hidden="true" />
-              </h1>
-              {activeItem && (
-                <div className="cf-landing-detail">
-                  {/* No repetimos el label acá — ya vive en la flecha de la
-                      izquierda, mostrarlo de nuevo era redundante. */}
-                  <p className="cf-landing-detail-body">{activeItem.body}</p>
-                </div>
-              )}
-            </div>
-
-            {/* CTAs alineados al inicio de la columna (=alineados con el
-                título arriba). Primary toma ~50% del ancho. */}
-            <div className="cf-landing-ctas">
+        {/* Sección Mac mockup — width full bleed (rompe el container) para que
+            la pantalla del Mac sea protagonista. Texto a la izquierda. */}
+        <div className="cf-l-mac-section">
+          <div className="cf-l-mac-grid">
+            <div className="cf-l-mac-copy">
+              <h3 className="cf-l-mac-title">
+                {content.variant === 'b2c'
+                  ? 'El catálogo más inteligente del mercado.'
+                  : 'Mostrá tu inventario en el catálogo más visitado.'}
+              </h3>
+              <p className="cf-l-mac-body">
+                {content.variant === 'b2c'
+                  ? 'Filtrá por estilo, tamaño y dormitorios. Compará marcas. Encontrá tu casa ideal — toda la oferta del país en un solo lugar.'
+                  : 'Tu marca al lado de las mejores del país. Tu catálogo, ordenado por IA según la búsqueda de cada cliente. Más conversión, menos ciclo.'}
+              </p>
               <Link
                 href={content.primaryCta.href}
-                className="cf-landing-cta cf-landing-cta-primary"
+                className="cf-l-mac-cta"
               >
                 {content.primaryCta.label}
                 <span aria-hidden="true"> →</span>
               </Link>
-              {content.secondaryCta && (
-                <Link
-                  href={content.secondaryCta.href}
-                  className="cf-landing-cta cf-landing-cta-secondary"
-                >
-                  {content.secondaryCta.label}
-                  <span aria-hidden="true"> →</span>
-                </Link>
-              )}
+            </div>
+
+            <div className="cf-l-mac-frame">
+              {/* Placeholder hasta que llegue el PNG del MacBook. El frame
+                  CSS simula el bezel oscuro + pantalla. Cuando esté el PNG,
+                  reemplazar este div por <img src="/macbook-frame.png" /> y
+                  posicionar la foto del catálogo encima vía absolute. */}
+              <div className="cf-l-mac-screen">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/home/1.jpeg"
+                  alt="Catálogo ConstruirFácil"
+                  className="cf-l-mac-screen-img"
+                />
+              </div>
+              <div className="cf-l-mac-base" aria-hidden="true" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Footer con el logo CF grande (incluye los 6 círculos coloridos
-          como parte del PNG) */}
-      <footer className="cf-landing-footer">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/cf_logo.png"
-          alt="ConstruirFácil.com"
-          className="cf-landing-logo"
-        />
+      {/* ════════════════════════════════════════════════════════════════
+          FOOTER institucional — logos + copyright + links legales
+          ════════════════════════════════════════════════════════════════ */}
+      <footer className="cf-l-footer">
+        <div className="cf-l-footer-inner">
+          <div className="cf-l-footer-logos">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Link.png" alt="Link" className="cf-l-footer-logo" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Ad.png" alt="AD" className="cf-l-footer-logo" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/Marketeam.png"
+              alt="Marketeam"
+              className="cf-l-footer-logo"
+            />
+          </div>
+          <div className="cf-l-footer-meta">
+            <span className="cf-l-footer-copy">
+              © {new Date().getFullYear()} ConstruirFácil. Todos los derechos
+              reservados.
+            </span>
+            <nav className="cf-l-footer-links">
+              <a href="/privacidad">Política de Privacidad</a>
+              <span aria-hidden="true">·</span>
+              <a href="/terminos">Términos del Servicio</a>
+            </nav>
+          </div>
+        </div>
       </footer>
     </main>
   )
