@@ -26,6 +26,11 @@ import {
   getAllCatalogAttributes,
 } from '@/lib/supabase/queries/catalog_panels'
 import { getFeaturedModels } from '@/lib/supabase/queries/featured'
+import { getActiveSistemaConstructivo } from '@/lib/supabase/queries/sistema-constructivo'
+import {
+  getResolvedBrandContent,
+  getResolvedLineContent,
+} from '@/lib/supabase/queries/content_resolve'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
@@ -90,44 +95,37 @@ export default async function CatalogoPage({ params }: PageProps) {
   }
 
   // ── Catálogo y datos auxiliares ───────────────────────────────────────
+  // Contenido resuelto por marca activa: /catalogo/{marca} prefiere las
+  // filas de esa marca y cae a las globales; el agregador (sin marca) usa
+  // solo globales. Las filas existentes son todas globales → sin overrides
+  // el resultado es idéntico al comportamiento anterior.
+  const resolveMarcaId = selectedMarca?.id ?? null
   const [
     models,
-    { data: brandContentAll },
-    { data: lineContentAll },
+    brandContent,
+    lineContent,
     lineas,
     marcas,
     modelContentMap,
     catalogImages,
     catalogAttributes,
     featuredModels,
+    scContent,
   ] = await Promise.all([
     getGroupedCatalog(
       supabase,
       selectedMarca ? { marcaId: selectedMarca.id } : {},
     ),
-    supabase
-      .from('brand_content')
-      .select('*')
-      .eq('status', 'active')
-      .order('sort_order'),
-    supabase
-      .from('line_content')
-      .select('*')
-      .eq('status', 'active')
-      .order('sort_order'),
+    getResolvedBrandContent(supabase, resolveMarcaId),
+    getResolvedLineContent(supabase, resolveMarcaId),
     getAllLineas(supabase),
     getAllMarcas(supabase),
     getAllModelContentMap(supabase),
     getAllCatalogImages(supabase),
     getAllCatalogAttributes(supabase),
     getFeaturedModels(supabase, 8),
+    getActiveSistemaConstructivo(supabase),
   ])
-
-  // brand_content / line_content todavía son globales (no tienen marca_id).
-  // Mientras no se migren a multi-marca (ver [[project_product_vision]]),
-  // tanto el agregador como el catálogo de marca consumen el mismo set.
-  const brandContent = brandContentAll ?? []
-  const lineContent = lineContentAll ?? []
 
   // Solo marcas aprobadas en el footer público.
   const approvedMarcas = marcas.filter((m) => m.status === 'approved')
@@ -157,6 +155,7 @@ export default async function CatalogoPage({ params }: PageProps) {
       models={models}
       brandContent={brandContent}
       lineContent={lineContent}
+      scContent={scContent}
       lineas={lineas}
       marcas={approvedMarcas}
       modelContentMap={modelContentMap}

@@ -49,6 +49,16 @@ interface LineContentLite {
   body: string | null
 }
 
+interface ScContentLite {
+  marca_id: string | null
+  slug: string
+  name: string
+  tagline: string | null
+  body: string | null
+  hero_image_url: string | null
+  sort_order: number
+}
+
 interface PanelsProps {
   model: CatalogModel
   modelContent: ModelContentRow | null
@@ -58,6 +68,9 @@ interface PanelsProps {
   activeSkus: CatalogModel['skus']
   brandContent: BrandContentLite[]
   lineContent: LineContentLite[]
+  /** Copy editorial dedicado por sistema constructivo (global + per-marca).
+   *  El panel SC lo prefiere; si no hay fila, cae al legacy de brandContent. */
+  scContent: ScContentLite[]
   attributesForCatalogIds: CatalogAttributeRow[] // todos los attributes de los SKUs del modelo
   otherStyles: CatalogModel[] // otros modelos en misma linea+tipologia
   /** Map para resolver model_content de OTROS modelos (panel comparativa estilos). */
@@ -1181,19 +1194,11 @@ interface BrandContentForSC extends BrandContentLite {
   subtitle?: string | null
 }
 
-// Lista canónica de los 3 sistemas constructivos Hausind. El panel SIEMPRE
-// muestra las 3 columnas, incluso si el modelo no está cargado en alguno —
-// es parte de la visión de marca (Steel/Wood/Stone Plus como sistemas de
-// Hausind, no como inventario por casa).
-//
-// `preferredLinea` define qué línea representa visualmente a cada SC.
-// Decisión editorial del user: Steel → Bosque, Wood → Atlas, Stone → Terra.
-// La foto bg viene de una casa de esa línea (cualquier modelo del catálogo),
-// no necesariamente del modelo abierto.
-//
-// Por ahora los títulos son FIJOS (Steel/Wood/Stone Plus), no leen del admin.
-// Cuando exista el admin dedicado de SC (`sistema_constructivo_content`),
-// el title también podrá venir de ahí.
+// FALLBACK LEGACY — solo se usa si `scContent` está vacío (migración 0019
+// aún no aplicada / librería sin filas). Reproduce el comportamiento viejo:
+// 3 columnas fijas Steel/Wood/Stone Plus con copy de brand_content y foto
+// por línea preferida (Steel→Bosque, Wood→Atlas, Stone→Terra). Cuando hay
+// librería, el panel pasa a ser data-driven por la marca del modelo.
 const CANONICAL_SCS: {
   sc: string
   key: string
@@ -1221,12 +1226,16 @@ function splitFirstLine(s: string | null | undefined): {
 export function PanelSCColumns({
   model,
   brandContent,
+  scContent = [],
   images,
   activeSkus,
   allModels = [],
 }: {
   model: CatalogModel
   brandContent: BrandContentForSC[]
+  /** Copy editorial dedicado por SC (global + per-marca). Preferido sobre
+   *  brandContent; si no hay fila, cae al legacy. */
+  scContent?: ScContentLite[]
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   /** Todo el catálogo — usado para asignar foto bg por línea preferida
@@ -1319,18 +1328,60 @@ export function PanelSCColumns({
     return sortedPool[0] ?? null
   }
 
-  const columns = CANONICAL_SCS.map(({ sc, key, title, preferredLinea }) => {
-    const content = brandContent.find((b) => b.key === key) ?? null
-    const split = splitFirstLine(content?.body)
-    const photo = photoForLinea(preferredLinea) ?? photoFromPool()
-    return {
-      sc,
-      title,
-      photo,
-      lead: content?.subtitle?.trim() || split.lead,
-      body: content?.subtitle ? content.body ?? '' : split.rest,
-    }
-  })
+  // ── Librería SC de la marca del modelo ─────────────────────────────
+  // Propietarios de la marca del modelo + compartidos (marca_id NULL) no
+  // pisados por un propietario del mismo slug. Orden por sort_order.
+  const marcaId = model.marca_id
+  const proprietary = marcaId
+    ? scContent.filter((r) => r.marca_id === marcaId)
+    : []
+  const proprietarySlugs = new Set(proprietary.map((r) => r.slug))
+  const shared = scContent.filter(
+    (r) => r.marca_id === null && !proprietarySlugs.has(r.slug),
+  )
+  const marcaLib = [...proprietary, ...shared].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  )
+
+  type ScCol = {
+    sc: string
+    title: string
+    bgUrl: string | null
+    lead: string
+    body: string
+  }
+  let columns: ScCol[]
+
+  if (marcaLib.length > 0) {
+    // Data-driven: una columna por SC de la librería de la marca. tagline
+    // vacío → se promueve la 1ra línea del body (compat con formato viejo).
+    columns = marcaLib.map((row) => {
+      const s = splitFirstLine(row.body)
+      const photo = row.hero_image_url ? null : photoFromPool()
+      return {
+        sc: row.slug,
+        title: row.name,
+        bgUrl: row.hero_image_url ?? (photo ? pickFull(photo) : null),
+        lead: row.tagline?.trim() || s.lead,
+        body: row.tagline ? row.body ?? '' : s.rest,
+      }
+    })
+  } else {
+    // Fallback legacy: 3 columnas fijas Steel/Wood/Stone Plus desde
+    // brand_content + foto por línea preferida (comportamiento pre-0019).
+    columns = CANONICAL_SCS.map(({ sc, key, title, preferredLinea }) => {
+      const content = brandContent.find((b) => b.key === key) ?? null
+      const split = splitFirstLine(content?.body)
+      const photo = photoForLinea(preferredLinea) ?? photoFromPool()
+      return {
+        sc,
+        title,
+        bgUrl: photo ? pickFull(photo) : null,
+        lead: content?.subtitle?.trim() || split.lead,
+        body: content?.subtitle ? content.body ?? '' : split.rest,
+      }
+    })
+  }
 
   if (columns.length === 0) return null
 
@@ -1341,10 +1392,8 @@ export function PanelSCColumns({
           key={col.sc}
           className="cf-pn-sc-col"
           style={{
-            backgroundImage: col.photo
-              ? `url('${pickFull(col.photo)}')`
-              : undefined,
-            backgroundColor: col.photo ? undefined : model.lqip_color,
+            backgroundImage: col.bgUrl ? `url('${col.bgUrl}')` : undefined,
+            backgroundColor: col.bgUrl ? undefined : model.lqip_color,
           }}
         >
           <div className="cf-pn-sc-col-overlay">
@@ -1678,6 +1727,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         <PanelSCColumns
           model={props.model}
           brandContent={props.brandContent}
+          scContent={props.scContent}
           images={props.images}
           activeSkus={props.activeSkus}
           allModels={props.allModels}

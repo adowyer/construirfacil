@@ -384,17 +384,19 @@ async function upsertAll({ brand, lineRows, modelRows }) {
     auth: { persistSession: false },
   })
 
-  // brand_content: UNIQUE(key)
+  // brand_content: UNIQUE(marca_id, key) NULLS NOT DISTINCT (mig. 0020).
+  // Las filas no setean marca_id → NULL (contenido global), que es lo que
+  // este seed escribe. onConflict debe incluir marca_id.
   const { error: brandErr } = await supabase
     .from('brand_content')
-    .upsert(brand, { onConflict: 'key' })
+    .upsert(brand, { onConflict: 'marca_id,key' })
   if (brandErr) throw new Error(`brand_content: ${brandErr.message}`)
 
-  // line_content: UNIQUE(linea, tipologia_code) NULLS NOT DISTINCT
-  // El upsert necesita 'linea,tipologia_code' como onConflict.
+  // line_content: UNIQUE(marca_id, linea, tipologia_code) NULLS NOT DISTINCT
+  // (mig. 0020). Idem: filas sin marca_id → global.
   const { error: lineErr } = await supabase
     .from('line_content')
-    .upsert(lineRows, { onConflict: 'linea,tipologia_code' })
+    .upsert(lineRows, { onConflict: 'marca_id,linea,tipologia_code' })
   if (lineErr) throw new Error(`line_content: ${lineErr.message}`)
 
   // model_content: UNIQUE(style_name, linea). Solo actualizamos body y

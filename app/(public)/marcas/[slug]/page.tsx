@@ -59,12 +59,8 @@ export default async function MarcaPage({ params }: MarcaPageProps) {
 
   // ── Path 1: landing rica ────────────────────────────────────────────────
   if (content) {
-    // Hoy `getFeaturedModels` no filtra por marca_id (CatalogModel no expone
-    // el campo). Como Hausind es la única marca con catálogo poblado, los
-    // featured globales = featured de Hausind. Cuando llegue una segunda
-    // marca con featured propios, extender featured.ts con un parámetro
-    // `marcaId`.
-    const featuredModels = await getFeaturedModels(supabase, 6)
+    // Featured de ESTA marca (getFeaturedModels filtra por marca_id).
+    const featuredModels = await getFeaturedModels(supabase, 6, marca.id)
 
     return (
       <MarcaLanding

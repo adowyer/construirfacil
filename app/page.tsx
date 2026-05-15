@@ -30,13 +30,18 @@ import {
   getAllCatalogAttributes,
 } from '@/lib/supabase/queries/catalog_panels'
 import { getFeaturedModels } from '@/lib/supabase/queries/featured'
+import { getActiveSistemaConstructivo } from '@/lib/supabase/queries/sistema-constructivo'
+import {
+  getResolvedBrandContent,
+  getResolvedLineContent,
+} from '@/lib/supabase/queries/content_resolve'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'ConstruirFácil — La manera más inteligente de Construir',
+  title: 'ConstruirFácil — La manera más inteligente y fácil de construir.',
   description:
     'Explorá cientos de diseños de casas industrializadas de las mejores marcas. Compará líneas, estilos y precios, encontrá tu casa ideal en un solo lugar.',
 }
@@ -47,38 +52,34 @@ export default async function HomePage() {
   // Mismo fetch que /catalogo/[[...marca]]/page.tsx pero sin marcaSlug —
   // queremos todos los modelos de todas las marcas aprobadas, igual que el
   // agregador. La única diferencia es `initialHomeMode={true}` al final.
+  // Home = agregador sin marca activa → contenido GLOBAL (marca_id NULL).
+  // Hoy todas las filas son globales, así que es idéntico al comportamiento
+  // anterior. Cuando se carguen overrides per-marca, el agregador sigue
+  // mostrando el global; cada /catalogo/{marca} prefiere el suyo.
   const [
     models,
-    { data: brandContentAll },
-    { data: lineContentAll },
+    brandContent,
+    lineContent,
     lineas,
     marcas,
     modelContentMap,
     catalogImages,
     catalogAttributes,
     featuredModels,
+    scContent,
   ] = await Promise.all([
     getGroupedCatalog(supabase, {}),
-    supabase
-      .from('brand_content')
-      .select('*')
-      .eq('status', 'active')
-      .order('sort_order'),
-    supabase
-      .from('line_content')
-      .select('*')
-      .eq('status', 'active')
-      .order('sort_order'),
+    getResolvedBrandContent(supabase, null),
+    getResolvedLineContent(supabase, null),
     getAllLineas(supabase),
     getAllMarcas(supabase),
     getAllModelContentMap(supabase),
     getAllCatalogImages(supabase),
     getAllCatalogAttributes(supabase),
     getFeaturedModels(supabase, 8),
+    getActiveSistemaConstructivo(supabase),
   ])
 
-  const brandContent = brandContentAll ?? []
-  const lineContent = lineContentAll ?? []
   const approvedMarcas = marcas.filter((m) => m.status === 'approved')
 
   // Footer cards de todas las marcas aprobadas (como en el agregador).
@@ -104,6 +105,7 @@ export default async function HomePage() {
       models={models}
       brandContent={brandContent}
       lineContent={lineContent}
+      scContent={scContent}
       lineas={lineas}
       marcas={approvedMarcas}
       modelContentMap={modelContentMap}

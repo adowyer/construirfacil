@@ -34,6 +34,14 @@ function parseSortOrder(value: FormDataEntryValue | null): number {
   return Number.isFinite(n) ? Math.trunc(n) : 0
 }
 
+/** '' / 'global' / null → null (fila global); cualquier otro → ese marca_id. */
+function parseMarcaId(value: FormDataEntryValue | null): string | null {
+  if (value === null) return null
+  const s = String(value).trim()
+  if (s === '' || s === 'global') return null
+  return s
+}
+
 function normalizeKey(raw: string): string {
   return raw
     .trim()
@@ -45,6 +53,7 @@ function normalizeKey(raw: string): string {
 }
 
 type BrandContentPayload = {
+  marca_id: string | null
   key: string
   label: string
   title: string | null
@@ -56,12 +65,19 @@ type BrandContentPayload = {
   status: 'active' | 'inactive' | 'archived'
 }
 
-function buildPayload(formData: FormData, opts: { lockKey?: string }): BrandContentPayload {
+function buildPayload(
+  formData: FormData,
+  opts: { lockKey?: string; lockMarca?: string | null },
+): BrandContentPayload {
   const status = (parseOptionalText(formData.get('status')) ?? 'active') as
     | 'active'
     | 'inactive'
     | 'archived'
   return {
+    marca_id:
+      opts.lockMarca !== undefined
+        ? opts.lockMarca
+        : parseMarcaId(formData.get('marca_id')),
     key: opts.lockKey ?? normalizeKey(parseRequiredText(formData.get('key'))),
     label: parseRequiredText(formData.get('label')),
     title: parseOptionalText(formData.get('title')),
@@ -104,15 +120,22 @@ export async function createBrandContent(
   const validation = validatePayload(payload)
   if (validation) return { error: validation }
 
-  // Key únicidad
-  const { data: existing } = await admin
+  // Unicidad (marca_id, key). marca_id NULL es distinguible.
+  let dupQuery = admin
     .from('brand_content')
     .select('id')
     .eq('key', payload.key)
-    .maybeSingle()
+  dupQuery = payload.marca_id
+    ? dupQuery.eq('marca_id', payload.marca_id)
+    : dupQuery.is('marca_id', null)
+  const { data: existing } = await dupQuery.maybeSingle()
 
   if (existing) {
-    return { error: `Ya existe un brand_content con key "${payload.key}".` }
+    return {
+      error: `Ya existe un contenido con key "${payload.key}" en ${
+        payload.marca_id ? 'esa marca' : 'el ámbito global'
+      }.`,
+    }
   }
 
   const { data: inserted, error } = await admin
@@ -139,13 +162,17 @@ export async function createBrandContent(
 export async function updateBrandContent(
   id: string,
   currentKey: string,
+  currentMarcaId: string | null,
   _prevState: Result,
   formData: FormData,
 ): Promise<Result> {
   const admin = createAdminClient()
 
-  // La key NO se edita en update — usamos la actual sin importar lo que mande el form.
-  const payload = buildPayload(formData, { lockKey: currentKey })
+  // key y marca_id NO se editan en update (identifican la fila).
+  const payload = buildPayload(formData, {
+    lockKey: currentKey,
+    lockMarca: currentMarcaId,
+  })
   const validation = validatePayload(payload)
   if (validation) return { error: validation }
 

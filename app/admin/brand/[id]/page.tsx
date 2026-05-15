@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContentById } from '@/lib/supabase/queries/brand-content'
+import { getAllMarcas } from '@/lib/supabase/queries/marcas'
 import { BrandContentForm } from '@/components/admin/BrandContentForm'
 import { DeleteBrandContentButton } from '@/components/admin/DeleteBrandContentButton'
 import { updateBrandContent } from '@/app/admin/brand/actions'
@@ -21,7 +22,17 @@ export default async function EditBrandContentPage({ params }: PageProps) {
   const item = await getBrandContentById(supabase, id)
   if (!item) notFound()
 
-  const updateAction = updateBrandContent.bind(null, id, item.key)
+  const marcas = await getAllMarcas(supabase)
+  const approved = marcas
+    .filter((m) => m.status === 'approved')
+    .map((m) => ({ id: m.id, name: m.name }))
+
+  const updateAction = updateBrandContent.bind(
+    null,
+    id,
+    item.key,
+    item.marca_id,
+  )
 
   return (
     <div className="max-w-3xl">
@@ -55,6 +66,7 @@ export default async function EditBrandContentPage({ params }: PageProps) {
 
       <BrandContentForm
         action={updateAction}
+        marcas={approved}
         defaultValues={item}
         isEdit
         submitLabel="Guardar cambios"

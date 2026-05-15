@@ -28,6 +28,7 @@ import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import type { Marca } from '@/types/database'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
+import type { SistemaConstructivoLite } from '@/lib/supabase/queries/sistema-constructivo'
 import {
   type CatalogImage,
   type CatalogAttributeRow,
@@ -47,6 +48,9 @@ interface PageProps {
   models: CatalogModel[]
   brandContent?: BrandContent[]
   lineContent?: LineContent[]
+  /** Copy editorial por sistema constructivo (global + per-marca). El panel
+   *  SC lo prefiere sobre brandContent; si está vacío, cae al legacy. */
+  scContent?: SistemaConstructivoLite[]
   lineas?: LineaRow[]
   /** Marcas aprobadas — usadas en las cards del marquee del footer. */
   marcas?: Marca[]
@@ -91,6 +95,7 @@ export default function CatalogPage({
   models = [],
   brandContent = [],
   lineContent = [],
+  scContent = [],
   lineas = [],
   marcas = [],
   modelContentMap = {},
@@ -633,6 +638,7 @@ export default function CatalogPage({
                   coverUrl={dynamicCoverUrl}
                   brandContent={brandContent}
                   lineContent={lineContent}
+                  scContent={scContent}
                   attributesForCatalogIds={modelAttributes}
                   otherStyles={otherStyles}
                   modelContentMap={modelContentMap}

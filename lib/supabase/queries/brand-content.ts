@@ -15,6 +15,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface BrandContentRow {
   id: string
+  /** NULL = contenido global (fallback). Con valor = override de esa marca. */
+  marca_id: string | null
   key: string
   label: string
   title: string | null
@@ -34,6 +36,7 @@ export async function getAllBrandContent(
   const { data, error } = await supabase
     .from('brand_content')
     .select('*')
+    .order('marca_id', { ascending: true, nullsFirst: true })
     .order('sort_order', { ascending: true })
     .order('key', { ascending: true })
 

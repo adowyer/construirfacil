@@ -36,9 +36,12 @@ export interface LandingContent {
   secondaryCta?: LandingCta
 }
 
-// Email de partners — placeholder. Cambiar a la casilla real cuando esté
-// configurada. Hoy va al mismo cotizar@hausind.com como fallback transitorio.
-const PARTNERS_EMAIL = 'cotizar@hausind.com'
+// Email de partners (alta de marca B2B). Apunta al inbox de ConstruirFácil
+// ya configurado por el dueño — NO a cotizar@hausind.com, que es de una
+// marca y desviaba los leads B2B cross-marca.
+// TODO(user): cambiar a una casilla dedicada (ej. partners@construirfacil.com)
+// cuando exista. Hoy info@ es el inbox general válido de ConstruirFácil.
+const PARTNERS_EMAIL = 'info@construirfacil.com'
 
 function partnersMailto(): string {
   const subject = 'Quiero sumar mi marca a ConstruirFácil'
@@ -60,7 +63,7 @@ function partnersMailto(): string {
 
 export const LANDING_B2C: LandingContent = {
   variant: 'b2c',
-  title: 'La manera más inteligente y fácil de Construir',
+  title: 'La manera más inteligente y fácil de construir.',
   items: [
     {
       key: 'todo-en-uno',
@@ -93,7 +96,7 @@ export const LANDING_B2C: LandingContent = {
 
 export const LANDING_B2B: LandingContent = {
   variant: 'b2b',
-  title: 'La manera más inteligente y fácil de Construir',
+  title: 'La manera más inteligente y fácil de construir.',
   items: [
     {
       key: 'solucion-total',

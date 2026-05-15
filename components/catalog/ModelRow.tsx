@@ -36,6 +36,15 @@ interface LineContentLite {
   subtitle: string | null
   body: string | null
 }
+interface ScContentLite {
+  marca_id: string | null
+  slug: string
+  name: string
+  tagline: string | null
+  body: string | null
+  hero_image_url: string | null
+  sort_order: number
+}
 
 interface ModelRowProps {
   model: CatalogModel
@@ -53,6 +62,7 @@ interface ModelRowProps {
   coverUrl?: string | null
   brandContent?: BrandContentLite[]
   lineContent?: LineContentLite[]
+  scContent?: ScContentLite[]
   attributesForCatalogIds?: CatalogAttributeRow[]
   otherStyles?: CatalogModel[]
   /** Map global de model_content; usado en el panel comparativa de estilos
@@ -211,6 +221,7 @@ export default function ModelRow({
   coverUrl,
   brandContent = [],
   lineContent = [],
+  scContent = [],
   attributesForCatalogIds = [],
   otherStyles = [],
   modelContentMap,
@@ -222,6 +233,9 @@ export default function ModelRow({
   const displayCoverUrl = coverUrl ?? model.cover_url
   const [hovered, setHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  // Hint de scroll horizontal al abrir el expandido (nudge + chevron). Se
+  // descarta al primer gesto real del usuario o por timeout.
+  const [scrollHint, setScrollHint] = useState(false)
   const shellRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
   const galleryRef = useRef<HTMLDivElement>(null)
@@ -399,6 +413,77 @@ export default function ModelRow({
     }
   }, [isExpanded])
 
+  // Hint de scroll horizontal al abrir: usuarios reales no descubrían que el
+  // slider corre a la derecha. B = nudge del track con tween rAF PROPIO
+  // (no scrollTo nativo — en Safari es seco/"flick"); va ~130px suave y
+  // vuelve. C = chevron pulsante. Se descarta al primer gesto real de
+  // navegación (wheel / scroll del usuario una vez terminado el nudge) o a
+  // los ~8s. El nudge NO se autodescarta (se ignora el scroll programático).
+  useEffect(() => {
+    if (!isExpanded) {
+      setScrollHint(false)
+      return
+    }
+    const shell = shellRef.current
+    if (!shell) return
+
+    let cancelled = false
+    let rafId = 0
+    const timers: ReturnType<typeof setTimeout>[] = []
+
+    const NUDGE_DIST = 180
+    const OUT_MS = 720
+    const BACK_MS = 900
+    // easeInOutCubic
+    const ease = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+    const tween = (from: number, to: number, dur: number, done?: () => void) => {
+      const t0 = performance.now()
+      const step = (now: number) => {
+        if (cancelled || !shellRef.current) return
+        const p = Math.min(1, (now - t0) / dur)
+        shellRef.current.scrollLeft = from + (to - from) * ease(p)
+        if (p < 1) rafId = requestAnimationFrame(step)
+        else done?.()
+      }
+      rafId = requestAnimationFrame(step)
+    }
+
+    // dismiss: SOLO oculta el chevron. El nudge ya terminó cuando se
+    // engancha, así que no toca el tween.
+    const dismiss = () => setScrollHint(false)
+
+    // Aparece ~450ms tras abrir (ya asentó el scroll de apertura de 150ms).
+    timers.push(
+      setTimeout(() => {
+        if (cancelled) return
+        setScrollHint(true)
+        // Visible ~2s y se va (pedido del user). El nudge (~1.6s) corre
+        // dentro de esa ventana — el movimiento del chevron acompaña.
+        timers.push(setTimeout(() => setScrollHint(false), 2000))
+        tween(0, NUDGE_DIST, OUT_MS, () =>
+          tween(NUDGE_DIST, 0, BACK_MS, () => {
+            const s = shellRef.current
+            if (cancelled || !s) return
+            s.scrollLeft = 0
+            // Si el user navega antes de los 2s, también lo descarta.
+            s.addEventListener('wheel', dismiss, { once: true, passive: true })
+            s.addEventListener('scroll', dismiss, { once: true, passive: true })
+          }),
+        )
+      }, 450),
+    )
+
+    return () => {
+      cancelled = true
+      if (rafId) cancelAnimationFrame(rafId)
+      timers.forEach(clearTimeout)
+      shell.removeEventListener('wheel', dismiss)
+      shell.removeEventListener('scroll', dismiss)
+    }
+  }, [isExpanded])
+
 
   return (
     <div
@@ -548,6 +633,15 @@ export default function ModelRow({
                   </div>
                 </div>
               )}
+
+              {/* Affordance SIEMPRE visible: avisa que la foto es clickeable.
+                  Decorativo (pointer-events:none) — el click lo maneja la card.
+                  Alineado al pie, lado opuesto al nombre del hover. */}
+              {!isExpanded && (
+                <span className="cf-row-seemore" aria-hidden="true">
+                  Ver más +
+                </span>
+              )}
             </div>
           )}
 
@@ -560,6 +654,7 @@ export default function ModelRow({
               activeSkus={activeSkus ?? model.skus}
               brandContent={brandContent}
               lineContent={lineContent}
+              scContent={scContent}
               attributesForCatalogIds={attributesForCatalogIds}
               otherStyles={otherStyles}
               modelContentMap={modelContentMap}
@@ -607,6 +702,32 @@ export default function ModelRow({
               Cotizar
               <span aria-hidden>→</span>
             </a>
+          </div>,
+          document.body,
+        )}
+
+      {/* C — chevron hint de scroll horizontal. Portal a body (mismo motivo
+          que el sticky CTA: el transform del shell atrapa position:fixed).
+          Decorativo (pointer-events:none). Montado mientras está expandido;
+          la clase -visible controla fade-in/out + pulse. */}
+      {isExpanded &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className={`cf-row-scrollhint${
+              scrollHint ? ' cf-row-scrollhint-visible' : ''
+            }`}
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 24 24" width="72" height="72" fill="none">
+              <path
+                d="M9 6l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>,
           document.body,
         )}

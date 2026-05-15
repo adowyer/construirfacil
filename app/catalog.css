@@ -771,6 +771,21 @@ a.cf-row-precio-val:hover {
   aspect-ratio: auto;
 }
 
+/* FIX SAFARI — listado colapsado (desktop). WebKit no resuelve `width:auto`
+   desde `aspect-ratio` + `height:100%` cuando el elemento vive en un track
+   grid `auto` / flex `stretch` (dependencia circular: el track quiere el
+   ancho del contenido, el contenido saca el ancho del alto, el alto es % del
+   track). Resultado: la columna colapsa a ~0/min-content (la img es lazy,
+   sin dimensiones intrínsecas) y la foto se ve corrida a la izquierda hasta
+   que un scroll fuerza relayout. Le damos ancho determinístico (alto 420 ×
+   16/10 = 672) → la columna `auto` ya no depende del aspect-ratio. El
+   aspect-ratio queda como fallback. Solo desktop: ≤768 es single-column. */
+@media (min-width: 769px) {
+  .cf-row:not(.cf-expanded) .cf-row-img-wrap {
+    width: 672px;
+  }
+}
+
 .cf-row-img {
   display: block;
   height: 100%;
@@ -843,6 +858,102 @@ a.cf-row-precio-val:hover {
   font-size: 12px;
   opacity: 0.85;
   margin: 0;
+}
+
+/* Pill "Ver más +" — affordance SIEMPRE visible abajo-derecha de la foto
+   de la grilla. Le dice al usuario que la card es clickeable (feedback de
+   UX real: no se descubría el click). z-index 3 → queda legible por encima
+   del gradient del overlay (z-index 2). Decorativo: pointer-events none. */
+.cf-row-seemore {
+  position: absolute;
+  bottom: 28px;
+  right: 32px;
+  z-index: 3;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 15px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+/* Al hacer hover de la foto se afirma un poco (refuerza el "es clickeable"). */
+.cf-row-img-wrap:hover .cf-row-seemore {
+  background: rgba(0, 0, 0, 0.62);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .cf-row-seemore {
+    bottom: 16px;
+    right: 16px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}
+
+/* Chevron hint de scroll horizontal del expandido (C). Portal a body,
+   fixed al borde derecho centro. Decorativo. Fade por -visible; el chevron
+   pulsa solo mientras está visible. Se descarta al primer gesto del user. */
+.cf-row-scrollhint {
+  position: fixed;
+  right: 26px;
+  top: 50%;
+  z-index: 60;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5e5e5e; /* chevron gris oscuro, sin círculo */
+  opacity: 0;
+  transform: translateY(-50%) scale(0.85);
+  transition: opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Sombra sutil para que el chevron gris se lea sobre fotos claras u oscuras
+   sin necesitar un fondo/círculo. */
+.cf-row-scrollhint svg {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+}
+
+.cf-row-scrollhint-visible {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.cf-row-scrollhint-visible svg {
+  animation: cfScrollHintPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cfScrollHintPulse {
+  0%,
+  100% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-row-scrollhint-visible svg {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .cf-row-scrollhint {
+    right: 14px;
+  }
 }
 
 /* ── Station slides (content panels inside expanded gallery) ──
@@ -6884,5 +6995,99 @@ a.cf-row-precio-val:hover {
   .cf-home-slider-card--cream-wide,
   .cf-home-slider-card--photo-cta {
     flex: 0 0 84%;
+  }
+}
+
+/* ============================================================================
+   PASADA RESPONSIVE — expandido del catálogo (2026-05-15)
+   ----------------------------------------------------------------------------
+   El catálogo se diseñó full-bleed para desktop. Los slides del expandido
+   (.cf-station-slide / .cf-slide-*) usan anchos fijos/clamps con mínimos
+   altos (clamp(1280px…), clamp(720px…), 75vw) pensados para pantallas
+   grandes — en mobile cada slide desbordaba a lo ancho y el texto quedaba
+   ilegible. Acá los llevamos a ~92vw (mismo criterio que .cf-slide en
+   mobile) y soltamos las alturas fijas. Bloque al final del archivo a
+   propósito: gana el cascade por orden de fuente con la misma especificidad,
+   sin tocar las reglas desktop.
+   ============================================================================ */
+@media (max-width: 768px) {
+  /* Slider horizontal del expandido: el contenedor scrollea en X. El
+     `touch-action: pan-y` original bloqueaba el swipe horizontal en touch
+     (no se podía recorrer la galería con el dedo en celular). */
+  .cf-row-shell.cf-expanded {
+    touch-action: pan-x pan-y;
+  }
+
+  /* Altura fija 80vh → la maneja el contenido (en landscape mobile 80vh
+     ahogaba el texto). */
+  .cf-station-slide {
+    height: auto;
+    min-height: 78vh;
+  }
+
+  /* Slides de imagen: 75/65vw o clamp(1280px…) → ~92vw como las cards del
+     HeroRow en mobile. */
+  .cf-slide-image,
+  .cf-slide-image-narrow,
+  .cf-slide-image-medium,
+  .cf-slide-image-feature {
+    width: 92vw;
+  }
+
+  /* Slides de texto: clamp con mínimos de 720/800px y 70vw/430px →
+     desbordaban en celular. 92vw entra y queda legible. */
+  .cf-slide-text,
+  .cf-slide-text-wide,
+  .cf-slide-text-xwide,
+  .cf-slide-text-narrow {
+    width: 92vw;
+  }
+
+  /* El ScrollableBody interno a 36vh es muy chico en pantallas cortas:
+     damos más alto antes de que aparezca el scroll interno. */
+  .cf-slide-text .cf-scrollable-body-content,
+  .cf-slide-text-narrow .cf-scrollable-body-content,
+  .cf-slide-text-wide .cf-scrollable-body-content,
+  .cf-slide-text-xwide .cf-scrollable-body-content {
+    max-height: 58vh;
+    padding-right: 20px;
+  }
+
+  .cf-slide-text-narrow .cf-pn-text,
+  .cf-slide-text-narrow .cf-pn-desc {
+    padding: 28px 20px;
+  }
+
+  /* Foto del modelo expandido in-place: 75vw × 80vh → fluida. */
+  .cf-row.cf-expanded .cf-row-img-wrap {
+    width: 92vw;
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+
+  /* Momentum scroll en la barra de filtros (ya es overflow-x:auto). */
+  .cf-sticky-filters-inner {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Teléfonos angostos: el slide casi a viewport completo. */
+@media (max-width: 480px) {
+  .cf-slide-image,
+  .cf-slide-image-narrow,
+  .cf-slide-image-medium,
+  .cf-slide-image-feature,
+  .cf-slide-text,
+  .cf-slide-text-wide,
+  .cf-slide-text-xwide,
+  .cf-slide-text-narrow {
+    width: 94vw;
+  }
+
+  .cf-slide-text .cf-scrollable-body-content,
+  .cf-slide-text-narrow .cf-scrollable-body-content,
+  .cf-slide-text-wide .cf-scrollable-body-content,
+  .cf-slide-text-xwide .cf-scrollable-body-content {
+    max-height: 62vh;
   }
 }

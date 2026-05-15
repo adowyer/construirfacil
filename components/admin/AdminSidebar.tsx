@@ -17,6 +17,7 @@ import {
   FileText,
   Tag,
   PanelBottom,
+  Layers,
 } from 'lucide-react'
 
 type NavItem = {
@@ -43,6 +44,7 @@ const SECTIONS_TOP: { title: string | null; items: NavItem[] }[] = [
     title: 'Contenido',
     items: [
       { href: '/admin/brand', label: 'Contenido del sitio', icon: FileText },
+      { href: '/admin/sistemas', label: 'Sistemas constructivos', icon: Layers },
       { href: '/admin/footer', label: 'Footer cards', icon: PanelBottom },
     ],
   },

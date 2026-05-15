@@ -109,7 +109,13 @@ async function upsertLineContent(
   admin: ReturnType<typeof createAdminClient>,
   payload: LineaPayload,
 ): Promise<{ error: string | null }> {
+  // marca_id NULL = contenido GLOBAL. La línea ya pertenece a una marca,
+  // pero seguimos escribiendo global para no vaciar el agregador (las filas
+  // existentes son globales y el catálogo resuelve "marca > global"). El
+  // schema soporta per-marca; autoría per-marca de línea queda como
+  // refinamiento futuro. onConflict debe incluir marca_id (UNIQUE de 0020).
   const row = {
+    marca_id: null as string | null,
     linea: payload.name,
     tipologia_code: payload.tipologia_code,
     title: payload.title,
@@ -121,7 +127,7 @@ async function upsertLineContent(
 
   const { error } = await admin
     .from('line_content')
-    .upsert(row, { onConflict: 'linea,tipologia_code' })
+    .upsert(row, { onConflict: 'marca_id,linea,tipologia_code' })
 
   if (error) {
     return { error: `Error al guardar el contenido editorial: ${error.message}` }
@@ -438,7 +444,9 @@ export async function updateLineContentTipologia(
 
   const admin = createAdminClient()
 
+  // Global (marca_id NULL) — ver nota en upsertLineContent.
   const row = {
+    marca_id: null as string | null,
     linea: normalizeLineaName(lineaName),
     tipologia_code: tipologiaCode,
     title: parseOptionalText(formData.get('title')),
@@ -453,7 +461,7 @@ export async function updateLineContentTipologia(
 
   const { error } = await admin
     .from('line_content')
-    .upsert(row, { onConflict: 'linea,tipologia_code' })
+    .upsert(row, { onConflict: 'marca_id,linea,tipologia_code' })
 
   if (error) {
     return { error: `Error al guardar: ${error.message}` }

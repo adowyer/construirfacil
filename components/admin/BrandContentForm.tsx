@@ -16,8 +16,14 @@ type ActionFn = (
   formData: FormData,
 ) => Promise<{ error: string | null }>
 
+interface MarcaOption {
+  id: string
+  name: string
+}
+
 interface BrandContentFormProps {
   action: ActionFn
+  marcas: MarcaOption[]
   defaultValues?: BrandContentRow | null
   isEdit?: boolean
   submitLabel?: string
@@ -50,6 +56,7 @@ function Label({
 
 export function BrandContentForm({
   action,
+  marcas,
   defaultValues,
   isEdit = false,
   submitLabel = 'Guardar',
@@ -100,7 +107,38 @@ export function BrandContentForm({
               className={inputClass}
             />
           </div>
+          <div>
+            <Label
+              htmlFor="marca_id"
+              hint={isEdit ? 'no editable' : 'global = todas las marcas'}
+            >
+              Ámbito *
+            </Label>
+            <select
+              id="marca_id"
+              name="marca_id"
+              defaultValue={defaultValues?.marca_id ?? 'global'}
+              disabled={isEdit}
+              className={`${inputClass} bg-white ${
+                isEdit
+                  ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed'
+                  : ''
+              }`}
+            >
+              <option value="global">Global (todas las marcas)</option>
+              {marcas.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        <p className="text-xs text-neutral-400 mt-3">
+          <strong>Global</strong>: lo ve el agregador y cualquier marca sin
+          override propio. <strong>Marca</strong>: pisa al global del mismo key
+          solo en el catálogo de esa marca.
+        </p>
       </fieldset>
 
       {/* ── Contenido público ─────────────────────────────────────── */}

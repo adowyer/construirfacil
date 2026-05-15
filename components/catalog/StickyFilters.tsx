@@ -46,9 +46,9 @@ const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: 'XL', label: '+200m²' },
 ]
 
-// "+ Relevante" hoy es no-op (queda como placeholder para item 3d cuando
-// agreguemos featured_rank). Precio asc/desc usa price_from interno aunque
-// los precios no sean visibles al público — sigue siendo info útil para ordenar.
+// "+ Relevante" ordena por house_catalog.featured_rank asc nulls last
+// (admin lo setea por modelo; ver CatalogPage sortOrder). Precio asc/desc
+// usa price_from interno aunque los precios no sean visibles al público.
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'recommended', label: '+ Relevante' },
   { value: 'price-asc', label: 'Precio ↑' },

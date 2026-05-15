@@ -15,7 +15,7 @@
  *      - Headline sobreimpreso grande, centrado
  *
  *   2. BODY editorial (fondo blanco, columna centrada estilo catálogo)
- *      - Título "La manera más inteligente y fácil de Construir"
+ *      - Título "La manera más inteligente y fácil de construir."
  *      - "Three chips" → grid de 5 cards con los beneficios del catálogo
  *      - Sección Mac mockup + foto del catálogo encima (espera PNG del user)
  *
