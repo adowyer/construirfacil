@@ -1,4 +1,10 @@
 @import "tailwindcss";
+/* catalog.css DEBE ir acá: la spec CSS exige que todo @import preceda a
+   cualquier regla. Estaba al FINAL del archivo (después de :root/body/@media)
+   → @import inválido; Tailwind v4 + Lightning CSS (Next 16) lo ignoraban/
+   inlineaban inconsistente y el HomeRow (lo último agregado) quedaba sin sus
+   reglas .cf-home-row-slide*. */
+@import './catalog.css';
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 :root {
@@ -181,5 +187,3 @@ a {
 .detail-back-link:hover {
   color: #0a0a0a;
 }
-
-@import './catalog.css';
