@@ -303,19 +303,36 @@ export async function getGroupedCatalog(
   ]
   const showPricesByMarca = new Map<string, boolean>()
   const nameByMarca = new Map<string, string>()
-  const logoByMarca = new Map<string, string | null>()
   if (marcaIds.length > 0) {
     const { data: marcasData, error: marcasErr } = await supabase
       .from('marcas')
-      .select('id, name, logo_url, show_prices')
+      .select('id, name, show_prices')
       .in('id', marcaIds)
     if (marcasErr) {
       console.error('[getGroupedCatalog] marcas:', marcasErr.message)
     }
-    for (const m of (marcasData ?? []) as { id: string; name: string; logo_url: string | null; show_prices: boolean }[]) {
+    for (const m of (marcasData ?? []) as { id: string; name: string; show_prices: boolean }[]) {
       showPricesByMarca.set(m.id, m.show_prices ?? false)
       nameByMarca.set(m.id, m.name)
-      logoByMarca.set(m.id, m.logo_url ?? null)
+    }
+  }
+
+  // Isotipo (iso_url) por marca — va en la ficha del listado EN LUGAR del
+  // isologo (decisión del dueño, al menos por ahora). Query separada y
+  // resiliente: si la columna iso_url todavía no existe (migración 0026 sin
+  // aplicar) degrada a vacío SIN romper el resto del catálogo (precios,
+  // nombres, etc. quedan intactos). Sin fallback al isologo: "ahí va solo iso".
+  const isoByMarca = new Map<string, string | null>()
+  if (marcaIds.length > 0) {
+    const { data: isoData, error: isoErr } = await supabase
+      .from('marcas')
+      .select('id, iso_url')
+      .in('id', marcaIds)
+    if (isoErr) {
+      console.error('[getGroupedCatalog] iso_url (¿migración 0026?):', isoErr.message)
+    }
+    for (const m of (isoData ?? []) as { id: string; iso_url: string | null }[]) {
+      isoByMarca.set(m.id, m.iso_url ?? null)
     }
   }
 
@@ -365,7 +382,9 @@ export async function getGroupedCatalog(
         : false,
       marca_id: meta.marca_id,
       marca_name: meta.marca_id ? nameByMarca.get(meta.marca_id) ?? null : null,
-      marca_logo_url: meta.marca_id ? logoByMarca.get(meta.marca_id) ?? null : null,
+      // Nota: el campo se sigue llamando marca_logo_url (lo consume ModelRow)
+      // pero su fuente ahora es el isotipo (iso_url), no el isologo.
+      marca_logo_url: meta.marca_id ? isoByMarca.get(meta.marca_id) ?? null : null,
     })
   }
 

@@ -217,14 +217,26 @@ export async function rejectMarca(id: string, formData: FormData): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
-// uploadMarcaLogo / removeMarcaLogo
+// Activos visuales de la marca — isologo (logo_url) e isotipo (iso_url)
 // ---------------------------------------------------------------------------
+// `logo_url` = ISOLOGO (símbolo + texto). `iso_url` = ISOTIPO (solo símbolo).
+// Misma lógica de upload/remove, parametrizada por columna. El isologo conserva
+// EXACTAMENTE su comportamiento previo (mismo bucket, mismo path en la raíz);
+// el isotipo va bajo el subfolder `iso/` para no colisionar.
+//
+// Estas actions usan service-role. Como ahora también se exponen en el portal
+// self-service, se agrega un guard de autorización (admin OR dueño de la marca)
+// que NO altera el flujo del admin (un admin siempre pasa el guard).
 
 const LOGO_BUCKET = 'marca-logos'
-const LOGO_MAX_BYTES = 2 * 1024 * 1024
-const LOGO_ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+const IMG_MAX_BYTES = 2 * 1024 * 1024
+const IMG_ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 
-export type LogoActionResult = { ok: true; logoUrl: string | null } | { ok: false; error: string }
+type MarcaImageField = 'logo_url' | 'iso_url'
+
+export type MarcaImageActionResult =
+  | { ok: true; url: string | null }
+  | { ok: false; error: string }
 
 function sanitizeFilename(name: string): string {
   const normalized = name.normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -238,8 +250,8 @@ function sanitizeFilename(name: string): string {
   )
 }
 
-/** Devuelve el storage_path relativo al bucket si la URL pública apunta al bucket de logos. */
-function logoStoragePathFromUrl(url: string | null): string | null {
+/** storage_path relativo al bucket si la URL pública apunta al bucket de logos. */
+function imageStoragePathFromUrl(url: string | null): string | null {
   if (!url) return null
   const marker = `/storage/v1/object/public/${LOGO_BUCKET}/`
   const idx = url.indexOf(marker)
@@ -247,38 +259,75 @@ function logoStoragePathFromUrl(url: string | null): string | null {
   return decodeURIComponent(url.slice(idx + marker.length))
 }
 
-export async function uploadMarcaLogo(
+/** logo → raíz (path histórico intacto); iso → subfolder `iso/`. */
+function subfolderFor(field: MarcaImageField): string {
+  return field === 'iso_url' ? 'iso/' : ''
+}
+
+/** Autoriza la operación: admin (cualquier marca) o el dueño de esa marca. */
+async function assertCanManageMarca(
+  marcaId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const server = await createClient()
+  const {
+    data: { user },
+  } = await server.auth.getUser()
+  if (!user) return { ok: false, error: 'No hay sesión activa.' }
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (profile?.role === 'admin') return { ok: true }
+
+  const { data: marca } = await admin
+    .from('marcas')
+    .select('owner_id')
+    .eq('id', marcaId)
+    .maybeSingle()
+  if (marca && marca.owner_id === user.id) return { ok: true }
+
+  return { ok: false, error: 'No tenés permiso sobre esta marca.' }
+}
+
+async function uploadMarcaImage(
   marcaId: string,
   formData: FormData,
-): Promise<LogoActionResult> {
+  field: MarcaImageField,
+): Promise<MarcaImageActionResult> {
   if (!marcaId) return { ok: false, error: 'Falta el ID de la marca.' }
+
+  const auth = await assertCanManageMarca(marcaId)
+  if (!auth.ok) return auth
 
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: 'Seleccioná un archivo de imagen.' }
   }
-  if (!LOGO_ALLOWED_MIME.includes(file.type)) {
+  if (!IMG_ALLOWED_MIME.includes(file.type)) {
     return { ok: false, error: 'Formato no permitido. Usá PNG, JPG, WebP o SVG.' }
   }
-  if (file.size > LOGO_MAX_BYTES) {
+  if (file.size > IMG_MAX_BYTES) {
     return { ok: false, error: 'El archivo supera los 2 MB.' }
   }
 
   const admin = createAdminClient()
 
-  // Verificar que la marca existe (y traer logo_url anterior para limpieza).
+  // Verificar que la marca existe (y traer el valor anterior para limpieza).
   const { data: marca, error: fetchErr } = await admin
     .from('marcas')
-    .select('id, logo_url')
+    .select(`id, ${field}`)
     .eq('id', marcaId)
     .maybeSingle()
 
   if (fetchErr) return { ok: false, error: `Error verificando la marca: ${fetchErr.message}` }
   if (!marca) return { ok: false, error: 'La marca no existe.' }
 
-  // Path: marca-logos/{marcaId}/{timestamp}-{filename}
+  // Path: marca-logos/{marcaId}/[iso/]{timestamp}-{filename}
   const safeName = sanitizeFilename(file.name)
-  const storagePath = `${marcaId}/${Date.now()}-${safeName}`
+  const storagePath = `${marcaId}/${subfolderFor(field)}${Date.now()}-${safeName}`
 
   const arrayBuffer = await file.arrayBuffer()
   const { error: uploadErr } = await admin.storage
@@ -295,11 +344,11 @@ export async function uploadMarcaLogo(
   const { data: publicUrlData } = admin.storage
     .from(LOGO_BUCKET)
     .getPublicUrl(storagePath)
-  const logoUrl = publicUrlData.publicUrl
+  const url = publicUrlData.publicUrl
 
   const { error: updateErr } = await admin
     .from('marcas')
-    .update({ logo_url: logoUrl })
+    .update({ [field]: url })
     .eq('id', marcaId)
 
   if (updateErr) {
@@ -308,35 +357,43 @@ export async function uploadMarcaLogo(
     return { ok: false, error: `Error al actualizar la marca: ${updateErr.message}` }
   }
 
-  // Limpieza del logo anterior (best-effort).
-  const previousPath = logoStoragePathFromUrl(marca.logo_url ?? null)
+  // Limpieza del activo anterior (best-effort).
+  const prev = (marca as Record<string, string | null>)[field] ?? null
+  const previousPath = imageStoragePathFromUrl(prev)
   if (previousPath && previousPath !== storagePath) {
     await admin.storage.from(LOGO_BUCKET).remove([previousPath])
   }
 
   revalidateMarcas(marcaId)
-  return { ok: true, logoUrl }
+  return { ok: true, url }
 }
 
-export async function removeMarcaLogo(marcaId: string): Promise<LogoActionResult> {
+async function removeMarcaImage(
+  marcaId: string,
+  field: MarcaImageField,
+): Promise<MarcaImageActionResult> {
   if (!marcaId) return { ok: false, error: 'Falta el ID de la marca.' }
+
+  const auth = await assertCanManageMarca(marcaId)
+  if (!auth.ok) return auth
 
   const admin = createAdminClient()
 
   const { data: marca, error: fetchErr } = await admin
     .from('marcas')
-    .select('id, logo_url')
+    .select(`id, ${field}`)
     .eq('id', marcaId)
     .maybeSingle()
 
   if (fetchErr) return { ok: false, error: `Error verificando la marca: ${fetchErr.message}` }
   if (!marca) return { ok: false, error: 'La marca no existe.' }
 
-  const previousPath = logoStoragePathFromUrl(marca.logo_url ?? null)
+  const prev = (marca as Record<string, string | null>)[field] ?? null
+  const previousPath = imageStoragePathFromUrl(prev)
 
   const { error: updateErr } = await admin
     .from('marcas')
-    .update({ logo_url: null })
+    .update({ [field]: null })
     .eq('id', marcaId)
 
   if (updateErr) {
@@ -348,7 +405,34 @@ export async function removeMarcaLogo(marcaId: string): Promise<LogoActionResult
   }
 
   revalidateMarcas(marcaId)
-  return { ok: true, logoUrl: null }
+  return { ok: true, url: null }
+}
+
+// Public actions — firmas estables. Isologo idéntico a antes; isotipo nuevo.
+export async function uploadMarcaLogo(
+  marcaId: string,
+  formData: FormData,
+): Promise<MarcaImageActionResult> {
+  return uploadMarcaImage(marcaId, formData, 'logo_url')
+}
+
+export async function removeMarcaLogo(
+  marcaId: string,
+): Promise<MarcaImageActionResult> {
+  return removeMarcaImage(marcaId, 'logo_url')
+}
+
+export async function uploadMarcaIso(
+  marcaId: string,
+  formData: FormData,
+): Promise<MarcaImageActionResult> {
+  return uploadMarcaImage(marcaId, formData, 'iso_url')
+}
+
+export async function removeMarcaIso(
+  marcaId: string,
+): Promise<MarcaImageActionResult> {
+  return removeMarcaImage(marcaId, 'iso_url')
 }
 
 // ---------------------------------------------------------------------------

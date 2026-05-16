@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMarcaById } from '@/lib/supabase/queries/marcas'
 import { MarcaForm } from '@/components/admin/MarcaForm'
 import { MarcaLogoUploader } from '@/components/admin/MarcaLogoUploader'
+import { MarcaIsoUploader } from '@/components/admin/MarcaIsoUploader'
 import { DeleteMarcaButton } from '@/components/admin/DeleteMarcaButton'
 import {
   approveMarca,
@@ -89,15 +90,21 @@ export default async function AdminMarcaEditPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Logo */}
-      <section className="mb-10">
+      {/* Identidad visual — isologo (logo_url) e isotipo (iso_url), activos
+          independientes. */}
+      <section className="mb-10 space-y-4">
         <h2 className="text-[11px] uppercase tracking-widest text-neutral-400 mb-3">
-          Logo
+          Identidad visual
         </h2>
         <MarcaLogoUploader
           marcaId={id}
           marcaName={marca.name}
           initialLogoUrl={marca.logo_url}
+        />
+        <MarcaIsoUploader
+          marcaId={id}
+          marcaName={marca.name}
+          initialIsoUrl={marca.iso_url}
         />
       </section>
 
