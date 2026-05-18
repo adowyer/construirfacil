@@ -38,6 +38,24 @@ export async function getFooterCardsForMarca(
   return (data ?? []) as FooterCardRow[]
 }
 
+/** Todas las cards de la marca (cualquier status) — para el portal. */
+export async function getFooterCardsForMarcaAll(
+  supabase: SupabaseClient,
+  marcaId: string,
+): Promise<FooterCardRow[]> {
+  const { data, error } = await supabase
+    .from('footer_card_content')
+    .select('*')
+    .eq('marca_id', marcaId)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('[getFooterCardsForMarcaAll]', error.message)
+    return []
+  }
+  return (data ?? []) as FooterCardRow[]
+}
+
 export async function getAllFooterCardsForAdmin(
   supabase: SupabaseClient,
 ): Promise<(FooterCardRow & { marca_name: string })[]> {
@@ -72,4 +90,42 @@ export async function getFooterCardById(
     return null
   }
   return (data as FooterCardRow) ?? null
+}
+
+// ---------------------------------------------------------------------------
+// footer_content — cierre + institucional (singleton CF, key='cf').
+// ---------------------------------------------------------------------------
+
+export type FooterContentRow = {
+  id: string
+  key: string
+  eyebrow: string | null
+  title: string | null
+  cta_primary_label: string | null
+  cta_secondary_label: string | null
+  copyright_text: string | null
+  privacy_label: string | null
+  privacy_url: string | null
+  terms_label: string | null
+  terms_url: string | null
+}
+
+/**
+ * Singleton del cierre/institucional. null si no existe (tabla sin aplicar /
+ * sin fila) → CatalogFooter usa el hardcoded. Cero regresión.
+ */
+export async function getFooterContent(
+  supabase: SupabaseClient,
+): Promise<FooterContentRow | null> {
+  const { data, error } = await supabase
+    .from('footer_content')
+    .select('*')
+    .eq('key', 'cf')
+    .maybeSingle()
+
+  if (error) {
+    console.error('[getFooterContent]', error.message)
+    return null
+  }
+  return (data as FooterContentRow) ?? null
 }

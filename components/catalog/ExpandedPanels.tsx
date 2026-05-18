@@ -22,6 +22,8 @@ import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
+import { variantLabel } from '@/lib/format/variant'
+import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import {
   type CatalogImage,
   type CatalogAttributeRow,
@@ -78,6 +80,9 @@ interface PanelsProps {
   /** Catálogo completo — usado por el panel "También podría interesarte"
    *  para sugerir modelos relacionados de OTRAS líneas/tipologías. */
   allModels?: CatalogModel[]
+  /** "Condiciones de Entrega" (HTML saneado, resuelto server). Pill sobre
+   *  la galería de exteriores → modal. null → no se muestra. */
+  deliveryConditionsHtml?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -357,6 +362,8 @@ function PanelImageSlider({
   bgSize = 'cover',
   bgSizeCss,
   pillFallback,
+  ignoreViewLabel = false,
+  deliveryHtml = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
@@ -364,6 +371,11 @@ function PanelImageSlider({
   bgSize?: 'cover' | 'contain'
   bgSizeCss?: string
   pillFallback: (i: number) => string
+  /** Ignora view_label y usa siempre pillFallback (panel Perspectivas:
+   *  los labels internos son "AXO/AXO PA/AXO-1…" → mostramos "Vista N"). */
+  ignoreViewLabel?: boolean
+  /** Solo Exteriores: HTML de "Condiciones de Entrega" → pill + modal. */
+  deliveryHtml?: string | null
 }) {
   // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
   // y V1.2 (subversiones que solo cambian detalles internos). V3 incluye V3.1.
@@ -431,7 +443,7 @@ function PanelImageSlider({
                     setActivePillIdx(0)
                   }}
                 >
-                  V{v}
+                  {variantLabel(v)}
                 </button>
               ))}
             </div>
@@ -479,6 +491,9 @@ function PanelImageSlider({
       <div className="cf-pn-gallery-overlay">
         <div className="cf-pn-gallery-top">
           <span className="cf-pn-gallery-label">{label}</span>
+          {deliveryHtml && (
+            <DeliveryConditionsModal html={deliveryHtml} variant="gallery" />
+          )}
         </div>
 
         {/* Tabs verticales por variante (solo si hay 2+) */}
@@ -504,7 +519,7 @@ function PanelImageSlider({
                   setActivePillIdx(0)
                 }}
               >
-                V{v}
+                {variantLabel(v)}
               </button>
             ))}
           </div>
@@ -518,7 +533,9 @@ function PanelImageSlider({
               className={`cf-pn-pill ${i === safeIdx ? 'active' : ''}`}
               onClick={() => setActivePillIdx(i)}
             >
-              {img.view_label ?? pillFallback(i)}
+              {ignoreViewLabel
+                ? pillFallback(i)
+                : (img.view_label ?? pillFallback(i))}
             </button>
           ))}
         </div>
@@ -547,9 +564,11 @@ export const hasAxosImages = (imgs: CatalogImage[]) => imgs.some(isAxo)
 export function PanelExteriores({
   images,
   activeSkus,
+  deliveryHtml = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
+  deliveryHtml?: string | null
 }) {
   return (
     <PanelImageSlider
@@ -558,6 +577,7 @@ export function PanelExteriores({
       label="Exteriores"
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
+      deliveryHtml={deliveryHtml}
     />
   )
 }
@@ -610,9 +630,10 @@ export function PanelAxos({
     <PanelImageSlider
       images={images.filter(isAxo)}
       activeSkus={activeSkus}
-      label="Axonometrías"
+      label="Perspectivas"
       bgSize="contain"
       pillFallback={(i) => `Vista ${i + 1}`}
+      ignoreViewLabel
     />
   )
 }
@@ -1056,7 +1077,7 @@ export function Panel7Comparativo({
                     setSelectedVarIdx(i)
                   }}
                 >
-                  V{v.variante}
+                  {variantLabel(v.variante)}
                 </button>
                 {cols.map((c) => (
                   <div key={`${v.variante}-${c.key}`} className={cellCls}>
@@ -1073,7 +1094,7 @@ export function Panel7Comparativo({
           <div className="cf-pn-compare-inline-info">
             <span className="cf-pn-compare-inline-eyebrow">Tu selección</span>
             <span className="cf-pn-compare-inline-detail">
-              V{selectedVar?.variante}
+              {selectedVar ? variantLabel(selectedVar.variante) : ''}
               {currentSC ? ` · ${displaySC(currentSC)}` : ''}
             </span>
           </div>
@@ -1519,7 +1540,7 @@ export function Panel9Datos({
               className={`cf-pn-datos-vcard ${i === selectedVariant ? 'selected' : ''}`}
               onClick={() => setSelectedVariant(i)}
             >
-              <p className="cf-pn-variant-name">V{v.variante}</p>
+              <p className="cf-pn-variant-name">{variantLabel(v.variante)}</p>
               <p className="cf-pn-variant-meta">
                 {v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—'}
                 {v.bedrooms_label ? ` · ${v.bedrooms_label} dorm.` : ''}
@@ -1691,7 +1712,11 @@ export default function ExpandedPanels(props: PanelsProps) {
       {/* 2. Exteriores — solo si hay fotos */}
       {hasExt && (
         <div className="cf-station-slide cf-slide-image">
-          <PanelExteriores images={props.images} activeSkus={props.activeSkus} />
+          <PanelExteriores
+            images={props.images}
+            activeSkus={props.activeSkus}
+            deliveryHtml={props.deliveryConditionsHtml ?? null}
+          />
         </div>
       )}
 
@@ -1767,7 +1792,8 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 11. Axonometrías — solo si hay. Slide angosto con bg blanco. */}
+      {/* 11. Perspectivas (taxonomía interna: image_type='axo') — solo si
+          hay. Slide angosto con bg blanco. */}
       {hasAxos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
           <PanelAxos images={props.images} activeSkus={props.activeSkus} />

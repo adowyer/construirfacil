@@ -73,6 +73,8 @@ interface ModelRowProps {
   allModels?: CatalogModel[]
   /** URL del ícono de la línea (mostrado arriba de la ficha colapsada). */
   lineaIconUrl?: string | null
+  /** "Condiciones de Entrega" (HTML saneado) → pill en el panel Exteriores. */
+  deliveryConditionsHtml?: string | null
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -227,6 +229,7 @@ export default function ModelRow({
   modelContentMap,
   allModels = [],
   lineaIconUrl = null,
+  deliveryConditionsHtml = null,
 }: ModelRowProps) {
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
   // fallback al cover default del modelo.
@@ -639,7 +642,8 @@ export default function ModelRow({
                   Alineado al pie, lado opuesto al nombre del hover. */}
               {!isExpanded && (
                 <span className="cf-row-seemore" aria-hidden="true">
-                  Ver más +
+                  Ver
+                  <span className="cf-row-seemore-plus">+</span>
                 </span>
               )}
             </div>
@@ -659,6 +663,7 @@ export default function ModelRow({
               otherStyles={otherStyles}
               modelContentMap={modelContentMap}
               allModels={allModels}
+              deliveryConditionsHtml={deliveryConditionsHtml}
             />
           )}
         </div>
@@ -694,13 +699,19 @@ export default function ModelRow({
             </div>
             <a
               className="cf-row-sticky-cta-btn"
+              aria-label="Cotizar"
               href={buildCotizarMailto({
                 modelName: model.display_name,
                 linea: displayLinea(model.linea),
               })}
             >
-              Cotizar
-              <span aria-hidden>→</span>
+              <span className="cf-row-sticky-cta-btn-full">
+                Cotizar
+                <span aria-hidden>→</span>
+              </span>
+              <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
+                $
+              </span>
             </a>
           </div>,
           document.body,

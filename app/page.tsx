@@ -15,8 +15,9 @@
  * el mismo fetch pero con `initialHomeMode={false}` → entra directo al
  * catálogo desplegado.
  *
- * Landings v1 (single-screen 5 items) y v2 (slideshow + Mac mockup) ambas
- * archivadas en _archive/ por si hay que recuperarlas.
+ * Las landings viejas (v1 single-screen, v2 LandingCF slideshow+Mac) fueron
+ * removidas del repo — quedan en el historial git si hay que recuperarlas.
+ * B2B vive ahora en /empresas (mismo CatalogPage, variant='b2b').
  */
 
 import type { Metadata } from 'next'
@@ -35,7 +36,11 @@ import {
   getResolvedBrandContent,
   getResolvedLineContent,
 } from '@/lib/supabase/queries/content_resolve'
+import { getResolvedHeaderSlides } from '@/lib/supabase/queries/header_content'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import { getFooterContent } from '@/lib/supabase/queries/footer'
+import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
+import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
@@ -67,6 +72,10 @@ export default async function HomePage() {
     catalogAttributes,
     featuredModels,
     scContent,
+    headerSlides,
+    footerContent,
+    homeSlides,
+    deliveryConditions,
   ] = await Promise.all([
     getGroupedCatalog(supabase, {}),
     getResolvedBrandContent(supabase, null),
@@ -78,7 +87,14 @@ export default async function HomePage() {
     getAllCatalogAttributes(supabase),
     getFeaturedModels(supabase, 8),
     getActiveSistemaConstructivo(supabase),
+    // Home = agregador → versión CF B2C (marca_id NULL, variant b2c) ∪ pinned.
+    getResolvedHeaderSlides(supabase, { marcaId: null, variant: 'b2c' }),
+    getFooterContent(supabase),
+    getResolvedHomeSlides(supabase, { marcaId: null, variant: 'b2c' }),
+    getDeliveryConditions(supabase, null),
   ])
+
+  const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
 
   const approvedMarcas = marcas.filter((m) => m.status === 'approved')
 
@@ -105,6 +121,7 @@ export default async function HomePage() {
       models={models}
       brandContent={brandContent}
       lineContent={lineContent}
+      headerSlides={headerSlides}
       scContent={scContent}
       lineas={lineas}
       marcas={approvedMarcas}
@@ -113,6 +130,9 @@ export default async function HomePage() {
       catalogAttributes={catalogAttributes}
       featuredModels={featuredModels}
       footerCardsByMarca={footerCardsByMarca}
+      footerContent={footerContent}
+      homeSlides={homeSlides}
+      deliveryConditionsHtml={deliveryConditionsHtml}
       selectedMarca={null}
       initialHomeMode={true}
     />

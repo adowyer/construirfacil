@@ -10,6 +10,11 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
+import type {
+  HeaderSlide,
+  HeaderSlideKind,
+} from '@/lib/supabase/queries/header_content'
+import { HEADER_DEFAULTS } from '@/lib/content/header-defaults'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import { useInViewport } from '@/lib/hooks/useInViewport'
 
@@ -44,6 +49,9 @@ export interface LineaModelo {
 interface HeroRowProps {
   brandContent?: BrandContent[]
   lineContent?: LineContent[]
+  /** Fase 2: contenido editable del header resuelto (versión CF o de la
+   *  marca). Sin filas → cada slide cae a su hardcoded (cero regresión). */
+  headerSlides?: HeaderSlide[]
   lineas?: LineaRow[]
   lineaCoverByName?: Record<string, string | null>
   growthPairs?: GrowthPair[]
@@ -144,10 +152,15 @@ function SectionModal({
         <h2 className="cf-hero-modal-title">{section.title}</h2>
         {section.intro && <p className="cf-hero-modal-intro">{section.intro}</p>}
         <div className="cf-hero-modal-bullets">
-          {section.long.map((b) => (
-            <div key={b.name} className="cf-hero-modal-bullet">
-              <p className="cf-hero-modal-bullet-name">{b.name}</p>
-              <p className="cf-hero-modal-bullet-body">{b.body}</p>
+          {section.long.map((b, i) => (
+            <div key={b.name || i} className="cf-hero-modal-bullet">
+              {b.name && (
+                <p className="cf-hero-modal-bullet-name">{b.name}</p>
+              )}
+              <div
+                className="cf-hero-modal-bullet-body cf-richtext"
+                dangerouslySetInnerHTML={{ __html: b.body }}
+              />
             </div>
           ))}
         </div>
@@ -175,10 +188,12 @@ function StepsFooter() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Slide 1: Pasos (Olive Solid)
-function SlidePasos() {
+function SlidePasos({ s }: { s?: HeaderSlide }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-olive cf-slide-solid-pasos">
-      <h2 className="cf-slide-title-pasos">4 Simples pasos para acceder a<br />tu nueva casa 100% financiada.</h2>
+      <h2 className="cf-slide-title-pasos">
+        {s?.title || HEADER_DEFAULTS.pasos?.title}
+      </h2>
       <div className="cf-pasos-grid">
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
@@ -213,20 +228,34 @@ function SlidePasos() {
 }
 
 // Slide 2: Crece (Split Left)
-function SlideCrece({ growthPairs, onOpenModal }: { growthPairs: GrowthPair[], onOpenModal: () => void }) {
+function SlideCrece({ growthPairs, onOpenModal, s }: { growthPairs: GrowthPair[], onOpenModal: () => void, s?: HeaderSlide }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split">
-      <div className="cf-slide-split-image">
-        <HouseGrowBg pairs={growthPairs} />
+      <div
+        className="cf-slide-split-image"
+        style={
+          s?.image_url ? { backgroundImage: `url('${s.image_url}')` } : undefined
+        }
+      >
+        {/* Fondo editable: imagen/GIF de la DB; sin foto → cross-fade actual
+            del catálogo (cero regresión). Mismo container/overlay/glass-card. */}
+        {!s?.image_url && <HouseGrowBg pairs={growthPairs} />}
         <div className="cf-glass-card left" style={{ zIndex: 10, justifyContent: 'center' }}>
-          <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: '#fff', textTransform: 'uppercase' }}>Concepto</p>
-          <h3 className="cf-hero-slide-crece-title">La Casa que Crece</h3>
-          <p className="cf-hero-slide-crece-body">Nos propusimos crear un ambiente que acompañe cada etapa de la vida familiar, y después de mucho trabajo e investigación, la idea original de un gran arquitecto como Alvar Aalto nos dio la respuesta que buscábamos. Una vivienda que evoluciona junto a quienes la habitan.</p>
-          <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>Ver más →</button>
+          <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: '#fff', textTransform: 'uppercase' }}>{s?.eyebrow || HEADER_DEFAULTS.crece?.eyebrow}</p>
+          <h3 className="cf-hero-slide-crece-title">{s?.title || HEADER_DEFAULTS.crece?.title}</h3>
+          <div
+            className="cf-hero-slide-crece-body cf-richtext"
+            dangerouslySetInnerHTML={{
+              __html: s?.body || HEADER_DEFAULTS.crece?.body || '',
+            }}
+          />
+          {s?.long_body && (
+            <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{s?.cta_label?.trim() || 'Ver más'} →</button>
+          )}
         </div>
       </div>
       <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
-        <img src="/la-casa-que-crece.png" alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
+        <img src={s?.panel_image_url || '/la-casa-que-crece.png'} alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
       </div>
     </div>
   )
@@ -236,9 +265,10 @@ function SlideCrece({ growthPairs, onOpenModal }: { growthPairs: GrowthPair[], o
 // Typewriter effect con cursor rojo titilante + flechas señaladoras
 // arriba/abajo de la frase. Los chevrons abajo se encienden de derecha a
 // izquierda en cascada continua (CSS).
-const PRINCIPAL_TEXT = 'La casa que querés, en las\ncondiciones que necesitás.'
+const PRINCIPAL_TEXT = HEADER_DEFAULTS.principal?.title ?? ''
 
-function SlidePrincipal() {
+function SlidePrincipal({ s }: { s?: HeaderSlide }) {
+  const text = s?.title || PRINCIPAL_TEXT
   const [typed, setTyped] = useState('')
   const [done, setDone] = useState(false)
 
@@ -248,20 +278,20 @@ function SlidePrincipal() {
     const start = setTimeout(() => {
       interval = setInterval(() => {
         i++
-        if (i >= PRINCIPAL_TEXT.length) {
-          setTyped(PRINCIPAL_TEXT)
+        if (i >= text.length) {
+          setTyped(text)
           setDone(true)
           clearInterval(interval)
           return
         }
-        setTyped(PRINCIPAL_TEXT.slice(0, i))
+        setTyped(text.slice(0, i))
       }, 75)
     }, 400)
     return () => {
       clearTimeout(start)
       clearInterval(interval)
     }
-  }, [])
+  }, [text])
 
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-dark cf-slide-principal-card">
@@ -275,24 +305,25 @@ function SlidePrincipal() {
 }
 
 // Slide 4: Flex Build Suit (Split Right)
-function SlideFlex({ onOpenModal }: { onOpenModal: () => void }) {
+function SlideFlex({ onOpenModal, s }: { onOpenModal: () => void, s?: HeaderSlide }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split cf-slide-split-right">
       <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
-        <img src="/Flex-Build-Suit.png" alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
+        <img src={s?.panel_image_url || '/Flex-Build-Suit.png'} alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
       </div>
-      <div className="cf-slide-split-image" style={{ backgroundImage: "url('/Fabrica-ARQUIMA.jpg')" }}>
+      <div className="cf-slide-split-image" style={{ backgroundImage: `url('${s?.image_url || '/Fabrica-ARQUIMA.jpg'}')` }}>
         <div className="cf-glass-card right" style={{ zIndex: 10, justifyContent: 'center' }}>
-          <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Sistema</p>
-          <h3 className="cf-hero-slide-crece-title">Flex Build Suit</h3>
-          <p className="cf-hero-slide-crece-body">Quienes hacemos Hausind® ya hemos acompañado a miles de familias a tener hogares eficientes, modernos y accesibles, en todo el país. Más de 50.000 M2 de experiencia nos avalan.</p>
-          <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>Ver más →</button>
-        </div>
-        <div className="cf-steps-footer cf-steps-footer-right" style={{ zIndex: 10, bottom: 28, alignItems: 'flex-end' }}>
-          <div className="cf-step-item" style={{ color: '#fff', lineHeight: 1, alignItems: 'flex-end', textShadow: '0 1px 2px rgba(0, 0, 0, 0.80)' }}>
-            DEFINÍ TU BÚSQUEDA EN EL MENÚ
-            <span className="cf-hero-arrow-pointer cf-hero-arrow-pointer-down" aria-hidden>&darr;</span>
-          </div>
+          <p className="cf-pn-eyebrow" style={{ margin: 0, fontSize: '11px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{s?.eyebrow || HEADER_DEFAULTS.flex?.eyebrow}</p>
+          <h3 className="cf-hero-slide-crece-title">{s?.title || HEADER_DEFAULTS.flex?.title}</h3>
+          <div
+            className="cf-hero-slide-crece-body cf-richtext"
+            dangerouslySetInnerHTML={{
+              __html: s?.body || HEADER_DEFAULTS.flex?.body || '',
+            }}
+          />
+          {s?.long_body && (
+            <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{s?.cta_label?.trim() || 'Ver más'} →</button>
+          )}
         </div>
       </div>
     </div>
@@ -303,12 +334,17 @@ function SlideFlex({ onOpenModal }: { onOpenModal: () => void }) {
 
 // Slide 5: Lineas
 // Slide 5: Intro de líneas (texto solo, vertical compacto)
-function SlideLineasIntro() {
+function SlideLineasIntro({ s }: { s?: HeaderSlide }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-lineas-intro">
-      <p className="cf-pn-eyebrow" style={{ color: '#aaa' }}>TRES LÍNEAS, TRES MUNDOS</p>
-      <h3 className="cf-slide-lineas-title">Descubrí la línea que mejor se adapta a tu estilo.</h3>
-      <p className="cf-slide-lineas-body">De casas premium a soluciones modulares. Cada línea responde a un estilo de vida diferente.</p>
+      <p className="cf-pn-eyebrow" style={{ color: '#aaa' }}>{s?.eyebrow || HEADER_DEFAULTS['lineas-intro']?.eyebrow}</p>
+      <h3 className="cf-slide-lineas-title">{s?.title || HEADER_DEFAULTS['lineas-intro']?.title}</h3>
+      <div
+        className="cf-slide-lineas-body cf-richtext"
+        dangerouslySetInnerHTML={{
+          __html: s?.body || HEADER_DEFAULTS['lineas-intro']?.body || '',
+        }}
+      />
     </div>
   )
 }
@@ -321,22 +357,27 @@ function SlideLineaCard({
   bg,
   teaser,
   onOpenModal,
+  moreLabel = 'Ver más',
 }: {
   name: string
   sub: string
   bg: string
   teaser: string
   onOpenModal: () => void
+  /** null/'' → sin botón (slide sin texto largo). Default 'Ver más'. */
+  moreLabel?: string | null
 }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-linea-card" style={{ backgroundImage: `url('${bg}')` }}>
       <div className="cf-slide-linea-overlay">
-        <h4 className="cf-slide-linea-name">Línea {name}</h4>
+        <h4 className="cf-slide-linea-name">{name}</h4>
         <p className="cf-slide-linea-sub">{sub}</p>
         <p className="cf-slide-linea-teaser">{teaser}</p>
-        <button type="button" className="cf-slide-linea-more-btn" onClick={onOpenModal}>
-          Ver más +
-        </button>
+        {moreLabel && (
+          <button type="button" className="cf-slide-linea-more-btn" onClick={onOpenModal}>
+            {moreLabel} +
+          </button>
+        )}
       </div>
     </div>
   )
@@ -492,11 +533,84 @@ function LineaModal({
   )
 }
 
+// Fase 2: arma un HeroSection (para el SectionModal "Ver más") a partir de un
+// slide editable, SOLO si tiene long_body cargado. Sin long_body → null →
+// el botón "Ver más" no se renderiza (sin texto largo no hay nada que abrir).
+// NOTA: el slider de fotos del modal (gallery_urls) queda para una fase
+// posterior; por ahora el modal genérico muestra título + long_body.
+// Slide 'banner' repetible (promo/contenido extra). Diseño fijo: foto +
+// overlay si hay image_url; si no, color de fondo. narrow = chico.
+function SlideBanner({
+  s,
+  onOpenModal,
+}: {
+  s: HeaderSlide
+  onOpenModal: () => void
+}) {
+  const photo = !!s.image_url
+  return (
+    <div
+      className="cf-slide-banner"
+      style={
+        photo
+          ? { backgroundImage: `url('${s.image_url}')` }
+          : { background: s.bg || '#0a0a0a' }
+      }
+    >
+      {photo && <div className="cf-slide-banner-overlay" aria-hidden="true" />}
+      <div className="cf-slide-banner-content">
+        {s.eyebrow && (
+          <p
+            className="cf-pn-eyebrow"
+            style={{ color: '#fff', margin: 0 }}
+          >
+            {s.eyebrow}
+          </p>
+        )}
+        {s.title && (
+          <h3 className="cf-hero-slide-crece-title">{s.title}</h3>
+        )}
+        {s.body && (
+          <div
+            className="cf-hero-slide-crece-body cf-richtext"
+            dangerouslySetInnerHTML={{ __html: s.body }}
+          />
+        )}
+        {s.long_body && (
+          <button
+            className="cf-hero-more-btn"
+            onClick={onOpenModal}
+            style={{ marginTop: 'auto' }}
+          >
+            {s.cta_label?.trim() || 'Ver más'} →
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function sectionFromSlide(
+  s: HeaderSlide | undefined,
+  fallbackEyebrow: string,
+): HeroSection | null {
+  if (!s || !s.long_body) return null
+  return {
+    id: s.id,
+    eyebrow: s.eyebrow ?? fallbackEyebrow,
+    title: s.title ?? '',
+    intro: undefined,
+    short: [],
+    long: [{ name: '', body: s.long_body }],
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Componente Principal
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HeroRow({
   brandContent = [],
+  headerSlides = [],
   lineas = [],
   growthPairs = [],
   lineaPhotosByName = {},
@@ -514,6 +628,27 @@ export default function HeroRow({
       sub: taglineByName[l.dbKey] ?? l.sub,
     }))
   }, [lineas])
+
+  // Overrides editables (DB). Singletons: 1 por slide_kind (el primero gana).
+  // `linea-card` es repetible → array ordenado (la query ya viene por sort_order).
+  const slideByKind = useMemo(() => {
+    const m = new Map<HeaderSlideKind, HeaderSlide>()
+    for (const s of headerSlides) {
+      if (s.slide_kind !== 'linea-card' && !m.has(s.slide_kind)) {
+        m.set(s.slide_kind, s)
+      }
+    }
+    return m
+  }, [headerSlides])
+  const dbLineaCards = useMemo(
+    () => headerSlides.filter((s) => s.slide_kind === 'linea-card'),
+    [headerSlides],
+  )
+  const dbBanners = useMemo(
+    () => headerSlides.filter((s) => s.slide_kind === 'banner'),
+    [headerSlides],
+  )
+
   const trackRef = useRef<HTMLDivElement>(null)
 
   // Pausamos el auto-carousel marquee cuando el track no está en viewport.
@@ -554,7 +689,11 @@ export default function HeroRow({
     setCurrent(principalIdx)
   }, [principalIdx, centerSlide])
 
-  const numSlides = 8
+  // 5 singletons + N cards de línea (DB si hay, sino las hardcoded).
+  const numSlides =
+    5 +
+    (dbLineaCards.length > 0 ? dbLineaCards.length : lineasResolved.length) +
+    dbBanners.length
 
   // snapTo(i) busca la copia de slide i más cercana al scrollLeft actual
   // (set A o set B duplicado) — evita rebobinar cuando el carousel ya pasó
@@ -579,7 +718,7 @@ export default function HeroRow({
       centerSlide(bestIdx, true)
       setCurrent(bestIdx % numSlides)
     },
-    [centerSlide],
+    [centerSlide, numSlides],
   )
 
   const onScroll = useCallback(() => {
@@ -598,34 +737,7 @@ export default function HeroRow({
       }
     }
     setCurrent(closestIdx % numSlides)
-  }, [])
-
-  // Data hardcodeada para Modals
-  const modalCrece: HeroSection = useMemo(() => ({
-    id: 'crece',
-    eyebrow: 'Concepto',
-    title: 'La Casa que Crece',
-    intro: 'Nos propusimos crear un ambiente que acompañe cada etapa de la vida familiar, y después de mucho trabajo e investigación, la idea original de un gran arquitecto como Alvar Aalto nos dio la respuesta que buscábamos. Una vivienda que evoluciona junto a quienes la habitan. Su diseño formal y espacial permite ampliaciones naturales y fluidas, anticipándose a las necesidades que naturalmente traerá el desarrollo familiar.',
-    short: [],
-    long: [
-      { name: '', body: 'La propuesta de La Casa que Crece parte de una vivienda compacta, funcional y confortable, que integra living-comedor y cocina en un espacio único, con un baño amplio, lavadero exterior y diversos accesorios opcionales para optimizar el jardín, como parrilla, cochera y espacios semicubiertos. Esa casa mínima puede expandirse de manera flexible con cuartos adicionales, más baños, toilette, escritorio o lavadero interior, sin demoliciones ni molestias.' },
-      { name: '', body: 'La Casa que Crece brinda la opción de elegir entre distintas distribuciones y disposiciones interiores de sus ambientes, a través de dos tipologías de diseño flexible. Esta visión permite anticipar cómo será el crecimiento de tu hogar antes de construirlo, adecuando la decisión de compra en función del presupuesto actual, pero con la certeza de contar con un desarrollo futuro práctico, adaptable y en sintonía con cada estilo de vida.' }
-    ]
-  }), [])
-
-  const modalFlex: HeroSection = useMemo(() => ({
-    id: 'flex',
-    eyebrow: 'Sistema',
-    title: 'Flex Build Suit',
-    intro: 'Quienes hacemos Hausind® ya hemos acompañado a miles de familias a tener hogares eficientes, modernos y accesibles, en todo el país. Más de 50.000 M2 de experiencia avalan nuestro equipo de arquitectos, ingenieros y expertos en construcción industrializada. Por eso en cada proyecto podemos garantizar precio, tiempo y calidad, en un proceso sin sorpresas y con resultados extraordinarios.',
-    short: [],
-    long: [
-      { name: 'VERDADERAS CASAS', body: 'Usamos la tecnología para industrializar los procesos, pero no fabricamos módulos ni boxes ni nada por el estilo. Hacemos casas, como la que buscas, pero con condiciones superiores que permiten los avances técnicos.' },
-      { name: 'CASAS QUE NO SE CONSTRUYEN', body: 'Las casas HAUSIND® no se construyen, se fabrican bajo un modelo industrializado de alta performance inspirado en la industria automotriz, que permite una escala inigualable, gran velocidad de implantación y mejores costos comparativos. Conocé todos los detalles del Sistema HAUSIND® Flex Build Suite en este enlace' },
-      { name: 'CASAS DE DISEÑO INTELIGENTE', body: '¿Ya viste nuestras casas? Seguro alguna te gustó. Pero lo mejor de nuestros diseños no se ve. Cada espacio está detalladamente previsto para su uso, y la flexibilidad es nuestro diferencial. Cambiar la distribución interna y crecer sin obras ni demoliciones, es muy fácil.' },
-      { name: 'CASAS AMIGABLES', body: 'La preservación e integración con el entorno natural es una premisa fundamental. Privilegiamos los recursos locales al máximo, sugerimos el uso de la madera como protagonista, y las opciones en hormigón son de bajo impacto, elaboradas 100% en plantas industriales bajo estrictas normas de reducción del impacto.' }
-    ]
-  }), [])
+  }, [numSlides])
 
   // Auto-carousel marquee: rAF loop que avanza scrollLeft a velocidad
   // constante (px/frame). Para el loop sin saltos, los slides se renderean
@@ -676,36 +788,78 @@ export default function HeroRow({
 
   // Renderiza el set de 8 slides una vez. Se llama dos veces (set A + set B)
   // para que el rAF loop pueda hacer wraparound invisible.
-  const renderSlideSet = (keyPrefix: string) => (
+  const renderSlideSet = (keyPrefix: string) => {
+    const sPasos = slideByKind.get('pasos')
+    const sCrece = slideByKind.get('crece')
+    const sPrincipal = slideByKind.get('principal')
+    const sFlex = slideByKind.get('flex')
+    const sLineasIntro = slideByKind.get('lineas-intro')
+    // Modal "Ver más": solo si el slide tiene long_body cargado. Sin
+    // long_body → null → no se renderiza el botón (ver SlideCrece/SlideFlex).
+    const creceSection = sectionFromSlide(sCrece, 'Concepto')
+    const flexSection = sectionFromSlide(sFlex, 'Sistema')
+    return (
     <>
       <div key={`${keyPrefix}-pasos`} className="cf-hero-row-slide cf-hero-row-slide-section">
-        <SlidePasos />
+        <SlidePasos s={sPasos} />
       </div>
       <div key={`${keyPrefix}-crece`} className="cf-hero-row-slide cf-hero-row-slide-split">
-        <SlideCrece growthPairs={growthPairs} onOpenModal={() => { if (modalCrece) setModalSection(modalCrece) }} />
+        <SlideCrece growthPairs={growthPairs} s={sCrece} onOpenModal={() => { if (creceSection) setModalSection(creceSection) }} />
       </div>
       <div key={`${keyPrefix}-principal`} className="cf-hero-row-slide cf-hero-row-slide-principal">
-        <SlidePrincipal />
+        <SlidePrincipal s={sPrincipal} />
       </div>
       <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
-        <SlideFlex onOpenModal={() => { if (modalFlex) setModalSection(modalFlex) }} />
+        <SlideFlex s={sFlex} onOpenModal={() => { if (flexSection) setModalSection(flexSection) }} />
       </div>
       <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
-        <SlideLineasIntro />
+        <SlideLineasIntro s={sLineasIntro} />
       </div>
-      {lineasResolved.map((linea) => (
-        <div key={`${keyPrefix}-linea-${linea.name}`} className="cf-hero-row-slide cf-hero-row-slide-linea">
-          <SlideLineaCard
-            name={linea.name}
-            sub={linea.sub}
-            bg={linea.bg}
-            teaser={linea.teaser}
-            onOpenModal={() => setModalLinea(linea)}
+      {dbLineaCards.length > 0
+        ? dbLineaCards.map((s) => (
+            <div key={`${keyPrefix}-lc-${s.id}`} className="cf-hero-row-slide cf-hero-row-slide-linea">
+              <SlideLineaCard
+                name={s.title ?? ''}
+                sub={s.subtitle ?? ''}
+                bg={s.image_url ?? ''}
+                teaser={s.body ?? ''}
+                moreLabel={s.long_body ? (s.cta_label?.trim() || 'Ver más') : null}
+                onOpenModal={() => { const sec = sectionFromSlide(s, ''); if (sec) setModalSection(sec) }}
+              />
+            </div>
+          ))
+        : lineasResolved.map((linea) => (
+            <div key={`${keyPrefix}-linea-${linea.name}`} className="cf-hero-row-slide cf-hero-row-slide-linea">
+              <SlideLineaCard
+                name={linea.name}
+                sub={linea.sub}
+                bg={linea.bg}
+                teaser={linea.teaser}
+                onOpenModal={() => setModalLinea(linea)}
+              />
+            </div>
+          ))}
+      {dbBanners.map((s) => (
+        <div
+          key={`${keyPrefix}-bn-${s.id}`}
+          className={`cf-hero-row-slide ${
+            s.narrow
+              ? 'cf-hero-row-slide-lineas-intro'
+              : 'cf-hero-row-slide-split'
+          }`}
+        >
+          <SlideBanner
+            s={s}
+            onOpenModal={() => {
+              const sec = sectionFromSlide(s, s.eyebrow ?? '')
+              if (sec) setModalSection(sec)
+            }}
           />
         </div>
       ))}
     </>
-  )
+    )
+  }
 
   return (
     <div

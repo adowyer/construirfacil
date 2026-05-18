@@ -31,7 +31,11 @@ import {
   getResolvedBrandContent,
   getResolvedLineContent,
 } from '@/lib/supabase/queries/content_resolve'
+import { getResolvedHeaderSlides } from '@/lib/supabase/queries/header_content'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import { getFooterContent } from '@/lib/supabase/queries/footer'
+import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
+import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
@@ -111,6 +115,10 @@ export default async function CatalogoPage({ params }: PageProps) {
     catalogAttributes,
     featuredModels,
     scContent,
+    headerSlides,
+    footerContent,
+    homeSlides,
+    deliveryConditions,
   ] = await Promise.all([
     getGroupedCatalog(
       supabase,
@@ -125,7 +133,15 @@ export default async function CatalogoPage({ params }: PageProps) {
     getAllCatalogAttributes(supabase),
     getFeaturedModels(supabase, 8),
     getActiveSistemaConstructivo(supabase),
+    // Marca activa → su versión ∪ pinned. Agregador (sin marca) → CF B2C ∪
+    // pinned. B2B (/empresas) se maneja en Fase 4 con variant 'b2b'.
+    getResolvedHeaderSlides(supabase, { marcaId: resolveMarcaId, variant: 'b2c' }),
+    getFooterContent(supabase),
+    getResolvedHomeSlides(supabase, { marcaId: resolveMarcaId, variant: 'b2c' }),
+    getDeliveryConditions(supabase, resolveMarcaId),
   ])
+
+  const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
 
   // Solo marcas aprobadas en el footer público.
   const approvedMarcas = marcas.filter((m) => m.status === 'approved')
@@ -155,6 +171,7 @@ export default async function CatalogoPage({ params }: PageProps) {
       models={models}
       brandContent={brandContent}
       lineContent={lineContent}
+      headerSlides={headerSlides}
       scContent={scContent}
       lineas={lineas}
       marcas={approvedMarcas}
@@ -163,6 +180,9 @@ export default async function CatalogoPage({ params }: PageProps) {
       catalogAttributes={catalogAttributes}
       featuredModels={featuredModels}
       footerCardsByMarca={footerCardsByMarca}
+      footerContent={footerContent}
+      homeSlides={homeSlides}
+      deliveryConditionsHtml={deliveryConditionsHtml}
       selectedMarca={selectedMarca}
     />
   )

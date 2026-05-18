@@ -491,7 +491,7 @@ body:has(.cf-row.cf-expanded) {
   justify-content: flex-start;
   align-items: flex-end;
   text-align: right;
-  padding: 0 18px 0 0;
+  padding: 0 18px 15px 0;
   width: 200px;
   flex-shrink: 0;
   /* En el grid 1fr/auto/1fr del .cf-row, la info vive en la col 1fr
@@ -786,6 +786,52 @@ a.cf-row-precio-val:hover {
   }
 }
 
+/* ── Mobile (≤768px): la card del LISTADO (colapsada) deja de ser el grid
+   satélite 1fr/auto/1fr (que en portrait empuja el texto angosto a la
+   derecha y recorta la foto) y pasa a una card vertical: foto full-width
+   arriba + info full-width a la izquierda debajo. El expandido NO se toca. */
+@media (max-width: 768px) {
+  .cf-row:not(.cf-expanded) {
+    display: flex;
+    flex-direction: column-reverse;
+    height: auto;
+    overflow: visible;
+  }
+
+  .cf-row:not(.cf-expanded) .cf-row-info {
+    width: 100%;
+    flex-shrink: 1;
+    justify-self: auto;
+    align-items: flex-start;
+    text-align: left;
+    padding: 18px 22px 24px;
+  }
+
+  .cf-row:not(.cf-expanded) .cf-meta-collapsed {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .cf-row:not(.cf-expanded) .cf-row-marca-logo {
+    align-self: flex-start;
+    margin-top: 16px;
+  }
+
+  .cf-row:not(.cf-expanded) .cf-row-photo {
+    width: 100%;
+  }
+
+  .cf-row:not(.cf-expanded) .cf-row-track {
+    width: 100%;
+  }
+
+  .cf-row:not(.cf-expanded) .cf-row-img-wrap {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+}
+
 .cf-row-img {
   display: block;
   height: 100%;
@@ -864,6 +910,7 @@ a.cf-row-precio-val:hover {
    de la grilla. Le dice al usuario que la card es clickeable (feedback de
    UX real: no se descubría el click). z-index 3 → queda legible por encima
    del gradient del overlay (z-index 2). Decorativo: pointer-events none. */
+/* Botón primario "VER" + "+" en círculo (estilo CF primario). */
 .cf-row-seemore {
   position: absolute;
   bottom: 28px;
@@ -872,22 +919,36 @@ a.cf-row-precio-val:hover {
   pointer-events: none;
   display: inline-flex;
   align-items: center;
-  padding: 7px 15px;
+  gap: 9px;
+  padding: 6px 8px 6px 18px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.42);
+  background: #ff003d;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: none;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
   transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.cf-row-seemore-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* Al hacer hover de la foto se afirma un poco (refuerza el "es clickeable"). */
 .cf-row-img-wrap:hover .cf-row-seemore {
-  background: rgba(0, 0, 0, 0.62);
+  background: #d80035;
   transform: translateY(-2px);
 }
 
@@ -895,8 +956,14 @@ a.cf-row-precio-val:hover {
   .cf-row-seemore {
     bottom: 16px;
     right: 16px;
-    padding: 6px 12px;
+    padding: 5px 7px 5px 14px;
     font-size: 11px;
+  }
+
+  .cf-row-seemore-plus {
+    width: 21px;
+    height: 21px;
+    font-size: 14px;
   }
 }
 
@@ -912,7 +979,8 @@ a.cf-row-precio-val:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5e5e5e; /* chevron gris oscuro, sin círculo */
+  color: #5e5e5e;
+  /* chevron gris oscuro, sin círculo */
   opacity: 0;
   transform: translateY(-50%) scale(0.85);
   transition: opacity 0.4s ease,
@@ -935,10 +1003,12 @@ a.cf-row-precio-val:hover {
 }
 
 @keyframes cfScrollHintPulse {
+
   0%,
   100% {
     transform: translateX(-4px);
   }
+
   50% {
     transform: translateX(6px);
   }
@@ -1700,6 +1770,11 @@ a.cf-row-precio-val:hover {
   padding: 36px 24px 28px;
   color: #ffffff;
   border-radius: inherit;
+  /* Si el texto excede el alto del slide → scroll dentro de la columna
+     (en vez de clipear). Pedido del dueño. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .cf-pn-sc-col-eyebrow {
@@ -1729,8 +1804,8 @@ a.cf-row-precio-val:hover {
   margin: 4px 0 0;
 }
 
-/* Resto del body. Sin line-clamp para que entre todo (el user pidió evitar
-   scroll) — confiamos en el padding del overlay y la altura del slide. */
+/* Resto del body. Sin line-clamp: si excede el alto del slide, scrollea
+   la columna (overflow-y:auto en .cf-pn-sc-col-overlay). */
 .cf-pn-sc-col-body {
   font-size: 14px;
   line-height: 1.5;
@@ -3552,6 +3627,140 @@ a.cf-row-precio-val:hover {
   display: none;
 }
 
+/* Desktop: la hamburguesa y el cierre del sheet no existen (solo mobile). */
+.cf-stf-hamburger,
+.cf-stf-close {
+  display: none;
+}
+
+/* ── Mobile: la barra de filtros se reduce a una hamburguesa que abre los
+   filtros en un overlay translúcido que baja desde arriba (portal a body). */
+@media (max-width: 768px) {
+  .cf-sticky-filters {
+    padding: 0 16px;
+  }
+
+  /* Ocultar la barra inline (NO el sheet, que vive en el portal). */
+  .cf-sticky-filters > .cf-sticky-filters-inner {
+    display: none;
+  }
+
+  .cf-stf-hamburger {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background: rgba(255, 0, 61, 0.92);
+    -webkit-backdrop-filter: saturate(160%) blur(24px);
+    backdrop-filter: saturate(160%) blur(24px);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 0;
+    border-radius: 999px;
+    padding: 11px 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  }
+
+  .cf-stf-hamburger-icon {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .cf-stf-hamburger-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #fff;
+    color: #ff003d;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .cf-stf-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: rgba(8, 8, 8, 0.5);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+
+  .cf-stf-sheet {
+    position: relative;
+    width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 54px 18px 24px;
+    background: rgba(255, 0, 61, 0.94);
+    -webkit-backdrop-filter: saturate(160%) blur(24px);
+    backdrop-filter: saturate(160%) blur(24px);
+    border-radius: 0 0 18px 18px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .cf-stf-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    font-size: 22px;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.85);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+
+  /* El inner dentro del sheet: columna apilada, sin la cápsula propia. */
+  .cf-sticky-filters-inner--sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 0;
+    overflow: visible;
+    max-width: none;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-radius: 0;
+  }
+
+  .cf-sticky-filters-inner--sheet .cf-stf-group {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .cf-sticky-filters-inner--sheet .cf-stf-lbl {
+    display: block;
+    width: 100%;
+    margin: 0 0 2px;
+  }
+
+  .cf-sticky-filters-inner--sheet .cf-stf-spacer {
+    display: none;
+  }
+
+  .cf-sticky-filters-inner--sheet .cf-stf-select {
+    width: 100%;
+  }
+}
+
 .cf-stf-group {
   display: flex;
   align-items: center;
@@ -3789,6 +3998,8 @@ a.cf-row-precio-val:hover {
   letter-spacing: -0.02em;
   color: #fff;
   margin: 0;
+  line-height: 1.1;
+  padding: 15px 0;
 }
 
 .cf-hero-slide-crece-body {
@@ -3801,6 +4012,95 @@ a.cf-row-precio-val:hover {
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Rich-text (Tiptap, body/long_body del header): contenedor <div> con HTML
+   saneado. Reset de márgenes del 1er/último bloque → un párrafo simple
+   queda igual que antes; estilo básico de listas/links/negrita. */
+.cf-richtext> :first-child {
+  margin-top: 0;
+}
+
+.cf-richtext> :last-child {
+  margin-bottom: 0;
+}
+
+.cf-richtext p {
+  margin: 0 0 0.6em;
+}
+
+.cf-richtext ul {
+  list-style: disc;
+  padding-left: 1.2em;
+  margin: 0.4em 0;
+}
+
+.cf-richtext ol {
+  list-style: decimal;
+  padding-left: 1.2em;
+  margin: 0.4em 0;
+}
+
+.cf-richtext li {
+  margin: 0.15em 0;
+}
+
+.cf-richtext a {
+  text-decoration: underline;
+}
+
+.cf-richtext strong {
+  font-weight: 700;
+}
+
+.cf-richtext em {
+  font-style: italic;
+}
+
+/* Modal "Condiciones de Entrega": tarjeta BLANCA, texto negro, contenida en
+   la foto. Más aire entre párrafos; lead-ins en negrita bien marcados. */
+.cf-delivery-conditions {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.cf-delivery-conditions p {
+  margin: 0 0 1.05em;
+}
+
+.cf-delivery-conditions strong {
+  color: #0a0a0a;
+}
+
+/* Slide 'banner' repetible (promo). Foto+overlay o color sólido; el ancho
+   del slot lo da el wrapper (cf-hero-row-slide-split / -lineas-intro). */
+.cf-slide-banner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.cf-slide-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.62));
+}
+
+.cf-slide-banner-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 36px;
+  width: 100%;
 }
 
 /* ── Slide PRINCIPAL: SVG bg + aside glass blur con manifesto ── */
@@ -4467,8 +4767,12 @@ a.cf-row-precio-val:hover {
 .cf-glass-card {
   position: absolute;
   width: clamp(280px, 45%, 400px);
-  height: clamp(300px, 60%, 400px);
-  background: rgba(30, 30, 30, 0.45);
+  /* Igual para crece (.left) y flex (.right): crece con el texto pero
+     nunca más alto que el slide (responsive-safe). */
+  height: auto;
+  min-height: 360px;
+  max-height: 92%;
+  background: rgba(30, 30, 30, 0.28);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-radius: 16px;
@@ -4479,13 +4783,28 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-glass-card.left {
-  top: 43%;
+  top: 50%;
   left: 40px;
   transform: translateY(-50%);
 }
 
+/* Texto de crece y flex más grande y SIN recorte (entra todo; si fuese
+   larguísimo, scrollea en vez de cortar). */
+.cf-glass-card .cf-hero-slide-crece-title {
+  font-size: clamp(22px, 2.1vw, 30px);
+  padding: 8px 0;
+}
+
+.cf-glass-card .cf-hero-slide-crece-body {
+  font-size: 14px;
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow-y: auto;
+  line-height: 1.25;
+}
+
 .cf-glass-card.right {
-  top: 43%;
+  top: 50%;
   right: 40px;
   transform: translateY(-50%);
 }
@@ -5334,25 +5653,56 @@ a.cf-row-precio-val:hover {
   transform: scale(1.04);
 }
 
+/* Desktop: botón completo "Cotizar →"; el mini "$" solo en mobile. */
+.cf-row-sticky-cta-btn-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cf-row-sticky-cta-btn-mini {
+  display: none;
+}
+
+/* Mobile: el bar "Estás viendo… Cotizar" ocupa demasiado → se reduce a un
+   botón redondo flotante con solo el "$" (abajo a la derecha). */
 @media (max-width: 580px) {
   .cf-row-sticky-cta {
-    bottom: 16px;
-    left: 16px;
+    left: auto;
     right: 16px;
+    bottom: 16px;
     max-width: none;
-    padding: 6px 6px 6px 18px;
-    gap: 12px;
-    justify-content: space-between;
+    padding: 0;
+    gap: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 
-  .cf-row-sticky-cta-name {
-    font-size: 13px;
-    max-width: 160px;
+  .cf-row-sticky-cta-info {
+    display: none;
+  }
+
+  .cf-row-sticky-cta-btn-full {
+    display: none;
+  }
+
+  .cf-row-sticky-cta-btn-mini {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
   }
 
   .cf-row-sticky-cta-btn {
-    padding: 10px 16px;
-    font-size: 11px;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.22),
+      0 2px 6px rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -5390,11 +5740,12 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-footer-cierre-title {
-  font-size: clamp(36px, 4.4vw, 64px);
+  font-size: 55px;
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 0.95;
   margin: 0 0 24px;
+  white-space: nowrap;
 }
 
 .cf-footer-cierre-body {
@@ -5461,8 +5812,8 @@ a.cf-row-precio-val:hover {
 .cf-footer-cierre.cf-footer-cierre-narrow .cf-footer-cierre-inner {
   max-width: 75vw;
   background: var(--cf-hero-olive, #b2a67a);
-  border-radius: 24px;
-  padding: 56px 48px;
+  border-radius: 15px;
+  padding: 45px 45px;
 }
 
 /* ── Capa 2: Mini marquee continuo ────────────────────────────────────────── */
@@ -6037,12 +6388,12 @@ a.cf-row-precio-val:hover {
 .cf-footer-inst-logos {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 35px;
   flex-wrap: wrap;
 }
 
 .cf-footer-inst-logo {
-  height: 65px;
+  height: 30px;
   width: auto;
   object-fit: contain;
   opacity: 0.7;
@@ -6723,12 +7074,10 @@ a.cf-row-precio-val:hover {
 .cf-home-row-slide-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.15) 0%,
-    rgba(0, 0, 0, 0.4) 50%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(0, 0, 0, 0.15) 0%,
+      rgba(0, 0, 0, 0.4) 50%,
+      rgba(0, 0, 0, 0.7) 100%);
   pointer-events: none;
 }
 
@@ -7011,6 +7360,7 @@ a.cf-row-precio-val:hover {
    sin tocar las reglas desktop.
    ============================================================================ */
 @media (max-width: 768px) {
+
   /* Slider horizontal del expandido: el contenedor scrollea en X. El
      `touch-action: pan-y` original bloqueaba el swipe horizontal en touch
      (no se podía recorrer la galería con el dedo en celular). */
@@ -7073,6 +7423,7 @@ a.cf-row-precio-val:hover {
 
 /* Teléfonos angostos: el slide casi a viewport completo. */
 @media (max-width: 480px) {
+
   .cf-slide-image,
   .cf-slide-image-narrow,
   .cf-slide-image-medium,
@@ -7089,5 +7440,31 @@ a.cf-row-precio-val:hover {
   .cf-slide-text-wide .cf-scrollable-body-content,
   .cf-slide-text-xwide .cf-scrollable-body-content {
     max-height: 62vh;
+  }
+}
+
+/* ── Ficha del modelo (app/(public)/models/[slug]) en mobile: el split
+   55/45 fijo (estilos inline) se apila — galería full-width arriba (deja
+   de ser sticky a toda altura) + detalle full-width debajo. `!important`
+   porque hay que ganarle a los estilos inline de la página. ── */
+@media (max-width: 768px) {
+  .cf-md-split {
+    flex-direction: column;
+  }
+
+  .cf-md-gallery {
+    position: relative !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .cf-md-detail {
+    width: 100% !important;
+    padding: 32px 20px !important;
+  }
+
+  .cf-md-nav {
+    padding: 0 18px !important;
   }
 }

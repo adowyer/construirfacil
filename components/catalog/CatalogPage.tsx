@@ -24,11 +24,16 @@ import StickyFilters from './StickyFilters'
 import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
+import { variantLabel } from '@/lib/format/variant'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import type { Marca } from '@/types/database'
-import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import type {
+  FooterCardRow,
+  FooterContentRow,
+} from '@/lib/supabase/queries/footer'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type { SistemaConstructivoLite } from '@/lib/supabase/queries/sistema-constructivo'
+import type { HeaderSlide } from '@/lib/supabase/queries/header_content'
 import {
   type CatalogImage,
   type CatalogAttributeRow,
@@ -37,8 +42,9 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import CatalogFooter from './CatalogFooter'
+import { useRouter } from 'next/navigation'
 import HomeRow from './HomeRow'
-import { LANDING_B2C } from '@/lib/content/landing-cf'
+import type { HomeSlide } from '@/lib/supabase/queries/home_content'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -48,6 +54,9 @@ interface PageProps {
   models: CatalogModel[]
   brandContent?: BrandContent[]
   lineContent?: LineContent[]
+  /** Fase 2: slides editables del header resueltos (CF o marca). Se pasa a
+   *  HeroRow; sin filas, cada slide cae a su hardcoded (cero regresión). */
+  headerSlides?: HeaderSlide[]
   /** Copy editorial por sistema constructivo (global + per-marca). El panel
    *  SC lo prefiere sobre brandContent; si está vacío, cae al legacy. */
   scContent?: SistemaConstructivoLite[]
@@ -65,6 +74,10 @@ interface PageProps {
   /** Footer cards editables por marca, indexadas por marca_id. Si una marca
    *  no tiene cards, el CatalogFooter usa el fallback hardcoded. */
   footerCardsByMarca?: Record<string, FooterCardRow[]>
+  /** Cierre + institucional del footer (singleton CF). null → hardcoded. */
+  footerContent?: FooterContentRow | null
+  /** Slides del HomeRow resueltos (B2B hereda B2C). Vacío → defaults. */
+  homeSlides?: HomeSlide[]
   /** Marca activa (en /catalogo/[marca]). Null/undefined en el agregador.
    *  Controla logo, breadcrumb y filtros de contenido contextual. */
   selectedMarca?: { id: string; name: string; slug: string; logo_url: string | null } | null
@@ -73,6 +86,13 @@ interface PageProps {
    *  Se usa en `/` (home) — entrar al catálogo es un toggle interno, no una
    *  navegación. Default false (modo catálogo normal, ej. /catalogo/[marca]). */
   initialHomeMode?: boolean
+  /** 'b2b' (ruta /empresas): HomeRow usa copy B2B y "Ver catálogo" navega
+   *  al catálogo B2C abierto (/catalogo) en vez del toggle interno.
+   *  El contenido del HeroRow B2B llega por `headerSlides` (variant b2b). */
+  variant?: 'b2c' | 'b2b'
+  /** "Condiciones de Entrega" (HTML saneado, resuelto server). Se pasa a
+   *  ModelRow→ExpandedPanels (pill en el panel Exteriores). null → sin pill. */
+  deliveryConditionsHtml?: string | null
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -95,6 +115,7 @@ export default function CatalogPage({
   models = [],
   brandContent = [],
   lineContent = [],
+  headerSlides = [],
   scContent = [],
   lineas = [],
   marcas = [],
@@ -103,9 +124,14 @@ export default function CatalogPage({
   catalogAttributes = [],
   featuredModels = [],
   footerCardsByMarca = {},
+  footerContent = null,
+  homeSlides = [],
   selectedMarca = null,
   initialHomeMode = false,
+  variant = 'b2c',
+  deliveryConditionsHtml = null,
 }: PageProps) {
+  const router = useRouter()
   // Máquina de estados de transición home ↔ catálogo.
   //
   //   home    → HomeSlider visible. Catálogo desmontado.
@@ -530,6 +556,7 @@ export default function CatalogPage({
       <HeroRow
         brandContent={brandContent}
         lineContent={lineContent}
+        headerSlides={headerSlides}
         lineas={lineas}
         lineaCoverByName={coverByLineaName}
         growthPairs={growthPairs}
@@ -644,6 +671,7 @@ export default function CatalogPage({
                   modelContentMap={modelContentMap}
                   allModels={filtered}
                   lineaIconUrl={iconByLineaName[model.linea] ?? null}
+                  deliveryConditionsHtml={deliveryConditionsHtml}
                 />
               )
             })}
@@ -675,8 +703,11 @@ export default function CatalogPage({
           está cerrado, se ve justo abajo del HeroRow. Cuando el catálogo
           se abre, lo empuja hacia abajo (flow natural). ── */}
       <HomeRow
-        items={LANDING_B2C.items}
-        onVerCatalogo={goToCatalog}
+        homeSlides={homeSlides}
+        variant={variant}
+        onVerCatalogo={
+          variant === 'b2b' ? () => router.push('/catalogo') : goToCatalog
+        }
       />
 
       {/* ── Footer del catálogo (cierre + marquee + base) ──
@@ -687,6 +718,7 @@ export default function CatalogPage({
         featuredModels={featuredModels}
         marcas={marcas}
         footerCardsByMarca={footerCardsByMarca}
+        footerContent={footerContent}
         onOpenModel={openDetail}
         hideMarcaCards={!selectedMarca}
       />
@@ -984,7 +1016,7 @@ export function StationDatos({ model }: { model: CatalogModel }) {
             className={`cf-variant-card ${i === selectedVariante ? 'selected' : ''}`}
             onClick={() => setSelectedVariante(i)}
           >
-            <p className="cf-variant-name">V{v.variante}</p>
+            <p className="cf-variant-name">{variantLabel(v.variante)}</p>
             <p className="cf-variant-meta">
               {v.area_m2 ? Math.round(v.area_m2) + ' m²' : '—'}
               {v.bedrooms_label ? ` · ${v.bedrooms_label} dorm.` : ''}

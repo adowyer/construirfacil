@@ -13,6 +13,9 @@
  * no muestra el count de modelos para mantener la barra compacta.
  */
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+
 interface StickyFiltersProps {
   estiloFilter: string
   /** Multi-select: arrays de valores activos. Click en pill → toggle. */
@@ -80,10 +83,35 @@ export default function StickyFilters({
   const isEstiloEnabled = (v: string) =>
     !enabledEstilos || enabledEstilos.has(v) || estiloFilter === v
 
-  return (
-    <div className="cf-sticky-filters">
-      <div className="cf-sticky-filters-inner">
-        {/* ESTILO — select */}
+  // Mobile: la barra se reduce a una hamburguesa que abre los filtros en
+  // un overlay translúcido desde arriba. Portal a <body> porque el shell
+  // del catálogo usa transform y atraparía un position:fixed.
+  const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
+  const activeCount =
+    (estiloFilter ? 1 : 0) +
+    bedFilters.length +
+    sizeFilters.length +
+    (sortOrder && sortOrder !== 'recommended' ? 1 : 0)
+
+  const groups = (
+    <>
+      {/* ESTILO — select */}
         <div className="cf-stf-group">
           <span className="cf-stf-lbl">Estilo</span>
           <select
@@ -161,7 +189,62 @@ export default function StickyFilters({
             </button>
           ))}
         </div>
-      </div>
+    </>
+  )
+
+  return (
+    <div className={`cf-sticky-filters${open ? ' is-open' : ''}`}>
+      {/* Mobile: trigger hamburguesa (oculto en desktop por CSS). */}
+      <button
+        type="button"
+        className="cf-stf-hamburger"
+        aria-label="Abrir filtros"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <span aria-hidden="true" className="cf-stf-hamburger-icon">
+          ☰
+        </span>
+        Filtros
+        {activeCount > 0 && (
+          <span className="cf-stf-hamburger-badge">{activeCount}</span>
+        )}
+      </button>
+
+      {/* Desktop: barra inline de siempre (oculta en mobile por CSS). */}
+      <div className="cf-sticky-filters-inner">{groups}</div>
+
+      {/* Mobile: overlay translúcido desde arriba. Portal a <body> para
+          escapar el transform del shell del catálogo. */}
+      {mounted &&
+        open &&
+        createPortal(
+          <div
+            className="cf-stf-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filtros"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              className="cf-stf-sheet"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="cf-stf-close"
+                aria-label="Cerrar filtros"
+                onClick={() => setOpen(false)}
+              >
+                ×
+              </button>
+              <div className="cf-sticky-filters-inner cf-sticky-filters-inner--sheet">
+                {groups}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

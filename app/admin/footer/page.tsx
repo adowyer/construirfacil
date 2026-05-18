@@ -38,12 +38,20 @@ export default async function AdminFooterCardsPage() {
             el fallback hardcoded (Garantía / 100% / Fábrica / 50.000 m²).
           </p>
         </div>
-        <Link
-          href="/admin/footer/new"
-          className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors"
-        >
-          Nueva card
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/footer/cierre"
+            className="border border-neutral-300 text-neutral-700 px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-neutral-100 transition-colors"
+          >
+            Cierre + institucional
+          </Link>
+          <Link
+            href="/admin/footer/new"
+            className="bg-[#ff003d] text-white px-[27px] py-[5px] rounded-full text-sm font-semibold uppercase tracking-widest hover:bg-[#d80035] transition-colors"
+          >
+            Nueva card
+          </Link>
+        </div>
       </div>
 
       {cards.length === 0 ? (

@@ -128,3 +128,47 @@ export async function deleteFooterCard(id: string): Promise<Result> {
   revalidateFooter()
   redirect('/admin/footer')
 }
+
+// ---------------------------------------------------------------------------
+// footer_content — cierre + institucional (singleton CF, key='cf').
+// Campos vacíos → NULL → CatalogFooter cae al hardcoded.
+// ---------------------------------------------------------------------------
+
+export async function upsertFooterContent(
+  _prevState: Result,
+  formData: FormData,
+): Promise<Result> {
+  const admin = createAdminClient()
+
+  const payload = {
+    eyebrow: parseOptionalText(formData.get('eyebrow')),
+    title: parseOptionalText(formData.get('title')),
+    cta_primary_label: parseOptionalText(formData.get('cta_primary_label')),
+    cta_secondary_label: parseOptionalText(formData.get('cta_secondary_label')),
+    copyright_text: parseOptionalText(formData.get('copyright_text')),
+    privacy_label: parseOptionalText(formData.get('privacy_label')),
+    privacy_url: parseOptionalText(formData.get('privacy_url')),
+    terms_label: parseOptionalText(formData.get('terms_label')),
+    terms_url: parseOptionalText(formData.get('terms_url')),
+  }
+
+  const { data: existing } = await admin
+    .from('footer_content')
+    .select('id')
+    .eq('key', 'cf')
+    .maybeSingle()
+
+  const { error } = existing
+    ? await admin
+        .from('footer_content')
+        .update(payload)
+        .eq('id', existing.id)
+    : await admin
+        .from('footer_content')
+        .insert({ key: 'cf', ...payload })
+
+  if (error) return { error: `Error al guardar: ${error.message}` }
+
+  revalidateFooter()
+  return { error: null }
+}

@@ -63,12 +63,18 @@ export default function SiteHeader({
             className="cf-site-header-hausind"
           />
         </Link>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/cf_logo_gris.png"
-          alt="ConstruirFácil"
-          className="cf-site-header-cf"
-        />
+        <Link
+          href="/"
+          aria-label="ConstruirFácil — inicio"
+          className="cf-site-header-cf-link"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/cf_logo_gris.png"
+            alt="ConstruirFácil"
+            className="cf-site-header-cf"
+          />
+        </Link>
       </header>
     )
   }
@@ -172,33 +178,20 @@ export default function SiteHeader({
         </nav>
       </div>
 
-      {/* ── Lado derecho: sello CF ─────────────────────────────────
-          En modo marca, el logo actúa como link al catálogo agregado
-          (Inicio › Catálogo). En el agregador, se queda como sello
-          estático para evitar un link a sí mismo. */}
-      {isAggregator ? (
-        // eslint-disable-next-line @next/next/no-img-element
+      {/* ── Lado derecho: sello CF → siempre link a la home. ───────── */}
+      <Link
+        href="/"
+        aria-label="ConstruirFácil — inicio"
+        className="cf-site-header-cf-link"
+        title="Ir al inicio de ConstruirFácil"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/cf_logo_gris.png"
-          alt="Por ConstruirFácil"
+          alt="ConstruirFácil"
           className="cf-site-header-cf"
-          title="Catálogo agregado por ConstruirFácil"
         />
-      ) : (
-        <Link
-          href="/catalogo"
-          aria-label="Ir al catálogo general ConstruirFácil"
-          className="cf-site-header-cf-link"
-          title="Volver al catálogo general"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/cf_logo_gris.png"
-            alt="ConstruirFácil — catálogo general"
-            className="cf-site-header-cf"
-          />
-        </Link>
-      )}
+      </Link>
     </header>
   )
 }

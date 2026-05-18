@@ -11,7 +11,7 @@
  *   - Exterior      → is_exterior=true,  image_type='render'
  *   - Interior      → is_exterior=false, image_type='render'
  *   - Planos        → image_type='plano'
- *   - Axonometrías  → image_type='axo'
+ *   - Perspectivas  → image_type='axo'  (etiqueta UI; taxonomía interna sigue 'axo')
  *
  * Por imagen:
  *   - Chips de variantes (V1, V2…) del style_name actual del modelo →
@@ -55,7 +55,7 @@ const TABS: {
     { id: 'exterior', label: 'Exterior', isExterior: true, imageType: 'render' },
     { id: 'interior', label: 'Interior', isExterior: false, imageType: 'render' },
     { id: 'planos', label: 'Planos', isExterior: false, imageType: 'plano' },
-    { id: 'axo', label: 'Axonometrías', isExterior: false, imageType: 'axo' },
+    { id: 'axo', label: 'Perspectivas', isExterior: false, imageType: 'axo' },
   ]
 
 function imageInTab(img: AdminGalleryImage, tab: TabId): boolean {

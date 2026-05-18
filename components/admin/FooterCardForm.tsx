@@ -18,7 +18,9 @@ type ActionFn = (
 
 interface FooterCardFormProps {
   action: ActionFn
-  marcas: Pick<Marca, 'id' | 'name'>[]
+  marcas?: Pick<Marca, 'id' | 'name'>[]
+  /** Portal: fija la marca (no se muestra el select; va por hidden input). */
+  lockMarca?: { id: string; name: string }
   defaultValues?: FooterCardRow | null
   submitLabel?: string
 }
@@ -57,7 +59,8 @@ function Label({
 
 export function FooterCardForm({
   action,
-  marcas,
+  marcas = [],
+  lockMarca,
   defaultValues,
   submitLabel = 'Guardar',
 }: FooterCardFormProps) {
@@ -79,20 +82,32 @@ export function FooterCardForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="marca_id">Marca</Label>
-            <select
-              id="marca_id"
-              name="marca_id"
-              defaultValue={defaultValues?.marca_id ?? ''}
-              required
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">— elegí una marca —</option>
-              {marcas.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            {lockMarca ? (
+              <>
+                <input type="hidden" name="marca_id" value={lockMarca.id} />
+                <input
+                  type="text"
+                  value={lockMarca.name}
+                  disabled
+                  className={`${inputClass} bg-neutral-100 text-neutral-500 cursor-not-allowed`}
+                />
+              </>
+            ) : (
+              <select
+                id="marca_id"
+                name="marca_id"
+                defaultValue={defaultValues?.marca_id ?? ''}
+                required
+                className={`${inputClass} bg-white`}
+              >
+                <option value="">— elegí una marca —</option>
+                {marcas.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

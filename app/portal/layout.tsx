@@ -112,6 +112,24 @@ export default async function PortalLayout({
             </>
           )}
           <Link
+            href="/portal/header"
+            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
+          >
+            Mi presentación
+          </Link>
+          <Link
+            href="/portal/home"
+            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
+          >
+            Mi presentación inferior
+          </Link>
+          <Link
+            href="/portal/footer"
+            className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
+          >
+            Mi footer
+          </Link>
+          <Link
             href="/portal/settings"
             className="px-3 py-2 hover:bg-neutral-100 transition-colors rounded-sm"
           >

@@ -24,7 +24,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { Marca } from '@/types/database'
-import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import type {
+  FooterCardRow,
+  FooterContentRow,
+} from '@/lib/supabase/queries/footer'
 import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
 import { useInViewport } from '@/lib/hooks/useInViewport'
 import { Ruler, BadgeCheck, ShieldCheck, Factory, Globe, Phone } from 'lucide-react'
@@ -69,35 +72,35 @@ const TRUST_CARDS: {
   unit: string
   label: string
 }[] = [
-  {
-    id: 'm2',
-    icon: Ruler,
-    number: '50.000',
-    unit: 'm²',
-    label: 'construidos por nuestro equipo',
-  },
-  {
-    id: 'financiado',
-    icon: BadgeCheck,
-    number: '100%',
-    unit: '',
-    label: 'financiado, accesible para tu familia',
-  },
-  {
-    id: 'garantia',
-    icon: ShieldCheck,
-    number: 'Garantía',
-    unit: '',
-    label: 'Hausind sobre cada vivienda',
-  },
-  {
-    id: 'fabrica',
-    icon: Factory,
-    number: 'Fábrica',
-    unit: '',
-    label: 'propia, sin intermediarios',
-  },
-]
+    {
+      id: 'm2',
+      icon: Ruler,
+      number: '50.000',
+      unit: 'm²',
+      label: 'construidos por nuestro equipo',
+    },
+    {
+      id: 'financiado',
+      icon: BadgeCheck,
+      number: '100%',
+      unit: '',
+      label: 'financiado, accesible para tu familia',
+    },
+    {
+      id: 'garantia',
+      icon: ShieldCheck,
+      number: 'Garantía',
+      unit: '',
+      label: 'Hausind sobre cada vivienda',
+    },
+    {
+      id: 'fabrica',
+      icon: Factory,
+      number: 'Fábrica',
+      unit: '',
+      label: 'propia, sin intermediarios',
+    },
+  ]
 
 interface CatalogFooterProps {
   featuredModels: CatalogModel[]
@@ -112,6 +115,8 @@ interface CatalogFooterProps {
    *  de marca del marquee. Esas cards solo tienen sentido cuando el visitante
    *  está dentro del catálogo de una marca específica. */
   hideMarcaCards?: boolean
+  /** Cierre + institucional editable (singleton CF). null → hardcoded. */
+  footerContent?: FooterContentRow | null
 }
 
 export default function CatalogFooter({
@@ -120,6 +125,7 @@ export default function CatalogFooter({
   footerCardsByMarca = {},
   onOpenModel,
   hideMarcaCards = false,
+  footerContent = null,
 }: CatalogFooterProps) {
   return (
     <footer className="cf-footer">
@@ -127,16 +133,20 @@ export default function CatalogFooter({
           sin copy descriptivo. ─────────────────────────────────────────── */}
       <section className="cf-footer-cierre cf-footer-cierre-narrow">
         <div className="cf-footer-cierre-inner">
-          <p className="cf-footer-cierre-eyebrow">¿No encontraste lo que buscás?</p>
+          {footerContent?.eyebrow && (
+            <p className="cf-footer-cierre-eyebrow">
+              {footerContent.eyebrow}
+            </p>
+          )}
           <h2 className="cf-footer-cierre-title">
-            Diseñamos tu casa<br />a medida.
+            {footerContent?.title || 'Diseñamos tu casa a medida.'}
           </h2>
           <div className="cf-footer-cierre-ctas">
             <a className="cf-footer-cta-primary" href={buildCotizarMailto()}>
-              Contactanos →
+              {footerContent?.cta_primary_label || 'Contactanos →'}
             </a>
             <a className="cf-footer-cta-secondary" href={buildAsesorMailto()}>
-              Conversar con Ximia
+              {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
             </a>
           </div>
         </div>
@@ -153,7 +163,7 @@ export default function CatalogFooter({
       />
 
       {/* ── Capa institucional: logos partner + copyright + legales ──── */}
-      <FooterInstitucional />
+      <FooterInstitucional content={footerContent} />
 
     </footer>
   )
@@ -164,26 +174,40 @@ export default function CatalogFooter({
 // Logos Link / AD / Marketeam + copyright + links Privacidad/Términos.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FooterInstitucional() {
+function FooterInstitucional({
+  content,
+}: {
+  content: FooterContentRow | null
+}) {
   return (
     <section className="cf-footer-inst">
       <div className="cf-footer-inst-inner">
         <div className="cf-footer-inst-logos">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Link.png" alt="Link" className="cf-footer-inst-logo" />
+          <a href="https://linkargentina.com/" target="_blank" rel="noopener noreferrer"><img src="/Link-Logo_gris.png" alt="Link" className="cf-footer-inst-logo" /></a>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Ad.png" alt="AD" className="cf-footer-inst-logo" />
+          <a href="https://ximia.ai/" target="_blank" rel="noopener noreferrer"><img src="/Ximia-AI_Logo.png" alt="Link" className="cf-footer-inst-logo" /></a>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Marketeam.png" alt="Marketeam" className="cf-footer-inst-logo" />
+          <a href="https://inbest.link/" target="_blank" rel="noopener noreferrer"><img src="/Inbest_Logo.png" alt="Link" className="cf-footer-inst-logo" /></a>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <a href="https://andreadowyer.com/" target="_blank" rel="noopener noreferrer"><img src="/AD_Logo-color.png" alt="AD" className="cf-footer-inst-logo" /></a>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <a href="https://marketeam.xyz/" target="_blank" rel="noopener noreferrer"><img src="/Marketeam_Logo-Rojo.png" alt="Marketeam" className="cf-footer-inst-logo" style={{ height: '37px !important', marginLeft: '-10px' }} /></a>
         </div>
         <div className="cf-footer-inst-meta">
           <span className="cf-footer-inst-copy">
-            © {new Date().getFullYear()} ConstruirFácil. Todos los derechos reservados.
+            © {new Date().getFullYear()}{' '}
+            {content?.copyright_text ||
+              'ConstruirFácil. Todos los derechos reservados.'}
           </span>
           <nav className="cf-footer-inst-links">
-            <a href="/privacidad">Política de Privacidad</a>
+            <a href={content?.privacy_url || '/privacidad'}>
+              {content?.privacy_label || 'Política de Privacidad'}
+            </a>
             <span aria-hidden="true">·</span>
-            <a href="/terminos">Términos del Servicio</a>
+            <a href={content?.terms_url || '/terminos'}>
+              {content?.terms_label || 'Términos del Servicio'}
+            </a>
           </nav>
         </div>
       </div>

@@ -21,7 +21,9 @@ import type {
   ModelContentRow,
 } from '@/lib/supabase/queries/models'
 import { getMockHouseDetail } from '@/lib/supabase/mock-data'
+import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
 import ModelPlaceholder from '@/components/catalog/ModelPlaceholder'
+import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 
 // ── Cover images keyed by variant_code ───────────────────────────────────────
 const _B = 'https://posadasalrio.construirfacil.com/wp-content/uploads/2025/11/'
@@ -189,6 +191,17 @@ export default async function ModelDetailPage({
   const house = await getHouseForSlug(slug)
   if (!house) notFound()
 
+  // "Condiciones de Entrega": default global de CF (marca-ready). Degrada a
+  // null → no se muestra el pill (cero regresión).
+  let deliveryHtml: string | null = null
+  try {
+    const sb = await createClient()
+    const dc = await getDeliveryConditions(sb, null)
+    deliveryHtml = dc?.body?.trim() || null
+  } catch {
+    /* sin Supabase → sin pill */
+  }
+
   const isWood = (house.construction_system?.slug ?? '').includes('wood')
   const discount = pctOff(house.price_lista_usd, house.price_pozo_usd)
 
@@ -201,6 +214,7 @@ export default async function ModelDetailPage({
     <div className="min-h-screen bg-white">
       {/* ── Top nav ── */}
       <nav
+        className="cf-md-nav"
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0,
@@ -259,10 +273,10 @@ export default async function ModelDetailPage({
       </nav>
 
       {/* ── Split layout ── */}
-      <div style={{ display: 'flex', minHeight: '100vh', paddingTop: '52px' }}>
+      <div className="cf-md-split" style={{ display: 'flex', minHeight: '100vh', paddingTop: '52px' }}>
 
         {/* Left: gallery column (sticky, scrollable) */}
-        <div style={{
+        <div className="cf-md-gallery" style={{
           position: 'sticky',
           top: '52px',
           height: 'calc(100vh - 52px)',
@@ -271,6 +285,7 @@ export default async function ModelDetailPage({
           overflowY: 'auto',
           scrollbarWidth: 'none',
         }}>
+          {deliveryHtml && <DeliveryConditionsModal html={deliveryHtml} />}
           {(house.gallery?.length > 0) ? (
             house.gallery.map((url: string, i: number) => (
               // eslint-disable-next-line @next/next/no-img-element
@@ -299,7 +314,7 @@ export default async function ModelDetailPage({
         </div>
 
         {/* Right: details */}
-        <div style={{
+        <div className="cf-md-detail" style={{
           width: '45%',
           overflowY: 'auto',
           padding: '48px 56px',
