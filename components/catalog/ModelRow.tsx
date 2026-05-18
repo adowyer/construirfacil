@@ -22,6 +22,7 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import ExpandedPanels from './ExpandedPanels'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
+import { track } from '@/lib/track/client'
 
 interface BrandContentLite {
   key: string
@@ -173,7 +174,10 @@ function PrecioOrCotizar({
         })}
         className={className}
         style={style}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+          track('cotizar_open', { model: model.display_name })
+        }}
       >
         Cotizar
       </a>
@@ -504,7 +508,11 @@ export default function ModelRow({
       <div
         ref={rowRef}
         className={`cf-row ${isExpanded ? 'cf-expanded' : ''}`}
-        onClick={() => !isExpanded && setIsExpanded(true)}
+        onClick={() => {
+          if (isExpanded) return
+          setIsExpanded(true)
+          track('model_open', { model: model.group_slug })
+        }}
       >
       {/* ── COL 1: Info (Left) ── */}
       <div className="cf-row-info" onClick={e => isExpanded && e.stopPropagation()}>

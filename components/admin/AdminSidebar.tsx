@@ -21,6 +21,7 @@ import {
   GalleryHorizontal,
   Layers,
   ScrollText,
+  Megaphone,
 } from 'lucide-react'
 
 type NavItem = {
@@ -50,6 +51,7 @@ const SECTIONS_TOP: { title: string | null; items: NavItem[] }[] = [
       { href: '/admin/sistemas', label: 'Sistemas constructivos', icon: Layers },
       { href: '/admin/header', label: 'Header', icon: PanelTop },
       { href: '/admin/home', label: 'HomeRow', icon: GalleryHorizontal },
+      { href: '/admin/campanas', label: 'Campañas', icon: Megaphone },
       {
         href: '/admin/condiciones',
         label: 'Condiciones de entrega',
