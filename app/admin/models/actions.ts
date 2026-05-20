@@ -296,3 +296,59 @@ export async function setModelStatus(
   revalidatePath('/admin/models')
   revalidatePath('/admin')
 }
+
+// ---------------------------------------------------------------------------
+// updateModelPrice — edición inline del listado (/admin/models)
+// Acepta un solo campo a la vez (lista/contado/pozo) y devuelve el nuevo
+// valor parseado para que el cliente reconcilie su estado optimista. Si el
+// usuario manda string vacío, guardamos NULL (sin precio).
+// ---------------------------------------------------------------------------
+
+type PriceField = 'precio_lista_usd' | 'precio_contado_usd' | 'precio_pozo_usd'
+
+const PRICE_FIELDS: ReadonlySet<PriceField> = new Set([
+  'precio_lista_usd',
+  'precio_contado_usd',
+  'precio_pozo_usd',
+])
+
+export async function updateModelPrice(
+  id: string,
+  field: PriceField,
+  rawValue: string,
+): Promise<{ error: string | null; value: number | null }> {
+  if (!PRICE_FIELDS.has(field)) {
+    return { error: `Campo inválido: ${field}`, value: null }
+  }
+
+  const trimmed = rawValue.trim()
+  let value: number | null
+  if (trimmed === '') {
+    value = null
+  } else {
+    // Tolerante a formato es-AR ("145.272,6" → 145272.6) y formato simple.
+    const normalized = trimmed.replace(/\./g, '').replace(',', '.')
+    const n = Number(normalized)
+    if (!Number.isFinite(n) || n < 0) {
+      return { error: 'El precio debe ser un número ≥ 0.', value: null }
+    }
+    value = Math.round(n * 100) / 100
+  }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('house_catalog')
+    .update({ [field]: value })
+    .eq('id', id)
+
+  if (error) {
+    return { error: `Error al guardar: ${error.message}`, value: null }
+  }
+
+  // OJO: NO llamamos revalidatePath acá. Hacerlo dispara un re-render del
+  // server component que puede remontar el `<InlinePriceCell>` con el prop
+  // `initial` resuelto del cache → la celda muestra brevemente el ✓ y vuelve
+  // al valor anterior. El admin page revalida la próxima vez que se navega
+  // (y el catálogo público también: tiene force-dynamic en sus páginas).
+  return { error: null, value }
+}

@@ -11,6 +11,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { HouseCatalogRow } from '@/lib/supabase/queries/models'
 import { ModelRowActions } from './ModelRowActions'
+import { InlinePriceCell } from './InlinePriceCell'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -68,9 +69,9 @@ const TABLE_HEADERS = [
   'Código',
   'Nombre',
   'Sistema',
-  'Área m²',
-  'Dorm.',
-  'Precio USD',
+  'Lista',
+  'Contado',
+  'Pozo',
   'Estado',
   '',
 ] as const
@@ -89,20 +90,26 @@ function ModelRow({ row }: { row: HouseCatalogRow }) {
       <td className="px-4 py-3 text-neutral-500 whitespace-nowrap text-xs">
         {row.construction_system ?? '—'}
       </td>
-      <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-        {row.area_m2 != null ? `${row.area_m2} m²` : '—'}
+      <td className="px-3 py-2 whitespace-nowrap">
+        <InlinePriceCell
+          modelId={row.id}
+          field="precio_lista_usd"
+          initial={row.precio_lista_usd}
+        />
       </td>
-      <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-        {row.min_bedrooms != null && row.max_bedrooms != null
-          ? row.min_bedrooms === row.max_bedrooms
-            ? String(row.min_bedrooms)
-            : `${row.min_bedrooms}–${row.max_bedrooms}`
-          : (row.min_bedrooms ?? row.max_bedrooms ?? '—')}
+      <td className="px-3 py-2 whitespace-nowrap">
+        <InlinePriceCell
+          modelId={row.id}
+          field="precio_contado_usd"
+          initial={row.precio_contado_usd}
+        />
       </td>
-      <td className="px-4 py-3 whitespace-nowrap">
-        {row.public_price_usd != null
-          ? `USD ${row.public_price_usd.toLocaleString('es-AR')}`
-          : '—'}
+      <td className="px-3 py-2 whitespace-nowrap">
+        <InlinePriceCell
+          modelId={row.id}
+          field="precio_pozo_usd"
+          initial={row.precio_pozo_usd}
+        />
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
         <StatusBadge status={row.status} />
