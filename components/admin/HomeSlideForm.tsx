@@ -10,6 +10,7 @@
 
 import { useActionState } from 'react'
 import type { HomeSlide } from '@/lib/supabase/queries/home_content'
+import { RichTextEditor } from '@/components/admin/RichTextEditor'
 
 type ActionFn = (
   prevState: { error: string | null },
@@ -21,6 +22,9 @@ interface Props {
   defaultValues?: Partial<HomeSlide> | null
   contextLabel: string
   submitLabel?: string
+  /** true cuando edita un banner (slide_key='banner') — muestra selector de
+   *  ancho (wide/medium/narrow/text) en lugar del checkbox narrow. */
+  isBanner?: boolean
 }
 
 const inputClass =
@@ -55,6 +59,7 @@ export function HomeSlideForm({
   defaultValues,
   contextLabel,
   submitLabel = 'Guardar cambios',
+  isBanner = false,
 }: Props) {
   const [state, formAction, isPending] = useActionState(action, { error: null })
 
@@ -110,9 +115,7 @@ export function HomeSlideForm({
           </div>
           <div>
             <Label htmlFor="body">Body</Label>
-            <textarea id="body" name="body" rows={4}
-              defaultValue={defaultValues?.body ?? ''}
-              className={`${inputClass} resize-none`} />
+            <RichTextEditor name="body" initialHTML={defaultValues?.body ?? ''} />
           </div>
         </div>
       </fieldset>
@@ -171,16 +174,41 @@ export function HomeSlideForm({
               defaultValue={defaultValues?.body_color ?? ''} className={inputClass} />
           </div>
         </div>
-        <label className="flex items-center gap-2 mt-4 text-sm text-neutral-700">
-          <input type="checkbox" name="narrow"
-            defaultChecked={defaultValues?.narrow ?? false}
-            className="h-4 w-4 accent-[#ff003d]" />
-          Slide angosto (rompe el ritmo del marquee)
-        </label>
-        <p className="text-xs text-neutral-400 mt-2">
-          La foto de fondo se sube abajo (en edición). Si no hay foto, se usa
-          el color de fondo.
-        </p>
+        {isBanner ? (
+          <div className="mt-4">
+            <Label htmlFor="banner_width" hint="qué tan ancho se ve el slide">
+              Ancho del slide
+            </Label>
+            <select
+              id="banner_width"
+              name="banner_width"
+              defaultValue={defaultValues?.banner_width ?? 'wide'}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="wide">Ancho — 672 px (16:10)</option>
+              <option value="medium">Medio — 336 px (4:5)</option>
+              <option value="narrow">Angosto — 290 px</option>
+              <option value="text">Sólo texto — 336 px sin fondo, izquierda</option>
+            </select>
+            <p className="text-xs text-neutral-400 mt-2">
+              La foto de fondo se sube abajo. En "Sólo texto" se ignora
+              la foto y el color de fondo — queda sobre el wash del HomeRow.
+            </p>
+          </div>
+        ) : (
+          <>
+            <label className="flex items-center gap-2 mt-4 text-sm text-neutral-700">
+              <input type="checkbox" name="narrow"
+                defaultChecked={defaultValues?.narrow ?? false}
+                className="h-4 w-4 accent-[#ff003d]" />
+              Slide angosto (rompe el ritmo del marquee)
+            </label>
+            <p className="text-xs text-neutral-400 mt-2">
+              La foto de fondo se sube abajo (en edición). Si no hay foto, se usa
+              el color de fondo.
+            </p>
+          </>
+        )}
       </fieldset>
 
       {/* Visibilidad */}

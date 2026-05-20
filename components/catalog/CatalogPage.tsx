@@ -45,6 +45,10 @@ import CatalogFooter from './CatalogFooter'
 import { useRouter } from 'next/navigation'
 import HomeRow from './HomeRow'
 import type { HomeSlide } from '@/lib/supabase/queries/home_content'
+import CotizarModal from './CotizarModal'
+import { track } from '@/lib/track/client'
+import type { CotizadorData } from '@/lib/content/cotizador-data'
+import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -93,6 +97,13 @@ interface PageProps {
   /** "Condiciones de Entrega" (HTML saneado, resuelto server). Se pasa a
    *  ModelRow→ExpandedPanels (pill en el panel Exteriores). null → sin pill. */
   deliveryConditionsHtml?: string | null
+  /** Cotizador Uber (tramos + cuota + slot base por marca). Resuelto server
+   *  en loadHomeData. null/sin tramos → la ficha cae al CTA "Cotizar" de
+   *  siempre (cero regresión en rutas que aún no lo pasan). */
+  cotizador?: CotizadorData | null
+  /** Cards institucionales (marca_id NULL) para reemplazar TRUST_CARDS
+   *  hardcodeadas en el agregador y como fallback per-marca sin cards. */
+  institutionalFooterCards?: FooterCardRow[]
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -130,6 +141,8 @@ export default function CatalogPage({
   initialHomeMode = false,
   variant = 'b2c',
   deliveryConditionsHtml = null,
+  cotizador = null,
+  institutionalFooterCards = [],
 }: PageProps) {
   const router = useRouter()
   // Máquina de estados de transición home ↔ catálogo.
@@ -672,6 +685,7 @@ export default function CatalogPage({
                   allModels={filtered}
                   lineaIconUrl={iconByLineaName[model.linea] ?? null}
                   deliveryConditionsHtml={deliveryConditionsHtml}
+                  cotizador={cotizador}
                 />
               )
             })}
@@ -697,18 +711,27 @@ export default function CatalogPage({
         </div>
       </div>
 
-      {/* ── HomeRow: SIEMPRE montado, después del shell del catálogo.
-          Réplica del HeroRow superior pero con contenido editorial (5
-          beneficios) y autoplay en sentido INVERSO. Cuando el catálogo
-          está cerrado, se ve justo abajo del HeroRow. Cuando el catálogo
-          se abre, lo empuja hacia abajo (flow natural). ── */}
-      <HomeRow
-        homeSlides={homeSlides}
-        variant={variant}
-        onVerCatalogo={
-          variant === 'b2b' ? () => router.push('/catalogo') : goToCatalog
-        }
-      />
+      {/* ── HomeRow: visible en `home` y durante `opening`/`closing` (mantiene
+          la sensación de persiana del catálogo deslizándose por encima).
+          En `catalog` (catálogo totalmente abierto) se OCULTA — sino
+          aparece abajo del catálogo al hacer scroll, lo cual no tiene
+          sentido contextual (el usuario ya está navegando el catálogo).
+          El fade-out usa la misma duración que el shell para que se
+          sienta como una sola transición. ── */}
+      {phase !== 'catalog' && (
+        <div
+          className={`cf-home-row-wrap ${phase === 'opening' ? 'cf-home-row-wrap-fading' : ''}`}
+          aria-hidden={phase !== 'home'}
+        >
+          <HomeRow
+            homeSlides={homeSlides}
+            variant={variant}
+            onVerCatalogo={
+              variant === 'b2b' ? () => router.push('/catalogo') : goToCatalog
+            }
+          />
+        </div>
+      )}
 
       {/* ── Footer del catálogo (cierre + marquee + base) ──
           hideMarcaCards: en vista agregador (sin marca seleccionada), las
@@ -718,6 +741,7 @@ export default function CatalogPage({
         featuredModels={featuredModels}
         marcas={marcas}
         footerCardsByMarca={footerCardsByMarca}
+        institutionalFooterCards={institutionalFooterCards}
         footerContent={footerContent}
         onOpenModel={openDetail}
         hideMarcaCards={!selectedMarca}
@@ -783,7 +807,7 @@ export default function CatalogPage({
 
               {/* DATOS */}
               <div className="cf-station">
-                <StationDatos model={activeModel} />
+                <StationDatos model={activeModel} cotizador={cotizador} />
               </div>
 
             </div>
@@ -990,7 +1014,13 @@ export function StationCompare({ model }: { model: CatalogModel }) {
 // Estación: Datos
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function StationDatos({ model }: { model: CatalogModel }) {
+export function StationDatos({
+  model,
+  cotizador = null,
+}: {
+  model: CatalogModel
+  cotizador?: CotizadorData | null
+}) {
   const [selectedVariante, setSelectedVariante] = useState(0)
   const [selectedSystem, setSelectedSystem] = useState(0)
 
@@ -1004,6 +1034,22 @@ export function StationDatos({ model }: { model: CatalogModel }) {
     s => s.variante === uniqueVariantes[selectedVariante]?.variante
       && s.sistema_constructivo === model.systems[selectedSystem]
   ) ?? model.skus[0]
+
+  // Precio base de la cuota = la columna que esta marca marcó como base
+  // (degrada a 'lista'). El selector Uber no muestra este número: deriva
+  // la cuota. Sin tramos → cae al CTA "Cotizar" de siempre (cero regresión).
+  const baseSlot =
+    (model.marca_id && cotizador?.baseSlotByMarca[model.marca_id]) || 'lista'
+  const basePriceUsd = currentSku
+    ? currentSku[PRICE_SLOT_COLUMN[baseSlot]] ?? null
+    : null
+  const hasUber = !!cotizador && cotizador.tiers.length > 0
+  const [cotizarOpen, setCotizarOpen] = useState(false)
+  const ctx = {
+    model: model.display_name,
+    variante: uniqueVariantes[selectedVariante]?.variante ?? null,
+    sistema: model.systems[selectedSystem] ?? null,
+  }
 
   return (
     <div className="cf-st-datos">
@@ -1040,10 +1086,30 @@ export function StationDatos({ model }: { model: CatalogModel }) {
         ))}
       </div>
 
-      {/* CTA cotización */}
-      <button className="cf-wa-cta">
-        Pedir Cotización →
-      </button>
+      {/* CTA → modal con selector Uber + cuota + form (no sale del catálogo).
+          Sin tramos resueltos: el CTA "Cotizar" de siempre (cero regresión). */}
+      {hasUber && cotizador ? (
+        <>
+          <button
+            className="cf-wa-cta"
+            onClick={() => {
+              track('cotizar_open', { source: 'ficha_datos', ...ctx })
+              setCotizarOpen(true)
+            }}
+          >
+            Cotizar tu selección →
+          </button>
+          <CotizarModal
+            open={cotizarOpen}
+            onClose={() => setCotizarOpen(false)}
+            cotizador={cotizador}
+            basePriceUsd={basePriceUsd}
+            context={ctx}
+          />
+        </>
+      ) : (
+        <button className="cf-wa-cta">Pedir Cotización →</button>
+      )}
     </div>
   )
 }

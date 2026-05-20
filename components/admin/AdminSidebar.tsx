@@ -22,6 +22,9 @@ import {
   Layers,
   ScrollText,
   Megaphone,
+  Calculator,
+  CircleDollarSign,
+  Copyright,
 } from 'lucide-react'
 
 type NavItem = {
@@ -52,12 +55,15 @@ const SECTIONS_TOP: { title: string | null; items: NavItem[] }[] = [
       { href: '/admin/header', label: 'Header', icon: PanelTop },
       { href: '/admin/home', label: 'HomeRow', icon: GalleryHorizontal },
       { href: '/admin/campanas', label: 'Campañas', icon: Megaphone },
+      { href: '/admin/cotizador', label: 'Cotizador', icon: Calculator },
+      { href: '/admin/precios', label: 'Precios', icon: CircleDollarSign },
       {
         href: '/admin/condiciones',
         label: 'Condiciones de entrega',
         icon: ScrollText,
       },
       { href: '/admin/footer', label: 'Footer cards', icon: PanelBottom },
+      { href: '/admin/footer/cierre', label: 'Footer institucional', icon: Copyright },
     ],
   },
 ]
@@ -68,19 +74,34 @@ const SECTION_BOTTOM: { title: string; items: NavItem[] } = {
   items: [{ href: '/admin/attributes', label: 'Atributos', icon: Tag }],
 }
 
-function isActive(pathname: string, href: string): boolean {
-  // /admin solo matchea exacto; los demás matchean el prefix.
+function matches(pathname: string, href: string): boolean {
   if (href === '/admin') return pathname === '/admin'
   return pathname === href || pathname.startsWith(href + '/')
 }
 
+/** Devuelve el href MÁS específico que matchea el pathname — así un item
+ *  anidado (ej. /admin/footer/cierre) gana sobre su padre (/admin/footer). */
+function resolveActiveHref(pathname: string, hrefs: string[]): string | null {
+  let best: string | null = null
+  for (const h of hrefs) {
+    if (!matches(pathname, h)) continue
+    if (!best || h.length > best.length) best = h
+  }
+  return best
+}
+
 export function AdminSidebar() {
   const pathname = usePathname() ?? ''
+  const allHrefs = [
+    ...SECTIONS_TOP.flatMap((s) => s.items.map((i) => i.href)),
+    ...SECTION_BOTTOM.items.map((i) => i.href),
+  ]
+  const activeHref = resolveActiveHref(pathname, allHrefs)
 
   // Render reusable de un item de nav (idéntico para top y bottom).
   function renderItem(item: NavItem) {
     const Icon = item.icon
-    const active = isActive(pathname, item.href)
+    const active = item.href === activeHref
     return (
       <Link
         key={item.href}

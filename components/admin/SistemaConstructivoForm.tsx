@@ -11,6 +11,7 @@
 
 import { useActionState } from 'react'
 import type { SistemaConstructivoRow } from '@/lib/supabase/queries/sistema-constructivo'
+import { RichTextEditor } from '@/components/admin/RichTextEditor'
 
 type ActionFn = (
   prevState: { error: string | null },
@@ -171,13 +172,7 @@ export function SistemaConstructivoForm({
             <Label htmlFor="body" hint="descripción del sistema">
               Body
             </Label>
-            <textarea
-              id="body"
-              name="body"
-              defaultValue={defaultValues?.body ?? ''}
-              rows={6}
-              className={`${inputClass} resize-none`}
-            />
+            <RichTextEditor name="body" initialHTML={defaultValues?.body ?? ''} />
             <p className="text-xs text-neutral-400 mt-1">
               Si dejás el tagline vacío, el catálogo promueve la primera línea
               del body como tagline (compatibilidad con el formato anterior).

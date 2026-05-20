@@ -14,6 +14,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sanitizeRichTextOrNull } from '@/lib/sanitize'
 
 function parseOptionalText(value: FormDataEntryValue | null): string | null {
   if (value === null) return null
@@ -63,7 +64,7 @@ export async function saveModelContent(
     style_name: styleName,
     linea,
     tagline: parseOptionalText(formData.get('tagline')),
-    body: parseOptionalText(formData.get('body')),
+    body: sanitizeRichTextOrNull(parseOptionalText(formData.get('body'))),
     estilo_label: parseOptionalText(formData.get('estilo_label')),
     lifestyle_tags: parseTags(formData.get('lifestyle_tags')),
     recommended_use: parseOptionalText(formData.get('recommended_use')),

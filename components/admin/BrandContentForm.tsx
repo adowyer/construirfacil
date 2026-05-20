@@ -10,6 +10,7 @@
 
 import { useActionState } from 'react'
 import type { BrandContentRow } from '@/lib/supabase/queries/brand-content'
+import { RichTextEditor } from '@/components/admin/RichTextEditor'
 
 type ActionFn = (
   prevState: { error: string | null },
@@ -169,13 +170,7 @@ export function BrandContentForm({
           </div>
           <div>
             <Label htmlFor="body">Body</Label>
-            <textarea
-              id="body"
-              name="body"
-              defaultValue={defaultValues?.body ?? ''}
-              rows={6}
-              className={`${inputClass} resize-none`}
-            />
+            <RichTextEditor name="body" initialHTML={defaultValues?.body ?? ''} />
           </div>
         </div>
       </fieldset>

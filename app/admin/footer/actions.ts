@@ -29,7 +29,8 @@ function parseSortOrder(value: FormDataEntryValue | null): number {
 }
 
 type FooterCardPayload = {
-  marca_id: string
+  /** null = card institucional (CF). El form manda '' para esa opción. */
+  marca_id: string | null
   sort_order: number
   icon_key: string
   number_text: string
@@ -44,7 +45,7 @@ function buildPayload(formData: FormData): FooterCardPayload {
     | 'inactive'
     | 'archived'
   return {
-    marca_id: parseRequiredText(formData.get('marca_id')),
+    marca_id: parseOptionalText(formData.get('marca_id')), // '' → null = CF
     sort_order: parseSortOrder(formData.get('sort_order')),
     icon_key: parseRequiredText(formData.get('icon_key')) || 'factory',
     number_text: parseRequiredText(formData.get('number_text')),
@@ -55,7 +56,7 @@ function buildPayload(formData: FormData): FooterCardPayload {
 }
 
 function validatePayload(p: FooterCardPayload): string | null {
-  if (!p.marca_id) return 'La marca es obligatoria.'
+  // marca_id puede ser null (card institucional CF).
   if (!p.number_text) return 'El texto destacado es obligatorio.'
   if (!p.label_text) return 'El label es obligatorio.'
   return null

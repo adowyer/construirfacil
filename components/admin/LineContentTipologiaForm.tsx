@@ -15,6 +15,7 @@
 
 import { useActionState } from 'react'
 import type { LineContentRow } from '@/lib/supabase/queries/lineas'
+import { RichTextEditor } from '@/components/admin/RichTextEditor'
 
 type ActionFn = (
   prevState: { error: string | null },
@@ -95,14 +96,7 @@ export function LineContentTipologiaForm({
 
       <div>
         <Label htmlFor={id('body')}>Cuerpo</Label>
-        <textarea
-          id={id('body')}
-          name="body"
-          rows={8}
-          defaultValue={defaultValues?.body ?? ''}
-          className={`${inputClass} font-mono text-[13px] leading-relaxed`}
-          placeholder="Texto editorial mostrado en el slide del expandido. Se permiten saltos de línea (doble salto = párrafo)."
-        />
+        <RichTextEditor name="body" initialHTML={defaultValues?.body ?? ''} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

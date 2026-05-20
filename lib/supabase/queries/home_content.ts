@@ -44,6 +44,16 @@ export interface HomeSlide {
   text_color: string | null
   body_color: string | null
   narrow: boolean | null
+  /**
+   * Ancho del banner (slide_key='banner') — controla el aspect ratio del
+   * slide en el HomeRow. Para los slots canónicos (home-1..home-5) este
+   * valor se ignora (cada slot tiene su layout fijo).
+   *  - 'wide'   → 672px (16/10, como Principal / Todo en Uno)
+   *  - 'medium' → 336px (4/5, como las cards de financiación del header)
+   *  - 'narrow' → 290px (como Lote + Casa)
+   *  - 'text'   → 336px sin fondo, texto left-aligned
+   */
+  banner_width: 'wide' | 'medium' | 'narrow' | 'text' | null
   sort_order: number
   status: 'active' | 'inactive' | 'archived'
 }

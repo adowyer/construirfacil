@@ -84,6 +84,8 @@ export type EffectiveHomeSlide = {
   text_color: string
   body_color: string
   narrow: boolean
+  /** Ancho del banner (sólo aplica a slide_key='banner'; en slots queda 'wide'). */
+  banner_width: 'wide' | 'medium' | 'narrow' | 'text'
 }
 
 /** Slide efectivo para render: fila (campos no vacíos) sobre los defaults. */
@@ -109,6 +111,7 @@ export function effectiveHomeSlide(
     text_color: txt(row?.text_color, S.text_color),
     body_color: txt(row?.body_color, S.body_color),
     narrow: row?.narrow ?? S.narrow,
+    banner_width: 'wide',
   }
 }
 
@@ -118,6 +121,15 @@ export function effectiveHomeSlide(
  * que el banner del header. Foto si image_url; si no, color de fondo.
  */
 export function effectiveHomeBanner(row: HomeSlide): EffectiveHomeSlide {
+  const width = row.banner_width ?? 'wide'
+  // Banner 'text': sin fondo, sobre el wash claro del HomeRow → defaults
+  // a texto oscuro (sino quedaría invisible). Los demás anchos suelen ir
+  // sobre foto/dark, así que el default queda en blanco.
+  const isTextOnly = width === 'text'
+  const fallbackTextColor = isTextOnly ? '#0a0a0a' : '#ffffff'
+  const fallbackBodyColor = isTextOnly
+    ? 'rgba(10,10,10,0.78)'
+    : 'rgba(255,255,255,0.85)'
   return {
     key: row.id,
     slide_key: 'banner',
@@ -127,11 +139,12 @@ export function effectiveHomeBanner(row: HomeSlide): EffectiveHomeSlide {
     body: txt(row.body),
     cta_label: txt(row.cta_label) || 'Ver catálogo',
     cta_style: row.cta_style ?? 'none',
-    bg: txt(row.bg) || '#0a0a0a',
+    bg: txt(row.bg) || (isTextOnly ? 'transparent' : '#0a0a0a'),
     image_url: (row.image_url && row.image_url.trim()) || null,
-    text_color: txt(row.text_color) || '#ffffff',
-    body_color: txt(row.body_color) || 'rgba(255,255,255,0.85)',
+    text_color: txt(row.text_color) || fallbackTextColor,
+    body_color: txt(row.body_color) || fallbackBodyColor,
     narrow: row.narrow ?? false,
+    banner_width: width,
   }
 }
 
@@ -156,6 +169,7 @@ export function homeEditorDefaults(
     text_color: txt(own?.text_color, inherited?.text_color) || S.text_color,
     body_color: txt(own?.body_color, inherited?.body_color) || S.body_color,
     narrow: own?.narrow ?? inherited?.narrow ?? S.narrow,
+    banner_width: own?.banner_width ?? inherited?.banner_width ?? 'wide',
     status: own?.status ?? 'active',
     sort_order: own?.sort_order ?? 0,
   }

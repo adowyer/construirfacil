@@ -17,7 +17,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { loadCotizadorData } from '@/lib/content/cotizador-data'
 import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
+import { getInstitutionalFooterCards } from '@/lib/supabase/queries/footer'
 import { getAllLineas } from '@/lib/supabase/queries/lineas'
 import { getAllMarcas } from '@/lib/supabase/queries/marcas'
 import {
@@ -119,6 +121,8 @@ export default async function CatalogoPage({ params }: PageProps) {
     footerContent,
     homeSlides,
     deliveryConditions,
+    cotizador,
+    institutionalFooterCards,
   ] = await Promise.all([
     getGroupedCatalog(
       supabase,
@@ -139,6 +143,8 @@ export default async function CatalogoPage({ params }: PageProps) {
     getFooterContent(supabase),
     getResolvedHomeSlides(supabase, { marcaId: resolveMarcaId, variant: 'b2c' }),
     getDeliveryConditions(supabase, resolveMarcaId),
+    loadCotizadorData(supabase),
+    getInstitutionalFooterCards(supabase),
   ])
 
   const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
@@ -160,6 +166,7 @@ export default async function CatalogoPage({ params }: PageProps) {
       .order('sort_order', { ascending: true })
 
     for (const c of (footerCards ?? []) as FooterCardRow[]) {
+      if (!c.marca_id) continue // institucionales se manejan aparte
       const arr = footerCardsByMarca[c.marca_id] ?? []
       arr.push(c)
       footerCardsByMarca[c.marca_id] = arr
@@ -184,6 +191,8 @@ export default async function CatalogoPage({ params }: PageProps) {
       homeSlides={homeSlides}
       deliveryConditionsHtml={deliveryConditionsHtml}
       selectedMarca={selectedMarca}
+      cotizador={cotizador}
+      institutionalFooterCards={institutionalFooterCards}
     />
   )
 }

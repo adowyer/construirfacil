@@ -97,10 +97,9 @@ export function FooterCardForm({
                 id="marca_id"
                 name="marca_id"
                 defaultValue={defaultValues?.marca_id ?? ''}
-                required
                 className={`${inputClass} bg-white`}
               >
-                <option value="">— elegí una marca —</option>
+                <option value="">Institucional (CF — sin marca)</option>
                 {marcas.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}

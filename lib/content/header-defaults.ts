@@ -75,19 +75,28 @@ export function editorDefaults(
   inherited?: HeaderSlide | null,
 ): Partial<HeaderSlide> {
   const d = HEADER_DEFAULTS[kind] ?? {}
+  // En modo CREATE (la fila aún no existe) prefilleamos con defaults +
+  // herencia B2B→B2C para que el editor no arranque vacío. En modo EDIT
+  // (own existe), mostramos LITERALMENTE lo que está guardado: si el user
+  // borró un campo, debe quedar vacío y no auto-rellenarse con el default.
+  const isEdit = Boolean(own)
+  const ownVal = (v: string | null | undefined): string =>
+    v == null ? '' : v
   const pick = (
     a?: string | null,
     b?: string | null,
     c?: string,
   ): string => (a && a.trim()) || (b && b.trim()) || c || ''
   return {
-    eyebrow: pick(own?.eyebrow, inherited?.eyebrow, d.eyebrow),
-    title: pick(own?.title, inherited?.title, d.title),
-    subtitle: pick(own?.subtitle, inherited?.subtitle, d.subtitle),
-    body: pick(own?.body, inherited?.body, d.body),
-    long_body: pick(own?.long_body, inherited?.long_body),
-    cta_label: pick(own?.cta_label, inherited?.cta_label),
-    cta_url: pick(own?.cta_url, inherited?.cta_url),
+    // admin_label: solo se respeta el valor propio (es interno, no hereda).
+    admin_label: own?.admin_label ?? '',
+    eyebrow: isEdit ? ownVal(own?.eyebrow) : pick(own?.eyebrow, inherited?.eyebrow, d.eyebrow),
+    title: isEdit ? ownVal(own?.title) : pick(own?.title, inherited?.title, d.title),
+    subtitle: isEdit ? ownVal(own?.subtitle) : pick(own?.subtitle, inherited?.subtitle, d.subtitle),
+    body: isEdit ? ownVal(own?.body) : pick(own?.body, inherited?.body, d.body),
+    long_body: isEdit ? ownVal(own?.long_body) : pick(own?.long_body, inherited?.long_body),
+    cta_label: isEdit ? ownVal(own?.cta_label) : pick(own?.cta_label, inherited?.cta_label),
+    cta_url: isEdit ? ownVal(own?.cta_url) : pick(own?.cta_url, inherited?.cta_url),
     status: own?.status ?? 'active',
     sort_order: own?.sort_order ?? 0,
   }

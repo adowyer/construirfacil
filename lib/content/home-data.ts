@@ -30,6 +30,8 @@ import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import { getFooterContent } from '@/lib/supabase/queries/footer'
 import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
 import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
+import { loadCotizadorData } from '@/lib/content/cotizador-data'
+import { getInstitutionalFooterCards } from '@/lib/supabase/queries/footer'
 
 export async function loadHomeData(supabase: SupabaseClient) {
   // Home = agregador sin marca activa → contenido GLOBAL (marca_id NULL),
@@ -49,6 +51,8 @@ export async function loadHomeData(supabase: SupabaseClient) {
     footerContent,
     homeSlides,
     deliveryConditions,
+    cotizador,
+    institutionalFooterCards,
   ] = await Promise.all([
     getGroupedCatalog(supabase, {}),
     getResolvedBrandContent(supabase, null),
@@ -64,6 +68,8 @@ export async function loadHomeData(supabase: SupabaseClient) {
     getFooterContent(supabase),
     getResolvedHomeSlides(supabase, { marcaId: null, variant: 'b2c' }),
     getDeliveryConditions(supabase, null),
+    loadCotizadorData(supabase),
+    getInstitutionalFooterCards(supabase),
   ])
 
   const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
@@ -81,6 +87,7 @@ export async function loadHomeData(supabase: SupabaseClient) {
       .order('sort_order', { ascending: true })
 
     for (const c of (footerCards ?? []) as FooterCardRow[]) {
+      if (!c.marca_id) continue // institucionales se manejan aparte
       const arr = footerCardsByMarca[c.marca_id] ?? []
       arr.push(c)
       footerCardsByMarca[c.marca_id] = arr
@@ -103,6 +110,8 @@ export async function loadHomeData(supabase: SupabaseClient) {
     footerContent,
     homeSlides,
     deliveryConditionsHtml,
+    cotizador,
+    institutionalFooterCards,
   }
 }
 

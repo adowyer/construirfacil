@@ -20,7 +20,7 @@ export default async function AdminFooterCardsPage() {
   // Agrupamos por marca para que el admin se oriente.
   const groups = new Map<string, typeof cards>()
   for (const c of cards) {
-    const key = c.marca_name || '(sin marca)'
+    const key = c.marca_name || 'Institucional (CF)'
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(c)
   }

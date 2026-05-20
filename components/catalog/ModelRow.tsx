@@ -21,8 +21,10 @@ import {
   pickFull,
 } from '@/lib/supabase/queries/catalog_panels'
 import ExpandedPanels from './ExpandedPanels'
+import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
+import type { CotizadorData } from '@/lib/content/cotizador-data'
 
 interface BrandContentLite {
   key: string
@@ -76,6 +78,9 @@ interface ModelRowProps {
   lineaIconUrl?: string | null
   /** "Condiciones de Entrega" (HTML saneado) → pill en el panel Exteriores. */
   deliveryConditionsHtml?: string | null
+  /** Cotizador Uber resuelto (tramos + cuota + slot base). Lo consume el
+   *  panel Comparativo (cuota por variante + selector). null → "Cotizar". */
+  cotizador?: CotizadorData | null
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -234,6 +239,7 @@ export default function ModelRow({
   allModels = [],
   lineaIconUrl = null,
   deliveryConditionsHtml = null,
+  cotizador = null,
 }: ModelRowProps) {
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
   // fallback al cover default del modelo.
@@ -270,6 +276,62 @@ export default function ModelRow({
     setStickyVisible(false)
     const t = window.setTimeout(() => setStickyMounted(false), 220)
     return () => window.clearTimeout(t)
+  }, [isExpanded])
+
+  // Orientation lock: al abrir el panel expandido en mobile intentamos
+  // forzar landscape via Screen Orientation API.
+  // - Funciona: Chrome Android, PWAs instaladas en cualquier plataforma.
+  // - Falla silenciosamente: Safari iOS (restricción de Apple en browser),
+  //   desktop (orientación no aplica). En esos casos el nudge "rotá el
+  //   teléfono" (CSS portrait) actúa como fallback.
+  // Al cerrar (isExpanded → false) liberamos el lock para devolver el
+  // control de orientación al usuario.
+  useEffect(() => {
+    const orientation = screen.orientation as ScreenOrientation & {
+      lock?: (o: string) => Promise<void>
+    }
+    if (!orientation?.lock) return
+
+    if (isExpanded) {
+      orientation.lock('landscape').catch(() => {
+        // Safari iOS / desktop: falla silenciosamente — no hacemos nada.
+      })
+    } else {
+      try { orientation.unlock() } catch { /* idem */ }
+    }
+  }, [isExpanded])
+
+  // Fix de rotación: al girar el dispositivo con el panel expandido, la
+  // `transition: height 2.5s` animaría la altura de 70svh → 90svh lentamente
+  // y el RAF loop tiene medidas de viewport viejas durante esa transición.
+  // Solución: agregar temporalmente `.cf-no-transition` al row para que el
+  // reajuste de layout sea instantáneo, luego re-habilitamos las transitions.
+  // El panel PERMANECE abierto — cerrarlo sería mala UX (el usuario rotó
+  // precisamente para ver mejor el contenido).
+  useEffect(() => {
+    if (!isExpanded) return
+
+    let timer: ReturnType<typeof setTimeout>
+
+    const snapLayoutOnRotation = () => {
+      const row = rowRef.current
+      if (!row) return
+      // Desactivar transitions para que el reajuste de altura sea inmediato.
+      row.classList.add('cf-no-transition')
+      // Breve timeout para que el browser termine de calcular las nuevas
+      // dimensiones del viewport antes de re-habilitar las transitions.
+      timer = setTimeout(() => {
+        row.classList.remove('cf-no-transition')
+      }, 350)
+    }
+
+    window.addEventListener('orientationchange', snapLayoutOnRotation)
+    window.addEventListener('resize', snapLayoutOnRotation)
+    return () => {
+      window.removeEventListener('orientationchange', snapLayoutOnRotation)
+      window.removeEventListener('resize', snapLayoutOnRotation)
+      clearTimeout(timer)
+    }
   }, [isExpanded])
 
   // Precarga de imágenes al expandir: evita el flash blanco al cambiar de pill.
@@ -381,18 +443,16 @@ export default function ModelRow({
   const [startX, setStartX] = useState(0)
   const [startD, setStartD] = useState(0)
 
-  const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+  const onDragStart = (e: React.MouseEvent) => {
     if (!isExpanded || !shellRef.current) return
     setIsDragging(true)
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    setStartX(clientX)
+    setStartX(e.clientX)
     setStartD(shellRef.current.scrollLeft)
   }
   const onDragEnd = () => setIsDragging(false)
-  const onDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+  const onDragMove = (e: React.MouseEvent) => {
     if (!isDragging || !isExpanded || !shellRef.current) return
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const walk = (clientX - startX) * 1.5
+    const walk = (e.clientX - startX) * 1.5
     shellRef.current.scrollLeft = startD - walk
   }
 
@@ -415,6 +475,13 @@ export default function ModelRow({
         if (!shell) return
         shell.scrollLeft = 0
       })
+      // Backup timeouts for robust alignment on mobile rendering lags
+      setTimeout(() => {
+        if (shellRef.current) shellRef.current.scrollLeft = 0
+      }, 100)
+      setTimeout(() => {
+        if (shellRef.current) shellRef.current.scrollLeft = 0
+      }, 300)
     } else if (!isExpanded && shellRef.current) {
       shellRef.current.scrollLeft = 0
     }
@@ -501,9 +568,6 @@ export default function ModelRow({
       onMouseUp={onDragEnd}
       onMouseLeave={onDragEnd}
       onMouseMove={onDragMove}
-      onTouchStart={onDragStart}
-      onTouchEnd={onDragEnd}
-      onTouchMove={onDragMove}
     >
       <div
         ref={rowRef}
@@ -610,6 +674,14 @@ export default function ModelRow({
                 />
               </div>
             </div>
+            {deliveryConditionsHtml && (
+              <div
+                className="cf-detalles-btn-stacked"
+                style={{ marginTop: 'auto', paddingTop: 24 }}
+              >
+                <DeliveryConditionsModal html={deliveryConditionsHtml} variant="inline" />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -651,7 +723,20 @@ export default function ModelRow({
               {!isExpanded && (
                 <span className="cf-row-seemore" aria-hidden="true">
                   Ver
-                  <span className="cf-row-seemore-plus">+</span>
+                  <span className="cf-row-seemore-plus">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </span>
                 </span>
               )}
             </div>
@@ -672,6 +757,7 @@ export default function ModelRow({
               modelContentMap={modelContentMap}
               allModels={allModels}
               deliveryConditionsHtml={deliveryConditionsHtml}
+              cotizador={cotizador}
             />
           )}
         </div>
@@ -718,7 +804,7 @@ export default function ModelRow({
                 <span aria-hidden>→</span>
               </span>
               <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
-                $
+                Ver →
               </span>
             </a>
           </div>,
@@ -747,6 +833,24 @@ export default function ModelRow({
                 strokeLinejoin="round"
               />
             </svg>
+          </div>,
+          document.body,
+        )}
+
+      {/* D — nudge "Rotá el teléfono" en portrait mobile cuando está expandido.
+          Vive en el DOM siempre que isExpanded=true; el CSS lo muestra SOLO
+          en portrait (@media orientation:portrait) y lo oculta en landscape.
+          pointer-events:none → no bloquea el cierre por scroll del usuario. */}
+      {isExpanded &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="cf-rotate-nudge" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12a8 8 0 0 1 8-8" />
+              <path d="M12 4l-2 2 2 2" />
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+            </svg>
+            Rotá el teléfono para mejor experiencia
           </div>,
           document.body,
         )}

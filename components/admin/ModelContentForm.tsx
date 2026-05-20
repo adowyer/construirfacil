@@ -12,6 +12,7 @@
 
 import { useActionState, useState } from 'react'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
+import { RichTextEditor } from '@/components/admin/RichTextEditor'
 
 type ActionFn = (
   prevState: { error: string | null },
@@ -182,13 +183,7 @@ export function ModelContentForm({
           </div>
           <div>
             <Label htmlFor="body">Descripción larga</Label>
-            <textarea
-              id="body"
-              name="body"
-              defaultValue={defaultValues?.body ?? ''}
-              rows={5}
-              className={`${inputClass} resize-none`}
-            />
+            <RichTextEditor name="body" initialHTML={defaultValues?.body ?? ''} />
           </div>
         </div>
       </fieldset>

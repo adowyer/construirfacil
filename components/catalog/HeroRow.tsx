@@ -680,14 +680,45 @@ export default function HeroRow({
     if (!track) return
     const slide = track.children[i] as HTMLElement | undefined
     if (!slide) return
-    const target = slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2
-    track.scrollTo({ left: Math.max(0, target), behavior: smooth ? 'smooth' : 'auto' })
+    const target = Math.max(0, slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2)
+    track.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' })
+  }, [])
+
+  /** Scroll animado por rAF con ease-out cubic. El smooth nativo del
+   *  browser dura ~300ms y a veces no se percibe; este lo extiende a
+   *  ~900ms para que el affordance "hay más a la derecha" se sienta
+   *  intencional y no como un glitch. */
+  const animatedCenterSlide = useCallback((i: number, duration = 900) => {
+    const track = trackRef.current
+    if (!track) return
+    const slide = track.children[i] as HTMLElement | undefined
+    if (!slide) return
+    const target = Math.max(0, slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2)
+    const start = track.scrollLeft
+    const delta = target - start
+    if (Math.abs(delta) < 1) return
+    const t0 = performance.now()
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    let rafId = 0
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / duration)
+      track.scrollLeft = start + delta * easeOutCubic(t)
+      if (t < 1) rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
   }, [])
 
   useEffect(() => {
-    centerSlide(principalIdx, false)
+    // Carga inicial: dejar al primer paint mostrar el slide 1 brevemente y
+    // después scrollear suavemente al Principal — el movimiento horizontal
+    // conlleva el affordance de "hay más contenido a la derecha", igual que
+    // el hint del catálogo desplegado. Browser nativo era muy rápido y se
+    // sentía como un jump → custom rAF de 900ms con ease-out.
+    const t = setTimeout(() => animatedCenterSlide(principalIdx), 180)
     setCurrent(principalIdx)
-  }, [principalIdx, centerSlide])
+    return () => clearTimeout(t)
+  }, [principalIdx, animatedCenterSlide])
 
   // 5 singletons + N cards de línea (DB si hay, sino las hardcoded).
   const numSlides =

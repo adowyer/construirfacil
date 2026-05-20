@@ -15,7 +15,13 @@ const nextConfig: NextConfig = {
   // Oculta el dev indicator/logo de Next.js que aparece en dev mode.
   devIndicators: false,
 
-  experimental: {},
+  experimental: {
+    // Server Actions: el default es 1MB (muy bajo para subir imágenes/gifs
+    // de banners/slides desde el admin). 8MB da margen sin habilitar abuso.
+    serverActions: {
+      bodySizeLimit: '8mb',
+    },
+  },
 }
 
 export default nextConfig

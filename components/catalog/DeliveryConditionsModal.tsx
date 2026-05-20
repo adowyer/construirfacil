@@ -3,171 +3,116 @@
 /**
  * components/catalog/DeliveryConditionsModal.tsx
  *
- * Pill "Condiciones de Entrega" + modal con el texto (HTML saneado server,
- * render con .cf-richtext).
+ * Pill "Detalles de la casa" + modal con el contenido de "Condiciones de
+ * Entrega" (HTML saneado server, render con .cf-richtext).
+ *
+ * Diseño del pill: ícono "+" en círculo VERDE + texto (en ese orden) — mismo
+ * lenguaje visual que el "Ver +" del listado (círculo rojo, ícono + + texto).
+ *
+ * El modal SIEMPRE se abre con `<dialog>.showModal()` → top layer del browser,
+ * no se ve afectado por transforms/overflow de ancestros (la ficha colapsada
+ * tiene `transform` en su row → un `position:fixed` ahí se vuelve "fixed
+ * relativo al row", recortado, queda chiquito). El dialog elemento del DOM
+ * vive en el top layer, fuera del flujo, así que cubre todo el viewport.
  *
  * variant:
- *  - 'gallery'    → pill IN-FLOW (se monta dentro de .cf-pn-gallery-top, al
- *                   lado del label "EXTERIORES" → alineado por el flex). El
- *                   modal se abre CONTENIDO en la foto (absolute, cubre solo
- *                   el panel .cf-pn — los offsets negativos cancelan el
- *                   padding 40/56 del overlay). Tarjeta blanca, texto negro.
- *  - 'standalone' → pill absolute arriba-izq; modal fixed (la página
- *                   /models/[slug] no tiene ancestro con transform).
+ *  - 'gallery'    → pill in-flow dentro de .cf-pn-gallery-top (al lado del
+ *                   label). Texto blanco, sombra.
+ *  - 'standalone' → pill absolute arriba-izq de la página (model detail).
+ *  - 'inline'     → pill inline para anclarlo dentro de columnas o headers
+ *                   ya posicionados (Panel1Description, ficha colapsada).
+ *                   Texto oscuro.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+function PlusIcon() {
+  return (
+    <svg
+      className="cf-detalles-btn-plus-icon"
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
 
 export default function DeliveryConditionsModal({
   html,
   variant = 'standalone',
+  label = 'Detalles de la casa',
 }: {
   html: string
-  variant?: 'gallery' | 'standalone'
+  variant?: 'gallery' | 'standalone' | 'inline'
+  label?: string
 }) {
   const [open, setOpen] = useState(false)
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    const dlg = dialogRef.current
+    if (!dlg) return
+    if (open && !dlg.open) dlg.showModal()
+    else if (!open && dlg.open) dlg.close()
   }, [open])
 
-  const isGallery = variant === 'gallery'
+  // Bloquear scroll del body mientras está abierto.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
 
-  const pillStyle: React.CSSProperties = isGallery
-    ? {
-        // En la galería el pill fluye dentro de .cf-pn-gallery-top (flex,
-        // space-between) → queda alineado con el label "EXTERIORES".
-        position: 'relative',
-        zIndex: 2,
-      }
-    : {
-        position: 'absolute',
-        top: 18,
-        left: 18,
-        zIndex: 6,
-      }
-
-  // El backdrop del modal. En galería: absolute inset:0 → el containing
-  // block es el padding box del ancestro posicionado (.cf-pn-gallery-overlay,
-  // que es inset:0 de .cf-pn) → cubre EXACTAMENTE la foto. En standalone:
-  // fixed a viewport (esa página no tiene ancestro con transform).
-  const backdropStyle: React.CSSProperties = isGallery
-    ? { position: 'absolute', inset: 0, zIndex: 30 }
-    : { position: 'fixed', inset: 0, zIndex: 100 }
+  const wrapperClass = `cf-detalles-btn-wrap cf-detalles-btn-wrap--${variant}`
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        style={{
-          ...pillStyle,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 7,
-          fontFamily: 'var(--font-geist), sans-serif',
-          fontSize: 12,
-          fontWeight: 600,
-          letterSpacing: '0.04em',
-          color: '#0a0a0a',
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          border: 'none',
-          borderRadius: 999,
-          padding: '8px 16px',
-          cursor: 'pointer',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
-          whiteSpace: 'nowrap',
-        }}
+        className={`cf-detalles-btn ${wrapperClass}`}
       >
-        Condiciones de Entrega
-        <span aria-hidden="true" style={{ opacity: 0.55 }}>→</span>
+        <span className="cf-detalles-btn-plus" aria-hidden="true">
+          <PlusIcon />
+        </span>
+        <span className="cf-detalles-btn-label">{label}</span>
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Condiciones de Entrega"
-          onClick={() => setOpen(false)}
-          style={{
-            ...backdropStyle,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: isGallery ? '28px' : '5vh 20px',
-            background: 'rgba(10,10,10,0.34)',
-            backdropFilter: 'blur(2px)',
-            WebkitBackdropFilter: 'blur(2px)',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: '97%',
-              maxHeight: '100%',
-              overflowY: 'auto',
-              background: 'rgba(255,255,255,0.8)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              borderRadius: 14,
-              padding: '40px 40px 44px',
-              color: '#1a1a1a',
-              fontFamily: 'var(--font-geist), sans-serif',
-              boxShadow: '0 18px 50px rgba(0,0,0,0.28)',
-            }}
+      <dialog
+        ref={dialogRef}
+        className="cf-detalles-modal"
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setOpen(false)
+        }}
+        onClose={() => setOpen(false)}
+      >
+        <div className="cf-detalles-modal-inner">
+          <button
+            type="button"
+            className="cf-detalles-modal-close"
+            onClick={() => setOpen(false)}
+            aria-label="Cerrar"
           >
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Cerrar"
-              style={{
-                position: 'absolute',
-                top: 14,
-                right: 16,
-                width: 30,
-                height: 30,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 22,
-                lineHeight: 1,
-                color: 'rgba(0,0,0,0.45)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              ×
-            </button>
-
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.16em',
-                color: 'rgba(0,0,0,0.45)',
-                marginBottom: 18,
-              }}
-            >
-              Condiciones de Entrega
-            </p>
-
-            <div
-              className="cf-richtext cf-delivery-conditions"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          </div>
+            ×
+          </button>
+          <p className="cf-detalles-modal-eyebrow">{label}</p>
+          <div
+            className="cf-richtext cf-delivery-conditions"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         </div>
-      )}
+      </dialog>
     </>
   )
 }

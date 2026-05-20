@@ -9,7 +9,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type FooterCardRow = {
   id: string
-  marca_id: string
+  /** null = card institucional (CF). El catálogo las usa para reemplazar las
+   *  TRUST_CARDS hardcodeadas en el agregador y como fallback per-marca. */
+  marca_id: string | null
   sort_order: number
   icon_key: string
   number_text: string
@@ -33,6 +35,25 @@ export async function getFooterCardsForMarca(
 
   if (error) {
     console.error('[getFooterCardsForMarca]', error.message)
+    return []
+  }
+  return (data ?? []) as FooterCardRow[]
+}
+
+/** Cards institucionales (marca_id NULL), activas y ordenadas. Reemplazan
+ *  las TRUST_CARDS hardcodeadas en el agregador (/, /empresas) si existen. */
+export async function getInstitutionalFooterCards(
+  supabase: SupabaseClient,
+): Promise<FooterCardRow[]> {
+  const { data, error } = await supabase
+    .from('footer_card_content')
+    .select('*')
+    .is('marca_id', null)
+    .eq('status', 'active')
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('[getInstitutionalFooterCards]', error.message)
     return []
   }
   return (data ?? []) as FooterCardRow[]

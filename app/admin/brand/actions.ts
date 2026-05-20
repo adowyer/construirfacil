@@ -14,6 +14,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sanitizeRichTextOrNull } from '@/lib/sanitize'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -82,7 +83,7 @@ function buildPayload(
     label: parseRequiredText(formData.get('label')),
     title: parseOptionalText(formData.get('title')),
     subtitle: parseOptionalText(formData.get('subtitle')),
-    body: parseOptionalText(formData.get('body')),
+    body: sanitizeRichTextOrNull(parseOptionalText(formData.get('body'))),
     cta_label: parseOptionalText(formData.get('cta_label')),
     cta_url: parseOptionalText(formData.get('cta_url')),
     sort_order: parseSortOrder(formData.get('sort_order')),

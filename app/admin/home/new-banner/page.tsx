@@ -41,6 +41,7 @@ export default async function NewHomeBannerPage({ searchParams }: PageProps) {
         action={createHomeBanner.bind(null, scope)}
         contextLabel={`Banner · versión ${scope.toUpperCase()}`}
         submitLabel="Crear banner"
+        isBanner
       />
     </div>
   )

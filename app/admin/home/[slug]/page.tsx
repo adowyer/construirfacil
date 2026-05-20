@@ -82,6 +82,7 @@ export default async function EditHomeSlidePage({
           defaultValues={brow}
           contextLabel={bCtx}
           submitLabel="Guardar cambios"
+          isBanner
         />
       </div>
     )

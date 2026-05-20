@@ -18,6 +18,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { slugify } from '@/lib/utils'
+import { sanitizeRichTextOrNull } from '@/lib/sanitize'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -451,7 +452,7 @@ export async function updateLineContentTipologia(
     tipologia_code: tipologiaCode,
     title: parseOptionalText(formData.get('title')),
     subtitle: parseOptionalText(formData.get('subtitle')),
-    body: parseOptionalText(formData.get('body')),
+    body: sanitizeRichTextOrNull(parseOptionalText(formData.get('body'))),
     sort_order: parseSortOrder(formData.get('sort_order')),
     status: (parseOptionalText(formData.get('status')) ?? 'active') as
       | 'active'

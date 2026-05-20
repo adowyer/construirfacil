@@ -20,6 +20,26 @@ interface Props {
   initialHTML?: string | null
 }
 
+/** Detecta si el contenido ya viene como HTML (tiene tags); sino lo envolvemos
+ *  como párrafos respetando saltos dobles (=párrafo) y simples (=<br>). Esto
+ *  permite migrar campos que históricamente se guardaban como plain text sin
+ *  perder los saltos al abrir el editor. */
+function plainToHtml(raw: string): string {
+  if (!raw) return ''
+  if (/<[a-z][\s\S]*>/i.test(raw)) return raw
+  const esc = (s: string) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  return raw
+    .split(/\n{2,}/)
+    .map((para) => para.trim())
+    .filter(Boolean)
+    .map((para) => `<p>${esc(para).split('\n').join('<br>')}</p>`)
+    .join('')
+}
+
 function ToolbarBtn({
   active,
   onClick,
@@ -83,11 +103,12 @@ function Toolbar({ editor }: { editor: Editor }) {
 }
 
 export function RichTextEditor({ name, initialHTML }: Props) {
-  const [html, setHtml] = useState<string>(initialHTML ?? '')
+  const seeded = plainToHtml(initialHTML ?? '')
+  const [html, setHtml] = useState<string>(seeded)
 
   const editor = useEditor({
     extensions: [StarterKit],
-    content: initialHTML || '',
+    content: seeded,
     immediatelyRender: false,
     editorProps: {
       attributes: {

@@ -23,6 +23,7 @@ import {
   effectiveHomeBanner,
   type EffectiveHomeSlide,
 } from '@/lib/content/home-defaults'
+import { ensureHtml } from '@/lib/content/rich'
 
 interface HomeRowProps {
   homeSlides: HomeSlide[]
@@ -37,18 +38,27 @@ function HomeRowSlide({
   slide: EffectiveHomeSlide
   onVerCatalogo: () => void
 }) {
-  const isPhoto = Boolean(slide.image_url)
+  // Para los slots canónicos (home-1..home-5) seguimos respetando `narrow`
+  // (flag legacy que controla un layout angosto puntual). Para banners
+  // mandamos por `banner_width` que da 4 anchos diferenciados.
+  const isBanner = slide.slide_key === 'banner'
+  const widthClass = isBanner
+    ? `cf-home-row-slide--${slide.banner_width}`
+    : slide.narrow
+      ? 'cf-hero-row-slide-intro'
+      : ''
+  const isTextOnly = isBanner && slide.banner_width === 'text'
+  const isPhoto = !isTextOnly && Boolean(slide.image_url)
 
   return (
     <div
-      className={`cf-hero-row-slide cf-home-row-slide${
-        slide.narrow ? ' cf-hero-row-slide-intro' : ''
-      }`}
+      className={`cf-hero-row-slide cf-home-row-slide${widthClass ? ' ' + widthClass : ''}`}
       style={{
-        background: slide.bg,
-        backgroundImage: slide.image_url
-          ? `url('${slide.image_url}')`
-          : undefined,
+        background: isTextOnly ? 'transparent' : slide.bg,
+        backgroundImage:
+          !isTextOnly && slide.image_url
+            ? `url('${slide.image_url}')`
+            : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -73,12 +83,11 @@ function HomeRowSlide({
         >
           {slide.label}
         </h3>
-        <p
-          className="cf-home-row-slide-body"
+        <div
+          className="cf-home-row-slide-body cf-richtext"
           style={{ color: slide.body_color }}
-        >
-          {slide.body}
-        </p>
+          dangerouslySetInnerHTML={{ __html: ensureHtml(slide.body) }}
+        />
         {slide.cta_style !== 'none' && (
           <button
             type="button"

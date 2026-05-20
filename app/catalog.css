@@ -8,6 +8,16 @@ body:has(.cf-row.cf-expanded) {
   overflow-x: hidden !important;
 }
 
+/* Desactiva las transitions del row durante rotación del dispositivo para
+   que el reajuste de altura (portrait 70svh → landscape 90svh) sea
+   instantáneo en vez de una animación de 2.5s visualmente rara. */
+.cf-row.cf-no-transition,
+.cf-row.cf-no-transition *,
+.cf-row.cf-no-transition .cf-row-info,
+.cf-row.cf-no-transition .cf-row-img-wrap {
+  transition: none !important;
+}
+
 /* ── Animations ── */
 @keyframes cfSlideFade {
   0% {
@@ -906,11 +916,9 @@ a.cf-row-precio-val:hover {
   margin: 0;
 }
 
-/* Pill "Ver más +" — affordance SIEMPRE visible abajo-derecha de la foto
-   de la grilla. Le dice al usuario que la card es clickeable (feedback de
-   UX real: no se descubría el click). z-index 3 → queda legible por encima
-   del gradient del overlay (z-index 2). Decorativo: pointer-events none. */
-/* Botón primario "VER" + "+" en círculo (estilo CF primario). */
+/* Affordance "Ver +" — el "Ver" va como texto sobre la foto; el "+" va en
+   círculo rojo. Sólo el ícono está en pill. z-index 3 → queda legible por
+   encima del gradient del overlay (z-index 2). Decorativo: pointer-events none. */
 .cf-row-seemore {
   position: absolute;
   bottom: 28px;
@@ -919,51 +927,55 @@ a.cf-row-precio-val:hover {
   pointer-events: none;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 6px 8px 6px 18px;
-  border-radius: 999px;
-  background: #ff003d;
+  gap: 6px;
   color: #fff;
-  border: none;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
-  transition: background 0.3s ease, transform 0.3s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  transition: transform 0.3s ease;
+}
+
+/* Hover de la foto: la pill entera (texto + círculo) sube un toque,
+   replicando el movimiento del resto de afordancias del catálogo. */
+.cf-row-img-wrap:hover .cf-row-seemore {
+  transform: translateY(-2px);
 }
 
 .cf-row-seemore-plus {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
+  background: #ff003d;
+  color: #fff;
+  line-height: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  transition: background 0.3s ease, transform 0.3s ease;
+  flex-shrink: 0;
 }
 
-/* Al hacer hover de la foto se afirma un poco (refuerza el "es clickeable"). */
-.cf-row-img-wrap:hover .cf-row-seemore {
+/* Hover de la foto: el círculo se oscurece (el lift va al wrapper para que
+   "Ver" y "+" suban juntos). */
+.cf-row-img-wrap:hover .cf-row-seemore-plus {
   background: #d80035;
-  transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
   .cf-row-seemore {
     bottom: 16px;
     right: 16px;
-    padding: 5px 7px 5px 14px;
+    gap: 8px;
     font-size: 11px;
   }
 
   .cf-row-seemore-plus {
-    width: 21px;
-    height: 21px;
-    font-size: 14px;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
   }
 }
 
@@ -1493,6 +1505,9 @@ a.cf-row-precio-val:hover {
 .cf-st-datos {
   padding: 40px 48px;
   min-height: 600px;
+  /* Ancla + clip para la persiana de cotización (cf-cotizar-panel). */
+  position: relative;
+  overflow: hidden;
 }
 
 .cf-st-section-label {
@@ -1610,6 +1625,249 @@ a.cf-row-precio-val:hover {
   text-transform: uppercase;
   cursor: pointer;
   font-family: inherit;
+}
+
+/* ── Cotizador Uber (selector precio↔tiempo + cuota en vivo) ── */
+.cf-uber {
+  margin-top: 28px;
+}
+
+.cf-uber-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.cf-uber-tier {
+  position: relative;
+  border: 1px solid #e8e8e8;
+  background: #fff;
+  padding: 14px 12px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.cf-uber-tier.is-featured {
+  border-color: #ff003d;
+}
+
+.cf-uber-tier.is-selected {
+  border-color: #0a0a0a;
+  background: #f7f7f5;
+}
+
+.cf-uber-tier.is-featured.is-selected {
+  border-color: #ff003d;
+}
+
+.cf-uber-badge {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  background: #ff003d;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.cf-uber-tier-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0a0a0a;
+}
+
+.cf-uber-tier-sub {
+  font-size: 10px;
+  color: #888;
+  line-height: 1.3;
+}
+
+.cf-uber-readout {
+  background: #f7f7f5;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.cf-uber-from {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #aaa;
+}
+
+.cf-uber-amount {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+  line-height: 1.1;
+}
+
+.cf-uber-per {
+  font-size: 15px;
+  font-weight: 500;
+  color: #888;
+  letter-spacing: 0;
+}
+
+.cf-uber-note,
+.cf-uber-soft {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.cf-uber-cta {
+  display: block;
+  width: 100%;
+  background: #0a0a0a;
+  color: #fff;
+  border: 0;
+  padding: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cf-uber-caveat {
+  margin-top: 12px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #aaa;
+}
+
+.cf-uber-caveat p {
+  margin: 0;
+}
+
+/* ── Persiana de cotización (sube sobre el comparativo / la ficha) ──
+   Deja una franja arriba para que se "vea" el cuadro debajo, y un blanco
+   con leve transparencia + blur — comunica que está por encima sin
+   competir con el contenido inferior. */
+.cf-cotizar-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  box-shadow: 0 -18px 44px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.46s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s ease;
+}
+
+.cf-cotizar-panel.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cf-cotizar-panel-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #eceae3;
+  flex-shrink: 0;
+}
+
+.cf-cotizar-panel-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #ff003d;
+}
+
+.cf-cotizar-panel-close {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #888;
+  font-family: inherit;
+  transition: color 0.2s;
+}
+
+.cf-cotizar-panel-close:hover {
+  color: #0a0a0a;
+}
+
+.cf-cotizar-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 30px 34px;
+}
+
+.cf-cotizar-panel-title {
+  font-size: 22px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: #0a0a0a;
+  margin: 0;
+}
+
+.cf-cotizar-panel-detail {
+  font-size: 13px;
+  color: #888;
+  margin: 6px 0 0;
+}
+
+.cf-cotizar-panel-uber {
+  margin-top: 20px;
+}
+
+.cf-cotizar-panel-uber .cf-uber {
+  margin-top: 0;
+}
+
+.cf-cotizar-panel-divider {
+  height: 1px;
+  background: #eceae3;
+  margin: 24px 0 20px;
+}
+
+.cf-cotizar-panel-formlabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin: 0 0 16px;
 }
 
 /* ── Responsive ── */
@@ -1838,6 +2096,25 @@ a.cf-row-precio-val:hover {
   margin: 0 0 14px;
 }
 
+/* Variante richtext del body del panel: misma tipografía que cf-pn-body-p
+   para los <p> generados por el WYSIWYG; las listas/negrita/links heredan
+   los estilos globales de .cf-richtext. */
+.cf-pn-richtext p,
+.cf-pn-richtext ul,
+.cf-pn-richtext ol {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #2a2a2a;
+}
+
+.cf-pn-richtext p {
+  margin: 0 0 14px;
+}
+
+.cf-pn-richtext > :last-child {
+  margin-bottom: 0;
+}
+
 .cf-pn-body-empty {
   font-size: 13px;
   color: #aaa;
@@ -1893,6 +2170,14 @@ a.cf-row-precio-val:hover {
   padding: 48px 40px;
   align-items: flex-start;
   text-align: left;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.cf-pn-desc-cta-bottom {
+  margin-top: 24px;
+  align-self: flex-start;
 }
 
 .cf-pn-desc-grid {
@@ -1936,18 +2221,25 @@ a.cf-row-precio-val:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 38px;
 }
 
 .cf-pn-gallery-label {
-  font-size: 11px;
+  /* Left-aligned con un padding moderado para que no quede pegado al margen
+     izquierdo del overlay, pero CLARAMENTE a la izquierda (no centrado). */
+  margin-left: 12px;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.18);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  padding: 6px 14px;
-  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* Perspectivas: el slide es más angosto (cf-slide-image-narrow) → 12px se
+   ve corrido. Override puntual sólo para ese panel. */
+.cf-pn-gallery-label--axos {
+  margin-left: 5px;
 }
 
 .cf-pn-empty {
@@ -2123,8 +2415,8 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-pn-gallery-light .cf-pn-gallery-label {
-  background: rgba(0, 0, 0, 0.08);
-  color: #333;
+  color: #2a2a2a;
+  text-shadow: none;
 }
 
 /* ── PDFs (planos arquitectónicos) ──────────────────────────────────── */
@@ -2316,6 +2608,13 @@ a.cf-row-precio-val:hover {
   border-radius: 2px;
 }
 
+/* Body editorial del estilo seleccionado (foto de fondo translúcida → texto
+   blanco). Aplica tanto al markup viejo (cf-pn-body-p) como al richtext nuevo
+   (cf-pn-richtext, ul/ol/p del Tiptap). */
+.cf-pn-estilos-aside-body .cf-pn-richtext,
+.cf-pn-estilos-aside-body .cf-pn-richtext p,
+.cf-pn-estilos-aside-body .cf-pn-richtext ul,
+.cf-pn-estilos-aside-body .cf-pn-richtext ol,
 .cf-pn-estilos-aside-body .cf-pn-body-p {
   color: rgba(255, 255, 255, 0.9);
   font-size: 13px;
@@ -4012,6 +4311,158 @@ a.cf-row-precio-val:hover {
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Botón "Detalles de la casa" — círculo VERDE con "+" SVG (siempre centrado)
+   + texto a su derecha. Mirror del "Ver +" del listado, pero con el ícono
+   primero (más visible) y un poco más grande. Se monta en gallery
+   (Exteriores/Planos/Perspectivas), inline (Panel1, ficha) y standalone.
+   El color del texto cambia por variante (sobre fotos vs sobre fondo claro). */
+.cf-detalles-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-geist), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.cf-detalles-btn-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #1ca15c;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Hover: la pill entera (círculo + texto) sube un toque, y el verde se
+   oscurece. Misma lógica que .cf-row-seemore (Ver +). */
+.cf-detalles-btn:hover {
+  transform: translateY(-2px);
+}
+
+.cf-detalles-btn:hover .cf-detalles-btn-plus {
+  background: #168249;
+}
+
+/* Variantes (color del texto, el círculo verde es fijo). */
+.cf-detalles-btn-wrap--inline,
+.cf-pn-gallery-light .cf-detalles-btn {
+  color: #2a2a2a;
+  text-shadow: none;
+}
+
+/* Variante "stacked" (ficha colapsada/expandida del catálogo) — el texto se
+   parte en 2 líneas para no salirse del ancho de la ficha; queda alineado
+   a la derecha como todo el resto de la columna. */
+.cf-detalles-btn-stacked {
+  align-self: flex-end;
+}
+
+.cf-detalles-btn-stacked .cf-detalles-btn {
+  gap: 10px;
+}
+
+.cf-detalles-btn-stacked .cf-detalles-btn-label {
+  white-space: normal;
+  text-align: left;
+  line-height: 1.2;
+  max-width: 95px;
+}
+
+/* Modal — `<dialog>` nativo: vive en el top layer del browser, no se ve
+   afectado por transforms/overflow de ancestros. Cubre todo el viewport.
+   IMPORTANTE: las reglas visuales se aplican SÓLO con [open] — sin esto,
+   el `display: grid` rompe el `display: none` default del UA y muestra
+   todas las modales montadas a la vez. */
+.cf-detalles-modal[open] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  animation: cfDetallesFade 0.18s ease-out;
+}
+
+.cf-detalles-modal::backdrop {
+  background: transparent;
+}
+
+@keyframes cfDetallesFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cf-detalles-modal-inner {
+  position: relative;
+  width: min(900px, 92vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 44px 44px 48px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
+  color: #1a1a1a;
+  font-family: var(--font-geist), sans-serif;
+}
+
+.cf-detalles-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cf-detalles-modal-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0a0a0a;
+}
+
+.cf-detalles-modal-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0 0 20px;
 }
 
 /* Rich-text (Tiptap, body/long_body del header): contenedor <div> con HTML
@@ -6023,7 +6474,7 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-footer-marquee-card-cf-logo {
-  height: 48px;
+  height: 88px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
@@ -7065,9 +7516,80 @@ a.cf-row-precio-val:hover {
   background: #f5f5f3;
 }
 
+/* Wrapper del HomeRow (CatalogPage) — el HomeRow se desmonta cuando el
+   catálogo entra en fase `catalog`, pero DURANTE `opening` queremos un
+   fade-out sutil para que la transición se sienta natural (la persiana del
+   catálogo va apareciendo sobre el HomeRow, que va desapareciendo). */
+.cf-home-row-wrap {
+  opacity: 1;
+  transition: opacity 0.45s ease-out;
+}
+
+.cf-home-row-wrap-fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .cf-home-row-slide {
   overflow: hidden;
   border-radius: 14px;
+}
+
+/* ── Banners del HomeRow: 4 anchos diferenciados ─────────────────────────────
+   Alineados con los anchos del HeroRow para que el flujo visual entre los
+   dos rows sea consistente. Sólo aplica a slide_key='banner' (los slots
+   home-1..home-5 mantienen su layout propio).
+*/
+
+/* a. WIDE (672 / 16:10) — default. Como Principal o Todo en Uno. */
+.cf-home-row-slide--wide {
+  aspect-ratio: 16 / 10 !important;
+  max-height: 420px;
+}
+
+/* b. MEDIUM (336 / 4:5) — como Mudate antes / Entrega Programada. */
+.cf-home-row-slide--medium {
+  aspect-ratio: 4 / 5 !important;
+  max-height: 420px;
+}
+
+/* c. NARROW (290) — como Lote + Casa. */
+.cf-home-row-slide--narrow {
+  aspect-ratio: auto !important;
+  width: clamp(290px, 26vw, 290px);
+}
+
+/* d. TEXT (336 sin fondo, texto left-aligned). Como "Encontrá la línea…". */
+.cf-home-row-slide--text {
+  aspect-ratio: 4 / 5 !important;
+  max-height: 420px;
+  background: transparent !important;
+  border-radius: 0;
+  margin-right: 25px;
+}
+
+.cf-home-row-slide--text .cf-home-row-slide-content {
+  padding: 36px 46px 36px 8px;
+  justify-content: flex-start;
+}
+
+/* Tamaño del título por ancho — cada modifier define su propio h3.
+   `!important` para defender de cualquier rule global de h3/clamp con la
+   misma especificidad que pueda llegar desde otra parte del CSS. */
+.cf-home-row-slide.cf-home-row-slide--wide .cf-home-row-slide-title {
+  font-size: clamp(22px, 2.1vw, 30px) !important;
+}
+
+.cf-home-row-slide.cf-home-row-slide--medium .cf-home-row-slide-title {
+  font-size: 26px !important;
+}
+
+.cf-home-row-slide.cf-home-row-slide--narrow .cf-home-row-slide-title {
+  font-size: clamp(24px, 2vw, 34px) !important;
+}
+
+.cf-home-row-slide.cf-home-row-slide--text .cf-home-row-slide-title {
+  font-size: clamp(28px, 2.6vw, 38px) !important;
 }
 
 /* Overlay oscuro para slides con foto de fondo, para legibilidad del texto. */
@@ -7104,14 +7626,14 @@ a.cf-row-precio-val:hover {
 
 .cf-home-row-slide-title {
   font-size: clamp(24px, 2vw, 34px);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin: 0;
 }
 
 .cf-home-row-slide-body {
-  font-size: 14.5px;
+  font-size: 13px;
   line-height: 1.5;
   margin: 0;
   max-width: 36ch;
@@ -7258,7 +7780,7 @@ a.cf-row-precio-val:hover {
    Pensado para el primer slide (Todo en Uno) como statement de apertura.
    `!important` temporal para diagnosticar si algo pisa los variants. */
 .cf-home-slider-card--dark-wide {
-  flex: 0 0 clamp(440px, 42vw, 600px) !important;
+  flex: 0 0 clamp(440px, 42vw, 600px);
   background: #0a0a0a !important;
 }
 
@@ -7466,5 +7988,559 @@ a.cf-row-precio-val:hover {
 
   .cf-md-nav {
     padding: 0 18px !important;
+  }
+}
+
+/* ============================================================================
+   PASADA RESPONSIVE MOBILE — Hero slider + ModelRow + Expandido
+   2026-05-19
+
+   Criterio: todos estos bloques van al FINAL para ganar cascade por orden
+   de fuente sin tocar las reglas desktop ni subir especificidad.
+   ============================================================================ */
+
+/* ── 1. HERO SLIDER — fixes mobile ──────────────────────────────────────────
+   En 375–768px la search bar con chips de Línea/Dorm/Tamaño no cabe
+   horizontalmente → la convertimos en columna apilada. Los arrows del
+   carousel quedan "dentro" del padding del track → los acercamos al borde. */
+@media (max-width: 768px) {
+
+  /* Más ancho del slide en mobile (antes 80% quedaba ~270px útiles). */
+  .cf-slide {
+    flex: 0 0 90%;
+    /* aspect-ratio más alto en portrait para que el slide respire. */
+    aspect-ratio: 4 / 5;
+  }
+
+  /* Menos padding lateral del track para maximizar el ancho visible. */
+  .cf-hero-track {
+    padding: 0 16px;
+  }
+
+  /* Padding interno del slide de búsqueda: más apretado para que el
+     contenido no quede cortado en pantallas angostas. */
+  .cf-slide-search {
+    padding: 28px 22px;
+    justify-content: flex-start;
+    padding-top: 32px;
+  }
+
+  /* El título no necesita tantos px en portrait — el clamp ya ayuda
+     pero en 375px 4vw = 15px (muy chico). Forzamos un mínimo más cómodo. */
+  .cf-slide-title {
+    font-size: clamp(24px, 6vw, 36px);
+    margin: 0 0 20px;
+  }
+
+  /* Search bar: columna apilada en mobile. Cada campo + chips toma
+     el ancho completo. Sin border-right lateral — border-bottom en su lugar. */
+  .cf-search-bar {
+    flex-direction: column;
+    gap: 0;
+    padding: 4px;
+    max-width: 100%;
+  }
+
+  .cf-search-field {
+    border-right: none;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.18);
+    padding: 8px 12px;
+    min-width: 0;
+  }
+
+  .cf-search-field:last-of-type {
+    border-bottom: none;
+  }
+
+  /* Los chips pueden wrapear en mobile si el viewport es muy angosto. */
+  .cf-search-chips {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  /* El botón "Ver X casas →" ocupa todo el ancho para ser fácil de tocar. */
+  .cf-search-go {
+    width: 100%;
+    margin-left: 0;
+    padding: 12px 16px;
+    text-align: center;
+    border-radius: 8px;
+  }
+
+  /* Arrows: los acercamos al borde real del viewport (antes eran 28px
+     que coincide con el padding del track → quedaban solapados). */
+  .cf-hero-arr-left  { left: 6px; }
+  .cf-hero-arr-right { right: 6px; }
+
+  .cf-hero-arr {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+}
+
+/* Landscape mobile: el aspect-ratio 4/5 es demasiado alto → volvemos
+   a un ratio más apaisado y permitimos que la search bar quede horizontal. */
+@media (max-width: 768px) and (orientation: landscape) {
+  .cf-slide {
+    flex: 0 0 85%;
+    aspect-ratio: 16 / 7;
+  }
+
+  .cf-search-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .cf-search-field {
+    border-right: 0.5px solid rgba(255, 255, 255, 0.18);
+    border-bottom: none;
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .cf-search-field:last-of-type {
+    border-right: none;
+  }
+
+  .cf-search-go {
+    width: auto;
+    margin-left: 6px;
+    padding: 0 16px;
+  }
+}
+
+/* ── 2. SLIDES EDU (Líneas / Tipologías / Sistemas / Concepto) en mobile ────
+   El layout flex horizontal (left 20% + right 80%) queda completamente
+   comprimido en portrait. En mobile lo convertimos en columna: el copy
+   arriba y las cards en un mini-carousel horizontal deslizable. */
+@media (max-width: 768px) {
+
+  .cf-slide-edu {
+    flex-direction: column;
+    padding: 22px 18px 18px;
+    gap: 18px;
+    overflow: hidden;
+  }
+
+  .cf-slide-edu-left {
+    flex: none;
+  }
+
+  .cf-slide-edu-title {
+    font-size: clamp(18px, 5vw, 26px);
+    margin-bottom: 8px;
+  }
+
+  .cf-slide-edu-text {
+    font-size: 12px;
+    max-width: 100%;
+  }
+
+  /* La columna de cards pasa a carousel horizontal con scroll snap. */
+  .cf-slide-edu-right {
+    flex: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    /* Sangría negativa para que las cards lleguen al borde del slide. */
+    margin: 0 -18px;
+    padding: 0 18px;
+    gap: 10px;
+  }
+
+  .cf-slide-edu-right::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Cards: ancho fijo para el carousel. aspect-ratio 3/4 se mantiene. */
+  .cf-edu-card {
+    flex: 0 0 140px;
+    scroll-snap-align: start;
+    aspect-ratio: 3 / 4;
+  }
+
+  /* Code grande (36px) es demasiado en una card de 140px. */
+  .cf-edu-card-code {
+    font-size: 26px;
+  }
+}
+
+/* ── 3. MODELROW COLAPSADO — separación visual entre cards ──────────────────
+   En mobile las cards se apilan sin delimitador visible. Agregamos un
+   borde inferior entre la info section y la siguiente card. */
+@media (max-width: 768px) {
+
+  /* Menos margen inferior para que las cards no queden tan separadas. */
+  .cf-row-shell {
+    margin-bottom: 0;
+    border-bottom: 0.5px solid #ebebeb;
+  }
+
+  /* La última card no necesita border-bottom. */
+  .cf-row-shell:last-child {
+    border-bottom: none;
+  }
+}
+
+/* ── 4. SLIDER EXPANDIDO — altura máxima y restricción de portrait ───────────
+   En landscape mobile el slider expandido debe ocupar max el 90% del
+   viewport height (antes 85vh podía quedar cortado en safari).
+   En portrait el slider es casi imposible de navegar: mostramos un nudge
+   que pide al usuario rotar el dispositivo. */
+
+/* 4a. Altura del expandido en landscape: 90svh (svh considera la UI del
+   browser en iOS/Android). Fallback a 90vh para navegadores sin svh. */
+@media (max-width: 768px) and (orientation: landscape) {
+
+  .cf-row.cf-expanded {
+    height: 90vh;
+    height: 90svh;
+  }
+
+  .cf-station-slide {
+    height: 90vh;
+    height: 90svh;
+    min-height: auto;
+  }
+
+  .cf-row.cf-expanded .cf-row-img-wrap {
+    height: 90vh;
+    height: 90svh;
+    aspect-ratio: auto;
+    width: 75vw;
+  }
+}
+
+/* 4b. Portrait mobile con catálogo expandido: el nudge de rotación.
+   Aparece como un overlay semitransparente con el ícono de rotar +
+   texto. Se activa vía CSS puro: `body:has(.cf-row.cf-expanded)` +
+   `@media (orientation: portrait)`. Sin JS adicional.
+   Decorativo (pointer-events: none) para no bloquear el cierre por scroll. */
+@media (max-width: 768px) and (orientation: portrait) {
+
+  /* Reducimos la altura del expandido en portrait para que no ahogue
+     la pantalla (el usuario igual puede navegar aunque sea incómodo). */
+  .cf-row.cf-expanded {
+    height: 70vh;
+    height: 70svh;
+  }
+
+  .cf-station-slide {
+    height: 70vh;
+    height: 70svh;
+    min-height: auto;
+  }
+
+  .cf-row.cf-expanded .cf-row-img-wrap {
+    height: 70vh;
+    height: 70svh;
+    width: 92vw;
+    aspect-ratio: auto;
+  }
+}
+
+/* Nudge "rotá el teléfono" — solo visible en portrait + expandido. */
+body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
+  display: flex;
+}
+
+.cf-rotate-nudge {
+  display: none;
+  position: fixed;
+  bottom: 84px;         /* justo arriba del sticky CTA */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 210;
+  pointer-events: none;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 10, 10, 0.78);
+  color: #fff;
+  padding: 8px 16px 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  /* Solo visible en portrait. En landscape se oculta. */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+@media (orientation: portrait) {
+  body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
+    opacity: 1;
+  }
+}
+
+@media (orientation: landscape) {
+  body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* ── 5. STICKY CTA — botón mini más claro en mobile ─────────────────────────
+   El símbolo "$" era confuso para usuarios hispanos. Lo reemplazamos con
+   el texto "Ver →" visible en el botón circular. Hacemos el botón levemente
+   más grande para mejor área de toque. */
+@media (max-width: 580px) {
+
+  /* Override del mini: en vez de un símbolo solo mostramos "Ver →" pequeño. */
+  .cf-row-sticky-cta-btn-mini {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  /* Botón un poco más generoso para que "Ver →" entre. */
+  .cf-row-sticky-cta-btn {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* ============================================================================
+   PASADA RESPONSIVE MOBILE — Parte II (2026-05-19)
+   Fixes adicionales: listado, expandido portrait, SC cols, Casa que Crece,
+   footer banner, pills.
+   ============================================================================ */
+
+/* ── 6. SEPARACIÓN ENTRE CARDS EN EL LISTADO MOBILE ─────────────────────────
+   Con margin-bottom:0 la ficha queda equidistante entre la casa de arriba
+   y la de abajo — el usuario no puede leer la jerarquía. Agregamos padding
+   generoso al fondo de la sección de info + espacio entre rows. */
+@media (max-width: 768px) {
+
+  /* El row en sí tiene el margen-separador. */
+  .cf-row-shell {
+    margin-bottom: 40px;
+  }
+
+  /* Línea divisoria sutil ANTES del siguiente row (está al fondo del actual). */
+  .cf-row-shell:not(:last-child) {
+    padding-bottom: 0;
+  }
+
+  /* La sección de texto info (colapsada) tiene más respiración al pie
+     para que "quede con" su imagen, no con la siguiente. */
+  .cf-row:not(.cf-expanded) .cf-row-info {
+    padding-bottom: 36px;
+  }
+}
+
+/* ── 7. EXPANDIDO EN PORTRAIT — primer slide corrido a la izquierda ──────────
+   En portrait, el .cf-row.cf-expanded es flex horizontal:
+     [padding 20px] [cf-row-info 195px] [image 92vw] [ExpandedPanels…]
+   El total (~215px + 345px) supera el viewport → el scroll empieza mostrando
+   la foto pero la info está 215px a la izquierda SIN PODER SCROLLEAR a ella.
+   Fix: ocultamos la cf-row-info en portrait expandido. El mismo contenido
+   (Línea, Estilo, descripción) está disponible en el primer panel expandido
+   (Panel1Description → cf-slide-text). */
+@media (max-width: 768px) and (orientation: portrait) {
+
+  /* !important necesario: hay reglas con mayor especificidad (.cf-row.cf-expanded
+     .cf-row-info tiene display:flex vía la regla de desktop) que sobrescriben el
+     display:none sin !important. También zeroeamos width y padding para que no
+     quede espacio residual aunque el display no se respete. */
+  .cf-row.cf-expanded .cf-row-info {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    flex-shrink: 1 !important;
+  }
+
+  /* Sin la info column, el padding-left de cf-row.cf-expanded ya no es
+     necesario — la foto empieza desde el borde izquierdo. */
+  .cf-row.cf-expanded {
+    padding-left: 0 !important;
+  }
+}
+
+/* ── 8. COLUMNAS DE SISTEMAS CONSTRUCTIVOS — ancho de slide en mobile ────────
+   El panel .cf-pn-sc-cols tiene las 3 columnas (Steel/Wood/Stone) como flex
+   items con flex:1. En portrait mobile ~375px ÷ 3 cols = ~110px por col →
+   texto ilegible. Cada col debe ser del ancho de un slide angosto (~92vw)
+   para que el usuario las recorra deslizando horizontalmente. */
+@media (max-width: 768px) {
+
+  /* El slide contenedor de SC crece para albergar las columnas lado a lado en el carrusel principal */
+  .cf-station-slide.cf-slide-sc-cols {
+    width: auto !important;
+  }
+
+  /* El contenedor fluye horizontalmente estirando el slide padre, sin scroll interno. */
+  .cf-pn-sc-cols {
+    display: flex !important;
+    width: auto !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    padding: 0 8px;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .cf-pn-sc-cols::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Cada col: ancho fijo de slide angosto, altura completa del slide. */
+  .cf-pn-sc-col {
+    flex: 0 0 84vw;
+    scroll-snap-align: start;
+    height: 100%;
+  }
+}
+
+/* ── 9. "LA CASA QUE CRECE" — slide con altura incorrecta en portrait ────────
+   El slide usa cf-slide-text-xwide. En portrait mobile, nuestro fix de ≤70svh
+   lo corta. El contenido (título largo + GIF + body) necesita altura mínima
+   automática — el slide debe crecer con su contenido y scrollear internamente. */
+@media (max-width: 768px) and (orientation: portrait) {
+
+  /* El slide .cf-slide-text-xwide contiene Panel6CasaQueCrece (GIF grande +
+     texto). Le damos altura automática para que no se corte. */
+  .cf-station-slide.cf-slide-text-xwide {
+    height: auto;
+    min-height: 70svh;
+    /* El contenido scrollea dentro del panel, no el slide entero. */
+  }
+
+  /* El ScrollableBody dentro de xwide necesita más alto para que el GIF
+     y el texto entren juntos sin clip. */
+  .cf-slide-text-xwide .cf-scrollable-body-content {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/* ── 10. FOOTER BANNER — texto se corta por white-space:nowrap ───────────────
+   El título "Diseñamos tu casa a medida." tiene white-space:nowrap → en mobile
+   se corta fuera del borde del card. Quitamos nowrap y ajustamos el padding. */
+@media (max-width: 768px) {
+
+  .cf-footer-cierre-title {
+    white-space: normal;
+    font-size: clamp(32px, 9vw, 52px);
+    line-height: 1.0;
+  }
+
+  /* El card narrow pasa a ocupar casi todo el ancho en mobile. */
+  .cf-footer-cierre.cf-footer-cierre-narrow {
+    padding: 32px 16px;
+  }
+
+  .cf-footer-cierre.cf-footer-cierre-narrow .cf-footer-cierre-inner {
+    max-width: 100%;
+    padding: 36px 28px;
+  }
+}
+
+/* ── 11. PILLS — reducir tamaño en mobile ────────────────────────────────────
+   En mobile los pills (.cf-pn-pill) son 14px/8px que resultan demasiado
+   grandes — se apilan en columna y ocupan mucha pantalla. Los reducimos
+   a 12px/6px con lettering más compacto. Aplica a todos los contextos:
+   galerías, planos, perspectivas, estilos, sistemas. */
+@media (max-width: 768px) {
+
+  .cf-pn-pill {
+    font-size: 12px;
+    padding: 6px 11px;
+    letter-spacing: 0.03em;
+  }
+
+  /* Pills en galerías light (Planos / Axos): misma reducción. */
+  .cf-pn-gallery-light .cf-pn-pill {
+    font-size: 12px;
+    padding: 6px 11px;
+  }
+
+  /* Pills estáticos (sistema constructivo, estadísticas). */
+  .cf-pn-pills-static .cf-pn-pill {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  /* Gap entre pills más chico para que quepan más en una línea. */
+  .cf-pn-pills {
+    gap: 5px;
+    max-width: 100%;
+  }
+}
+
+/* ── 12. EXPANDIDO PORTRAIT MOBILE — fixes de alineamiento, cards y offsets ── */
+@media (max-width: 768px) {
+  /* Previene el overflow negativo al centrar en flex. El contenido empieza a la izquierda. */
+  .cf-row.cf-expanded .cf-row-photo {
+    justify-content: flex-start !important;
+  }
+
+  /* Ficha de estilos (Panel Estilos Compare): la hacemos responsiva ocupando todo el ancho */
+  .cf-pn-estilos-aside {
+    position: absolute !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    top: 12px !important;
+    bottom: 76px !important;
+    padding: 16px 16px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .cf-pn-estilos-aside-title {
+    font-size: 18px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .cf-pn-estilos-aside-sub {
+    font-size: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .cf-pn-estilos-aside-body .cf-pn-body-p {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Overlays de galería y comparador de estilos alineados más cerca del borde en mobile */
+  .cf-pn-gallery-overlay,
+  .cf-pn-estilos-cmp-overlay {
+    top: 16px !important;
+    left: 16px !important;
+  }
+
+  /* Tabs de variantes verticales: alineadas con el label de arriba */
+  .cf-pn-variant-tabs {
+    left: 16px !important;
+    top: 48px !important;
+  }
+
+  /* Tabla comparativa: paddings internos más chicos y scroll horizontal seguro */
+  .cf-pn-compare-feature {
+    padding: 16px 12px !important;
+  }
+
+  .cf-pn-compare-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Visualizador de planos PDF: ampliación para celular */
+  .cf-pn-pdf-embed {
+    top: 80px !important;
+    left: 12px !important;
+    width: calc(100% - 24px) !important;
+    height: calc(100% - 140px) !important;
   }
 }

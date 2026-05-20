@@ -22,7 +22,13 @@ import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
+import CotizarModal from './CotizarModal'
+import { track } from '@/lib/track/client'
+import type { CotizadorData } from '@/lib/content/cotizador-data'
+import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
+import { applyTierModifier, pickBestCuotaArs } from '@/lib/pricing/cuota'
 import { variantLabel } from '@/lib/format/variant'
+import { ensureHtml } from '@/lib/content/rich'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import {
   type CatalogImage,
@@ -83,19 +89,15 @@ interface PanelsProps {
   /** "Condiciones de Entrega" (HTML saneado, resuelto server). Pill sobre
    *  la galería de exteriores → modal. null → no se muestra. */
   deliveryConditionsHtml?: string | null
+  /** Cotizador Uber (tramos + cuota + slot base por marca). El panel
+   *  Comparativo lo usa para mostrar la cuota por variante + el selector.
+   *  null/sin tramos → "Cotizar" de siempre (cero regresión). */
+  cotizador?: CotizadorData | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-function paragraphs(s: string | null | undefined): string[] {
-  if (!s) return []
-  return s
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-}
 
 // Helpers de formato — derivar listas discretas de superficies y dormitorios
 // desde los SKUs activos. Los textos del catálogo deben reflejar SKUs reales,
@@ -250,10 +252,12 @@ export function Panel1Description({
   model,
   modelContent,
   activeSkus,
+  deliveryHtml = null,
 }: {
   model: CatalogModel
   modelContent: ModelContentRow | null
   activeSkus: CatalogModel['skus']
+  deliveryHtml?: string | null
 }) {
   const body = modelContent?.body ?? null
   const estilo = modelContent?.estilo_label ?? model.estilo
@@ -324,16 +328,20 @@ export function Panel1Description({
         <div className="cf-pn-desc-right">
           {body ? (
             <ScrollableBody>
-              {paragraphs(body).map((p, i) => (
-                <p key={i} className="cf-pn-body-p">
-                  {p}
-                </p>
-              ))}
+              <div
+                className="cf-richtext cf-pn-richtext"
+                dangerouslySetInnerHTML={{ __html: ensureHtml(body) }}
+              />
             </ScrollableBody>
           ) : (
             <p className="cf-pn-body-empty">
               Sin descripción cargada todavía.
             </p>
+          )}
+          {deliveryHtml && (
+            <div className="cf-pn-desc-cta-bottom">
+              <DeliveryConditionsModal html={deliveryHtml} variant="inline" />
+            </div>
           )}
         </div>
       </div>
@@ -364,6 +372,7 @@ function PanelImageSlider({
   pillFallback,
   ignoreViewLabel = false,
   deliveryHtml = null,
+  labelClassName,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
@@ -376,6 +385,8 @@ function PanelImageSlider({
   ignoreViewLabel?: boolean
   /** Solo Exteriores: HTML de "Condiciones de Entrega" → pill + modal. */
   deliveryHtml?: string | null
+  /** Modifier opcional para el label (ej. ajuste fino de margin por panel). */
+  labelClassName?: string
 }) {
   // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
   // y V1.2 (subversiones que solo cambian detalles internos). V3 incluye V3.1.
@@ -419,7 +430,7 @@ function PanelImageSlider({
       >
         <div className="cf-pn-gallery-overlay">
           <div className="cf-pn-gallery-top">
-            <span className="cf-pn-gallery-label">{label}</span>
+            <span className={`cf-pn-gallery-label${labelClassName ? ' ' + labelClassName : ''}`}>{label}</span>
           </div>
           {hasVariantTabs && (
             <div className="cf-pn-variant-tabs">
@@ -490,7 +501,7 @@ function PanelImageSlider({
       )}
       <div className="cf-pn-gallery-overlay">
         <div className="cf-pn-gallery-top">
-          <span className="cf-pn-gallery-label">{label}</span>
+          <span className={`cf-pn-gallery-label${labelClassName ? ' ' + labelClassName : ''}`}>{label}</span>
           {deliveryHtml && (
             <DeliveryConditionsModal html={deliveryHtml} variant="gallery" />
           )}
@@ -603,9 +614,11 @@ export function PanelInteriores({
 export function PanelPlanos({
   images,
   activeSkus,
+  deliveryHtml = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
+  deliveryHtml?: string | null
 }) {
   return (
     <PanelImageSlider
@@ -615,6 +628,7 @@ export function PanelPlanos({
       bgSize="contain"
       bgSizeCss="75% auto"
       pillFallback={(i) => `Plano ${i + 1}`}
+      deliveryHtml={deliveryHtml}
     />
   )
 }
@@ -622,9 +636,11 @@ export function PanelPlanos({
 export function PanelAxos({
   images,
   activeSkus,
+  deliveryHtml = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
+  deliveryHtml?: string | null
 }) {
   return (
     <PanelImageSlider
@@ -632,8 +648,11 @@ export function PanelAxos({
       activeSkus={activeSkus}
       label="Perspectivas"
       bgSize="contain"
+      bgSizeCss="80% auto"
       pillFallback={(i) => `Vista ${i + 1}`}
       ignoreViewLabel
+      deliveryHtml={deliveryHtml}
+      labelClassName="cf-pn-gallery-label--axos"
     />
   )
 }
@@ -667,11 +686,10 @@ export function Panel3Tipologia({
         </h2>
         {row?.body ? (
           <ScrollableBody>
-            {paragraphs(row.body).map((p, i) => (
-              <p key={i} className="cf-pn-body-p">
-                {p}
-              </p>
-            ))}
+            <div
+              className="cf-richtext cf-pn-richtext"
+              dangerouslySetInnerHTML={{ __html: ensureHtml(row.body) }}
+            />
           </ScrollableBody>
         ) : (
           <p className="cf-pn-body-empty">
@@ -730,11 +748,10 @@ export function PanelEstiloIntro({
         <h2 className="cf-pn-title">{dynamicTitle}</h2>
         {intro?.body ? (
           <ScrollableBody>
-            {paragraphs(intro.body).map((p, i) => (
-              <p key={i} className="cf-pn-body-p">
-                {p}
-              </p>
-            ))}
+            <div
+              className="cf-richtext cf-pn-richtext"
+              dangerouslySetInnerHTML={{ __html: ensureHtml(intro.body) }}
+            />
           </ScrollableBody>
         ) : (
           <p className="cf-pn-body-empty">Sin texto introductorio cargado.</p>
@@ -812,11 +829,10 @@ export function PanelEstilosCompare({
         <p className="cf-pn-estilos-aside-sub">{current.display_name}</p>
         <div className="cf-pn-estilos-aside-body">
           {currentContent?.body ? (
-            paragraphs(currentContent.body).map((p, i) => (
-              <p key={i} className="cf-pn-body-p">
-                {p}
-              </p>
-            ))
+            <div
+              className="cf-richtext cf-pn-richtext"
+              dangerouslySetInnerHTML={{ __html: ensureHtml(currentContent.body) }}
+            />
           ) : currentContent?.tagline ? (
             <p className="cf-pn-body-p">{currentContent.tagline}</p>
           ) : (
@@ -876,11 +892,10 @@ export function Panel6CasaQueCrece({
             <h2 className="cf-pn-title">{concept?.title ?? 'La Casa que Crece'}</h2>
             {concept?.body ? (
               <ScrollableBody>
-                {paragraphs(concept.body).map((p, i) => (
-                  <p key={i} className="cf-pn-body-p">
-                    {p}
-                  </p>
-                ))}
+                <div
+                  className="cf-richtext cf-pn-richtext"
+                  dangerouslySetInnerHTML={{ __html: ensureHtml(concept.body) }}
+                />
               </ScrollableBody>
             ) : (
               <p className="cf-pn-body-empty">Sin texto cargado.</p>
@@ -939,11 +954,13 @@ export function Panel7Comparativo({
   images,
   activeSkus,
   showPrices = false,
+  cotizador = null,
 }: {
   model: CatalogModel
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   showPrices?: boolean
+  cotizador?: CotizadorData | null
 }) {
   // Una variante única por (variante × sistema) — pero como el SC se elige
   // arriba con pills, mostramos una fila por VARIANTE y los datos del SKU
@@ -972,6 +989,35 @@ export function Panel7Comparativo({
     activeSkus.find((s) => s.variante === v.variante) ??
     null
 
+  // ── Cuota (cotizador Uber) ───────────────────────────────────────────
+  // El precio base sale del slot que la marca marcó como base (degrada a
+  // 'lista'). La columna PRECIO de la tabla usa un tramo de referencia
+  // (el destacado) para que las variantes sean comparables entre sí.
+  const tiersOrdered = cotizador
+    ? [...cotizador.tiers].sort((a, b) => a.sort_order - b.sort_order)
+    : []
+  const hasUber = tiersOrdered.length > 0
+  const refTier =
+    tiersOrdered.find((t) => t.highlighted) ?? tiersOrdered[0] ?? null
+  const baseSlot =
+    (model.marca_id && cotizador?.baseSlotByMarca[model.marca_id]) || 'lista'
+  const baseCol = PRICE_SLOT_COLUMN[baseSlot]
+
+  const cuotaForSku = (
+    sku: CatalogModel['skus'][number] | null,
+    modifierPct: number,
+  ): number | null => {
+    if (!sku || !cotizador || cotizador.cuotaProducts.length === 0) return null
+    const best = pickBestCuotaArs({
+      priceUsd: applyTierModifier(sku[baseCol] ?? 0, modifierPct),
+      fxRef: cotizador.fxRef,
+      products: cotizador.cuotaProducts,
+    })
+    return best?.cuotaArs ?? null
+  }
+  const fmtCuota = (n: number) =>
+    '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 }) + '/mes'
+
   const cols: {
     key: string
     label: string
@@ -987,17 +1033,25 @@ export function Panel7Comparativo({
       {
         key: 'precio',
         label: 'Precio',
-        get: (v) => fmtPrecio(skuForVarSC(v), showPrices),
+        get: (v) => {
+          if (showPrices) return fmtPrecio(skuForVarSC(v), true)
+          if (hasUber && refTier) {
+            const c = cuotaForSku(
+              skuForVarSC(v),
+              refTier.price_modifier_pct,
+            )
+            if (c != null) return fmtCuota(c)
+          }
+          return 'Cotizar'
+        },
       },
     ]
 
   const selectedVar = uniqueVars[selectedVarIdx] ?? uniqueVars[0]
-  const cotizarHref = buildCotizarMailto({
-    modelName: model.display_name,
-    variante: selectedVar?.variante,
-    sistema: currentSC ?? undefined,
-    linea: displayLinea(model.linea),
-  })
+  const [cotizarOpen, setCotizarOpen] = useState(false)
+  const selectedBasePrice = selectedVar
+    ? skuForVarSC(selectedVar)?.[baseCol] ?? null
+    : null
 
   // Foto de fondo del panel (item 14: la foto está bien, solo el CUADRO
   // interno va blanco). Preferimos la variante más grande con floors=2,
@@ -1089,8 +1143,14 @@ export function Panel7Comparativo({
           })}
         </div>
 
-        {/* Cotización inline — variante + SC seleccionados arriba. */}
-        <div className="cf-pn-compare-inline-cotizar">
+        {/* Cotización inline — variante + SC seleccionados arriba. El
+            comparativo NO se tapa: el selector Uber + cuota + form viven en
+            un modal que se abre desde el CTA (nunca sale del catálogo).
+            Sin cotizador: el "Cotizar" mailto de siempre (cero regresión). */}
+        <div
+          className="cf-pn-compare-inline-cotizar"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="cf-pn-compare-inline-info">
             <span className="cf-pn-compare-inline-eyebrow">Tu selección</span>
             <span className="cf-pn-compare-inline-detail">
@@ -1099,13 +1159,37 @@ export function Panel7Comparativo({
             </span>
           </div>
           <div className="cf-pn-cta-row">
-            <a
-              className="cf-pn-cta-primary"
-              href={cotizarHref}
-              onClick={(e) => e.stopPropagation()}
-            >
-              Cotizar →
-            </a>
+            {hasUber ? (
+              <button
+                type="button"
+                className="cf-pn-cta-primary"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  track('cotizar_open', {
+                    source: 'comparativo',
+                    model: model.display_name,
+                    variante: selectedVar?.variante ?? null,
+                    sistema: currentSC,
+                  })
+                  setCotizarOpen(true)
+                }}
+              >
+                Cotizar tu selección →
+              </button>
+            ) : (
+              <a
+                className="cf-pn-cta-primary"
+                href={buildCotizarMailto({
+                  modelName: model.display_name,
+                  variante: selectedVar?.variante,
+                  sistema: currentSC ?? undefined,
+                  linea: displayLinea(model.linea),
+                })}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Cotizar →
+              </a>
+            )}
             <a
               className="cf-pn-cta-secondary"
               href={buildAsesorMailto({ linea: displayLinea(model.linea) })}
@@ -1116,6 +1200,20 @@ export function Panel7Comparativo({
           </div>
         </div>
       </div>
+
+      {hasUber && cotizador && (
+        <CotizarModal
+          open={cotizarOpen}
+          onClose={() => setCotizarOpen(false)}
+          cotizador={cotizador}
+          basePriceUsd={selectedBasePrice}
+          context={{
+            model: model.display_name,
+            variante: selectedVar?.variante ?? null,
+            sistema: currentSC,
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1465,11 +1563,10 @@ export function PanelSistemaConstructivo({
 
         {content?.body ? (
           <ScrollableBody>
-            {paragraphs(content.body).map((p, i) => (
-              <p key={i} className="cf-pn-body-p">
-                {p}
-              </p>
-            ))}
+            <div
+              className="cf-richtext cf-pn-richtext"
+              dangerouslySetInnerHTML={{ __html: ensureHtml(content.body) }}
+            />
           </ScrollableBody>
         ) : (
           <p className="cf-pn-body-empty">Sin descripción cargada para este sistema.</p>
@@ -1706,6 +1803,7 @@ export default function ExpandedPanels(props: PanelsProps) {
           model={props.model}
           modelContent={props.modelContent}
           activeSkus={props.activeSkus}
+          deliveryHtml={props.deliveryConditionsHtml ?? null}
         />
       </div>
 
@@ -1727,7 +1825,26 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 4. Estilo (intro de estilos de la línea, solo texto) */}
+      {/* 4. Distribución arquitectónica (Tipología) — viene inmediatamente
+          después de las fotos interiores: el usuario terminó de ver cómo
+          se ve la casa por dentro, ahora le explicamos cómo se organiza. */}
+      <div className="cf-station-slide cf-slide-text">
+        <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
+      </div>
+
+      {/* 5. Perspectivas (image_type='axo') — completa el bloque de
+          distribución mostrando la vista axonométrica de los ambientes. */}
+      {hasAxos && (
+        <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
+          <PanelAxos
+            images={props.images}
+            activeSkus={props.activeSkus}
+            deliveryHtml={props.deliveryConditionsHtml ?? null}
+          />
+        </div>
+      )}
+
+      {/* 6. Estilo (intro de estilos de la línea, solo texto) */}
       <div className="cf-station-slide cf-slide-text cf-slide-text-narrow">
         <PanelEstiloIntro
           model={props.model}
@@ -1748,7 +1865,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {/* 6. Sistema Constructivo en columnas — foto + overlay + texto.
           Una columna por SC presente en el modelo (Steel/Wood/Stone Plus).
           Reemplaza al panel de Sistema Constructivo de texto. */}
-      <div className="cf-station-slide cf-slide-image">
+      <div className="cf-station-slide cf-slide-image cf-slide-sc-cols">
         <PanelSCColumns
           model={props.model}
           brandContent={props.brandContent}
@@ -1766,6 +1883,7 @@ export default function ExpandedPanels(props: PanelsProps) {
           images={props.images}
           activeSkus={props.activeSkus}
           showPrices={props.model.show_prices}
+          cotizador={props.cotizador ?? null}
         />
       </div>
 
@@ -1785,27 +1903,16 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 10. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
+      {/* 12. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
-          <PanelPlanos images={props.images} activeSkus={props.activeSkus} />
+          <PanelPlanos
+            images={props.images}
+            activeSkus={props.activeSkus}
+            deliveryHtml={props.deliveryConditionsHtml ?? null}
+          />
         </div>
       )}
-
-      {/* 11. Perspectivas (taxonomía interna: image_type='axo') — solo si
-          hay. Slide angosto con bg blanco. */}
-      {hasAxos && (
-        <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
-          <PanelAxos images={props.images} activeSkus={props.activeSkus} />
-        </div>
-      )}
-
-      {/* 12. Tipología arquitectónica — al final, justo antes de Related.
-          Hablar de la distribución tiene más sentido cuando el usuario
-          ya vio los planos y axonometrías. */}
-      <div className="cf-station-slide cf-slide-text">
-        <Panel3Tipologia model={props.model} lineContent={props.lineContent} />
-      </div>
 
       {/* 13. También podría interesarte — modelos relacionados al final. */}
       {props.allModels && props.allModels.length > 1 && (

@@ -185,7 +185,7 @@ export function MarcaForm({
           <input
             type="checkbox"
             name="show_prices"
-            defaultChecked={defaultValues?.show_prices ?? false}
+            defaultChecked={defaultValues?.show_prices ?? true}
             className="mt-0.5 h-4 w-4 accent-[#ff003d]"
           />
           <span className="text-sm text-neutral-800">

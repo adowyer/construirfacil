@@ -107,8 +107,11 @@ interface CatalogFooterProps {
   /** Marcas aprobadas — se renderean como cards anchas en el marquee. */
   marcas?: Marca[]
   /** Cards editables del marquee, por marca. Si la marca primaria tiene cards
-   *  cargadas, se usan; sino fallback a TRUST_CARDS hardcoded. */
+   *  cargadas, se usan; sino fallback a las institucionales o TRUST_CARDS. */
   footerCardsByMarca?: Record<string, FooterCardRow[]>
+  /** Cards institucionales (marca_id NULL). En agregador reemplazan las
+   *  TRUST_CARDS hardcodeadas; per-marca son fallback si la marca no tiene. */
+  institutionalFooterCards?: FooterCardRow[]
   /** Callback cuando se hace click en una card de modelo. */
   onOpenModel?: (model: CatalogModel) => void
   /** Si true (vista agregador: `/` o `/catalogo` sin marca), oculta las cards
@@ -123,6 +126,7 @@ export default function CatalogFooter({
   featuredModels,
   marcas = [],
   footerCardsByMarca = {},
+  institutionalFooterCards = [],
   onOpenModel,
   hideMarcaCards = false,
   footerContent = null,
@@ -158,6 +162,7 @@ export default function CatalogFooter({
         featuredModels={featuredModels}
         marcas={marcas}
         footerCardsByMarca={footerCardsByMarca}
+        institutionalFooterCards={institutionalFooterCards}
         onOpenModel={onOpenModel}
         hideMarcaCards={hideMarcaCards}
       />
@@ -235,15 +240,14 @@ function buildMarqueeCards(
   _featured: CatalogModel[],
   marcas: Marca[],
   footerCardsByMarca: Record<string, FooterCardRow[]>,
+  institutionalCards: FooterCardRow[],
   hideMarcaCards: boolean,
 ): MarqueeCard[] {
   // Orden fijo a pedido del user (item 18):
   //   CF → Marca → cards 3-6 (Garantía/100%/Fábrica/50.000) → Hablemos.
-  // Cards 3-6 son trust cards: si la marca primaria tiene cards en DB,
-  // las usamos; sino fallback al hardcode.
-  // En vista agregador (hideMarcaCards=true), saltamos TODAS las cards
-  // de marca — solo tienen sentido cuando el visitante está dentro del
-  // catálogo de una marca específica.
+  // Resolución de las cards 3-6:
+  //   - Agregador (hideMarcaCards): institucionales si existen, sino TRUST.
+  //   - Per-marca: las de la marca si tiene, sino institucionales, sino TRUST.
   const cards: MarqueeCard[] = []
   cards.push({ kind: 'cf' })
   if (!hideMarcaCards && marcas[0]) {
@@ -251,7 +255,14 @@ function buildMarqueeCards(
   }
 
   const primary = marcas[0]
-  const dbCards = primary ? footerCardsByMarca[primary.id] ?? [] : []
+  const marcaCards =
+    !hideMarcaCards && primary ? footerCardsByMarca[primary.id] ?? [] : []
+  const dbCards =
+    marcaCards.length > 0
+      ? marcaCards
+      : institutionalCards.length > 0
+        ? institutionalCards
+        : []
   if (dbCards.length > 0) {
     for (const c of dbCards) {
       cards.push({ kind: 'db_trust', card: c })
@@ -279,12 +290,14 @@ function FooterMarquee({
   featuredModels,
   marcas,
   footerCardsByMarca,
+  institutionalFooterCards,
   onOpenModel,
   hideMarcaCards = false,
 }: {
   featuredModels: CatalogModel[]
   marcas: Marca[]
   footerCardsByMarca: Record<string, FooterCardRow[]>
+  institutionalFooterCards: FooterCardRow[]
   onOpenModel?: (model: CatalogModel) => void
   hideMarcaCards?: boolean
 }) {
@@ -299,6 +312,7 @@ function FooterMarquee({
     featuredModels,
     marcas,
     footerCardsByMarca,
+    institutionalFooterCards,
     hideMarcaCards,
   )
 

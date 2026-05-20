@@ -14,15 +14,26 @@ import { submitLead, type LeadResult } from '@/app/cotizar/actions'
 import { track } from '@/lib/track/client'
 import { buildWhatsappUrl } from '@/lib/cta/whatsapp'
 
-const field =
-  'w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/20 transition-colors'
-const lbl = 'block text-[11px] uppercase tracking-widest text-white/45 mb-1.5'
+const FIELD = {
+  dark: 'w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/20 transition-colors',
+  light:
+    'w-full bg-white border border-[#E2E0D8] rounded-lg px-4 py-3 text-sm text-[#1a1a1a] placeholder:text-neutral-400 focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/15 transition-colors',
+}
+const LBL = {
+  dark: 'block text-[11px] uppercase tracking-widest text-white/45 mb-1.5',
+  light: 'block text-[11px] uppercase tracking-widest text-neutral-400 mb-1.5',
+}
 
 export function LeadForm({
   defaultLocalidad,
+  variant = 'dark',
 }: {
   defaultLocalidad?: string | null
+  variant?: 'dark' | 'light'
 }) {
+  const field = FIELD[variant]
+  const lbl = LBL[variant]
+  const isLight = variant === 'light'
   const [state, formAction, isPending] = useActionState<LeadResult, FormData>(
     submitLead,
     { ok: false, error: null },
@@ -42,10 +53,18 @@ export function LeadForm({
   if (state.ok) {
     return (
       <div className="text-center py-10">
-        <p className="text-2xl font-black uppercase tracking-tight text-white">
+        <p
+          className={`text-2xl font-black uppercase tracking-tight ${
+            isLight ? 'text-[#1a1a1a]' : 'text-white'
+          }`}
+        >
           ¡Recibido!
         </p>
-        <p className="text-white/60 mt-3 max-w-sm mx-auto">
+        <p
+          className={`mt-3 max-w-sm mx-auto ${
+            isLight ? 'text-neutral-500' : 'text-white/60'
+          }`}
+        >
           Un asesor te va a contactar para avanzar con tu casa. Si querés,
           escribinos ahora mismo:
         </p>
@@ -69,7 +88,13 @@ export function LeadForm({
       <input type="hidden" name="path" ref={pathRef} />
 
       {state.error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm px-4 py-3 rounded-lg">
+        <div
+          className={`text-sm px-4 py-3 rounded-lg border ${
+            isLight
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-red-500/10 border-red-500/30 text-red-300'
+          }`}
+        >
           {state.error}
         </div>
       )}
@@ -104,7 +129,7 @@ export function LeadForm({
         </div>
         <div>
           <label className={lbl} htmlFor="lf-email">
-            Email <span className="text-white/25 normal-case">(opcional)</span>
+            Email <span className={`normal-case ${isLight ? 'text-neutral-400' : 'text-white/25'}`}>(opcional)</span>
           </label>
           <input
             id="lf-email"
@@ -132,7 +157,7 @@ export function LeadForm({
       <div>
         <label className={lbl} htmlFor="lf-message">
           Contanos qué buscás{' '}
-          <span className="text-white/25 normal-case">(opcional)</span>
+          <span className={`normal-case ${isLight ? 'text-neutral-400' : 'text-white/25'}`}>(opcional)</span>
         </label>
         <textarea
           id="lf-message"
@@ -151,7 +176,7 @@ export function LeadForm({
         {isPending ? 'Enviando…' : 'Quiero que me contacten'}
       </button>
 
-      <p className="text-xs text-white/35 text-center">
+      <p className={`text-xs text-center ${isLight ? "text-neutral-400" : "text-white/35"}`}>
         Sin compromiso. Te contactamos para asesorarte y darte tu cotización.
       </p>
     </form>

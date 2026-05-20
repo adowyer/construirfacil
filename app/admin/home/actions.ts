@@ -13,6 +13,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sanitizeRichTextOrNull } from '@/lib/sanitize'
 import type {
   HomeSlideKey,
   HomeVariant,
@@ -36,11 +37,16 @@ function buildPayload(formData: FormData) {
     | 'inactive'
     | 'archived'
   const ctaStyle = optText(formData.get('cta_style'))
+  const rawWidth = optText(formData.get('banner_width'))
+  const bannerWidth =
+    rawWidth && ['wide', 'medium', 'narrow', 'text'].includes(rawWidth)
+      ? (rawWidth as 'wide' | 'medium' | 'narrow' | 'text')
+      : null
   return {
     admin_label: optText(formData.get('admin_label')),
     eyebrow: optText(formData.get('eyebrow')),
     label: optText(formData.get('label')),
-    body: optText(formData.get('body')),
+    body: sanitizeRichTextOrNull(optText(formData.get('body'))),
     cta_label: optText(formData.get('cta_label')),
     cta_url: optText(formData.get('cta_url')),
     cta_style:
@@ -51,6 +57,7 @@ function buildPayload(formData: FormData) {
     text_color: optText(formData.get('text_color')),
     body_color: optText(formData.get('body_color')),
     narrow: formData.get('narrow') === 'on',
+    banner_width: bannerWidth,
     sort_order: sortOrder(formData.get('sort_order')),
     status: ['active', 'inactive', 'archived'].includes(status)
       ? status

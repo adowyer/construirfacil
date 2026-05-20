@@ -19,6 +19,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { slugify } from '@/lib/utils'
+import { sanitizeRichTextOrNull } from '@/lib/sanitize'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -73,7 +74,7 @@ function buildPayload(
     slug: opts.lockSlug ?? slugify(name),
     name,
     tagline: parseOptionalText(formData.get('tagline')),
-    body: parseOptionalText(formData.get('body')),
+    body: sanitizeRichTextOrNull(parseOptionalText(formData.get('body'))),
     sort_order: parseSortOrder(formData.get('sort_order')),
     status: ['active', 'inactive', 'archived'].includes(status) ? status : 'active',
   }
