@@ -8284,16 +8284,6 @@ button.cf-row-precio-val:hover {
     touch-action: pan-x pan-y;
   }
 
-  /* Catch-all: TODOS los descendientes del shell solo responden a gestos
-     verticales. El shell (que es pan-x pan-y) recibe los horizontales para
-     hacer el swipe del slider. Sin esta regla, cualquier descendiente con
-     `overflow-y: auto` (panels editoriales, scrollable bodies, comparativo,
-     ficha lateral, etc. — hay 20+ scrollers en este shell) captura el
-     gesto en su primer frame e iOS Safari nunca lo cede al ancestro. */
-  .cf-row-shell.cf-expanded * {
-    touch-action: pan-y;
-  }
-
   /* Altura fija 80vh → la maneja el contenido (en landscape mobile 80vh
      ahogaba el texto). */
   .cf-station-slide {
@@ -8618,25 +8608,11 @@ button.cf-row-precio-val:hover {
     width: 75vw;
   }
 
-  /* Ficha lateral (col-1 del grid): en landscape mobile el row mide 90svh y
-     la ficha tiene 6 secciones verticales + DeliveryConditionsModal — el
-     contenido excede el alto y queda cortado por abajo ("solo se ve hasta
-     Cotizar"). La hacemos scrolleable internamente y le ponemos
-     `touch-action: pan-y` para que los gestos horizontales sobre la ficha
-     no roben el swipe del shell (mismo truco que en `.cf-pn-compare`). */
-  .cf-row.cf-expanded .cf-row-info {
-    max-height: 90vh;
-    max-height: 90svh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
-    scrollbar-width: none;
-  }
-
-  .cf-row.cf-expanded .cf-row-info::-webkit-scrollbar {
-    display: none;
-  }
+  /* Ficha lateral (col-1 del grid): NO ponemos overflow-y:auto acá. El
+     intento previo creaba otro scroll-container anidado dentro del shell
+     horizontal y rompía el swipe-X del slider (mismo problema que el
+     comparativo). Si el contenido excede en landscape, ya está atado al
+     alto del row vía flex/grid — se ve lo que entre. */
 }
 
 /* 4b. Portrait mobile con catálogo expandido: el nudge de rotación.
@@ -8960,35 +8936,17 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Comparativo en mobile: en lugar de scroll interno DE LA TABLA (le quedan
-     ~18vh porque sc-selector + cotizar-inline se llevan el resto del slide y
-     el handle queda casi inoperable con el dedo), hacemos que TODO el panel
-     scrolee como una sola superficie. La tabla crece con su contenido.
+  /* Comparativo en mobile: SIN scroll interno. El intento previo de
+     hacer .cf-pn-compare scrollable con overflow-y:auto creó un scroll
+     container que iOS Safari y Android Chrome priorizaban sobre el shell
+     horizontal → mataba el swipe-X del slider. `touch-action: pan-y` en el
+     descendiente NO alcanzaba para revertirlo (una vez que el browser elige
+     el scroller del gesto, no lo cede al ancestro durante el gesto).
 
-     `touch-action: pan-y` es clave: al crear un contenedor con overflow-y:auto
-     adentro del `.cf-row-shell` (que scrollea en X), el browser le da los
-     gestos al primer scroller que encuentre — incluyendo gestos casi-horizontales.
-     Eso mata el swipe horizontal del slider. Con pan-y le decimos: "este
-     contenedor solo responde a verticales; horizontal lo cede al shell". */
-  [data-panel="comparativo"] .cf-pn-compare {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-  }
-
-  .cf-pn-compare-light .cf-pn-compare-feature {
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  .cf-pn-compare-light .cf-pn-compare-table {
-    flex: 0 0 auto !important;
-    overflow-y: visible !important;
-    max-height: none !important;
-  }
-
-  /* La cotización inline al pie pierde su sticky natural (era flex:0 0 auto
-     dentro del feature flex). Ahora forma parte del scroll del panel. */
+     Por eso: dejamos que el slide del comparativo CREZCA con su contenido
+     (height: auto, sin overflow-y interno). La tabla queda completa visible
+     y el slider sigue scrolleando como en el resto de los slides — sin
+     conflicto de scrollers anidados. */
 
   /* Visualizador de planos PDF: ampliación para celular */
   .cf-pn-pdf-embed {
