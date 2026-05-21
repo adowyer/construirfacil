@@ -3017,7 +3017,7 @@ button.cf-row-precio-val:hover {
 
 .cf-pn-compare-sc-lbl {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.98);
@@ -8886,6 +8886,29 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Comparativo en mobile: en lugar de scroll interno DE LA TABLA (le quedan
+     ~18vh porque sc-selector + cotizar-inline se llevan el resto del slide y
+     el handle queda casi inoperable con el dedo), hacemos que TODO el panel
+     scrolee como una sola superficie. La tabla crece con su contenido. */
+  [data-panel="comparativo"] .cf-pn-compare {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cf-pn-compare-light .cf-pn-compare-feature {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .cf-pn-compare-light .cf-pn-compare-table {
+    flex: 0 0 auto !important;
+    overflow-y: visible !important;
+    max-height: none !important;
+  }
+
+  /* La cotización inline al pie pierde su sticky natural (era flex:0 0 auto
+     dentro del feature flex). Ahora forma parte del scroll del panel. */
 
   /* Visualizador de planos PDF: ampliación para celular */
   .cf-pn-pdf-embed {
