@@ -4,18 +4,24 @@
  * components/catalog/CotizarModal.tsx
  *
  * "Persiana" de cotización: NO es un modal centrado — es un overlay que
- * sube como una persiana sobre el cuadro que lo contiene (el comparativo /
- * la ficha). El padre debe ser position:relative + overflow:hidden (.cf-pn,
- * .cf-st-datos ya lo son). Fondo blanco, mismo estilo que las demás modales.
+ * sube como una persiana sobre el cuadro que lo contiene (el comparativo).
+ * El padre debe ser position:relative + overflow:hidden (.cf-pn ya lo es).
  *
- * Contiene el selector Uber (plan + cuota en vivo, sin su CTA) y el form de
- * lead (variante light) — al enviarse, todo queda acá. Nunca sale del
- * catálogo, nunca navega a /cotizar.
+ * Contenido:
+ *   1. Selector Uber (3 tramos con precio USD por tramo — sin cuota).
+ *   2. Dos CTAs al pie: "Reservar esta casa" (abre ReservarModal con el
+ *      LeadForm prefilled) y "Conversar con Ximia" (asesor por mail/wp).
+ *
+ * El form NO vive más acá — separamos la decisión de precio de la
+ * captación del lead: el usuario primero compara precios y después
+ * decide si reservar o conversar.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import CotizadorUber from './CotizadorUber'
-import { LeadForm } from '@/components/LeadForm'
+import ReservarModal, { type ReservarContext } from './ReservarModal'
+import { buildAsesorMailto } from '@/lib/cta/mailto'
+import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
 
 export default function CotizarModal({
@@ -40,6 +46,8 @@ export default function CotizarModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  const [reservarOpen, setReservarOpen] = useState(false)
+
   const detail = [
     context.model,
     context.variante ? `Variante ${context.variante}` : null,
@@ -48,52 +56,82 @@ export default function CotizarModal({
     .filter(Boolean)
     .join(' · ')
 
+  const reservarContext: ReservarContext = {
+    model: context.model,
+    variante: context.variante,
+    sistema: context.sistema,
+    priceUsd: basePriceUsd,
+  }
+
   return (
-    <div
-      className={`cf-cotizar-panel${open ? ' is-open' : ''}`}
-      aria-hidden={!open}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Cotizá tu casa"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="cf-cotizar-panel-bar">
-        <span className="cf-cotizar-panel-eyebrow">Tu cotización</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Cerrar"
-          className="cf-cotizar-panel-close"
-        >
-          Cerrar ↓
-        </button>
-      </div>
-
-      <div className="cf-cotizar-panel-scroll">
-        <h3 className="cf-cotizar-panel-title">
-          Diseñá la casa que podés pagar
-        </h3>
-        {detail && <p className="cf-cotizar-panel-detail">{detail}</p>}
-
-        <div className="cf-cotizar-panel-uber">
-          <CotizadorUber
-            tiers={cotizador.tiers}
-            basePriceUsd={basePriceUsd}
-            fxRef={cotizador.fxRef}
-            cuotaProducts={cotizador.cuotaProducts}
-            caveatHtml={cotizador.caveatHtml}
-            context={context}
-            hideCta
-          />
+    <>
+      <div
+        className={`cf-cotizar-panel${open ? ' is-open' : ''}`}
+        aria-hidden={!open}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Cotizá tu casa"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="cf-cotizar-panel-bar">
+          <span className="cf-cotizar-panel-eyebrow">Tu cotización</span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="cf-cotizar-panel-close"
+          >
+            Cerrar ↓
+          </button>
         </div>
 
-        <div className="cf-cotizar-panel-divider" />
+        <div className="cf-cotizar-panel-scroll">
+          <h3 className="cf-cotizar-panel-title">
+            Diseñá la casa que podés pagar
+          </h3>
+          {detail && <p className="cf-cotizar-panel-detail">{detail}</p>}
 
-        <p className="cf-cotizar-panel-formlabel">
-          Dejanos tus datos y te contactamos
-        </p>
-        <LeadForm defaultLocalidad={null} variant="light" />
+          <div className="cf-cotizar-panel-uber">
+            <CotizadorUber
+              tiers={cotizador.tiers}
+              basePriceUsd={basePriceUsd}
+              caveatHtml={cotizador.caveatHtml}
+              context={context}
+              hideCta
+            />
+          </div>
+
+          <div className="cf-cotizar-panel-ctas">
+            <a
+              href={buildAsesorMailto({
+                linea: context.model ?? undefined,
+              })}
+              className="cf-cotizar-panel-cta-secondary"
+              onClick={() =>
+                track('asesor_click', { source: 'cotizar_persiana', ...context })
+              }
+            >
+              Conversar con Ximia
+            </a>
+            <button
+              type="button"
+              className="cf-cotizar-panel-cta-primary"
+              onClick={() => {
+                track('reservar_open', { source: 'cotizar_persiana', ...context })
+                setReservarOpen(true)
+              }}
+            >
+              Quiero que me contacten
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <ReservarModal
+        open={reservarOpen}
+        onClose={() => setReservarOpen(false)}
+        context={reservarContext}
+      />
+    </>
   )
 }

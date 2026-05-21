@@ -29,7 +29,7 @@ export const HEADER_DEFAULTS: Partial<
   Record<HeaderSlideKind, HeaderDefaultFields>
 > = {
   pasos: {
-    title: '4 Simples pasos para acceder a tu nueva casa 100% financiada.',
+    title: '4 Simples pasos para acceder a tu nueva casa financiada.',
   },
   principal: {
     title: 'La casa que querés, en las\ncondiciones que necesitás.',

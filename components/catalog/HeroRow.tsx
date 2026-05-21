@@ -255,7 +255,7 @@ function SlideCrece({ growthPairs, onOpenModal, s }: { growthPairs: GrowthPair[]
         </div>
       </div>
       <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
-        <img src={s?.panel_image_url || '/la-casa-que-crece.png'} alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
+        <img src={s?.panel_image_url || '/la-casa-que-crece.png'} alt="La casa que crece" className="cf-panel-logo" style={{ maxWidth: 'clamp(200px, 16vw, 320px)', maxHeight: 'clamp(160px, 13vw, 260px)', marginBottom: 0, width: '100%' }} />
       </div>
     </div>
   )
@@ -309,7 +309,7 @@ function SlideFlex({ onOpenModal, s }: { onOpenModal: () => void, s?: HeaderSlid
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split cf-slide-split-right">
       <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
-        <img src={s?.panel_image_url || '/Flex-Build-Suit.png'} alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: '220px', maxHeight: '180px', marginBottom: 0, width: '100%' }} />
+        <img src={s?.panel_image_url || '/Flex-Build-Suit.png'} alt="Flex Build Suit" className="cf-panel-logo" style={{ maxWidth: 'clamp(200px, 16vw, 320px)', maxHeight: 'clamp(160px, 13vw, 260px)', marginBottom: 0, width: '100%' }} />
       </div>
       <div className="cf-slide-split-image" style={{ backgroundImage: `url('${s?.image_url || '/Fabrica-ARQUIMA.jpg'}')` }}>
         <div className="cf-glass-card right" style={{ zIndex: 10, justifyContent: 'center' }}>

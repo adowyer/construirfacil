@@ -26,9 +26,14 @@ const LBL = {
 
 export function LeadForm({
   defaultLocalidad,
+  defaultMessage,
   variant = 'dark',
 }: {
   defaultLocalidad?: string | null
+  /** Prefilla el campo "Contanos qué buscás" — útil cuando el form se abre
+   *  desde una selección concreta del catálogo (modelo, variante, SC, plan)
+   *  para que el usuario no escriba todo de nuevo. */
+  defaultMessage?: string | null
   variant?: 'dark' | 'light'
 }) {
   const field = FIELD[variant]
@@ -163,6 +168,7 @@ export function LeadForm({
           id="lf-message"
           name="message"
           rows={3}
+          defaultValue={defaultMessage ?? ''}
           className={`${field} resize-none`}
           placeholder="Modelo que te gustó, cantidad de dormitorios, cuándo querés construir…"
         />

@@ -69,6 +69,14 @@ function Toolbar({ editor }: { editor: Editor }) {
   return (
     <div className="flex flex-wrap gap-1.5 border border-[#E8E8E5] border-b-0 rounded-t-lg px-2 py-2 bg-[#FAFAF8]">
       <ToolbarBtn
+        active={editor.isActive('heading', { level: 3 })}
+        onClick={() =>
+          editor.chain().focus().toggleHeading({ level: 3 }).run()
+        }
+      >
+        <span className="font-black">H3</span>
+      </ToolbarBtn>
+      <ToolbarBtn
         active={editor.isActive('bold')}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >

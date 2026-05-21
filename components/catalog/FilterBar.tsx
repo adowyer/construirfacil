@@ -68,7 +68,7 @@ function Sep() {
   return (
     <div
       aria-hidden="true"
-      className="flex-shrink-0 w-px bg-[#E8E8E5] mx-0.5 2xl:mx-1"
+      className="flex-shrink-0 w-px bg-[#E8E8E5] mx-0.5"
       style={{ height: '18px' }}
     />
   )
@@ -99,7 +99,7 @@ export default function FilterBar({ filters, onChange, resultCount }: FilterBarP
       role="search"
       aria-label="Filtros del catálogo"
     >
-      <div className="flex items-center gap-2 px-6 2xl:gap-3 2xl:px-14 py-3 overflow-x-auto scrollbar-none flex-nowrap">
+      <div className="flex items-center gap-2 px-6 py-3 overflow-x-auto scrollbar-none flex-nowrap">
         {/* Label */}
         <span
           className="flex-shrink-0 text-[#BBBBB8] uppercase tracking-widest"

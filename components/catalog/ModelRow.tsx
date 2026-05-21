@@ -22,7 +22,9 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import ExpandedPanels from './ExpandedPanels'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
+import CotizarCenteredModal from '@/components/catalog/CotizarCenteredModal'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
+import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
 import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
 
@@ -158,19 +160,44 @@ function fmtPrecioFicha(model: CatalogModel): string {
   return 'Cotizar'
 }
 
-// Render del valor de precio en la ficha: cuando es "Cotizar", es un mailto
-// clickeable; cuando es un precio real ("desde USD …"), span plano.
+// Render del valor de precio en la ficha: cuando es "Cotizar", abre la modal
+// centrada de cotización (3 precios + disclaimer + link al comparativo). Si
+// hay un precio real ("desde USD …"), span plano.
 function PrecioOrCotizar({
   model,
   className,
   style,
+  onCotizarClick,
 }: {
   model: CatalogModel
   className?: string
   style?: React.CSSProperties
+  /** Si está, "Cotizar" abre la modal centrada en lugar del mailto. */
+  onCotizarClick?: () => void
 }) {
   const value = fmtPrecioFicha(model)
   if (value === 'Cotizar') {
+    // Con cotizador → modal con los 3 precios + disclaimer.
+    // Sin cotizador (marca sin Uber configurado) → fallback al mailto.
+    if (onCotizarClick) {
+      return (
+        <button
+          type="button"
+          className={className}
+          style={style}
+          onClick={(e) => {
+            e.stopPropagation()
+            track('cotizar_open', {
+              source: 'ficha_listado',
+              model: model.display_name,
+            })
+            onCotizarClick()
+          }}
+        >
+          Cotizar
+        </button>
+      )
+    }
     return (
       <a
         href={buildCotizarMailto({
@@ -181,7 +208,7 @@ function PrecioOrCotizar({
         style={style}
         onClick={(e) => {
           e.stopPropagation()
-          track('cotizar_open', { model: model.display_name })
+          track('cotizar_open', { source: 'ficha_listado_mailto', model: model.display_name })
         }}
       >
         Cotizar
@@ -252,6 +279,62 @@ export default function ModelRow({
   const shellRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
   const galleryRef = useRef<HTMLDivElement>(null)
+  // Modal centrada de cotización (afuera del comparativo): abre desde la
+  // ficha del listado y desde el sticky CTA flotante. Adentro del
+  // comparativo (Panel7) sigue la persiana actual.
+  const [cotizarModalOpen, setCotizarModalOpen] = useState(false)
+  // Cuando el usuario clickea "Ver cuadro comparativo" en la modal y la fila
+  // todavía no está expandida, expandimos + dejamos un flag que dispara
+  // (post-mount) el scroll al panel marcado con data-panel="comparativo".
+  const [scrollToPanel, setScrollToPanel] = useState<string | null>(null)
+  /** Precio base de "referencia" para la modal del listado: primer SKU
+   *  por sort + columna base de la marca (lista/contado/pozo). */
+  const defaultBasePriceUsd = (() => {
+    if (!cotizador) return null
+    const baseSlot =
+      (model.marca_id && cotizador.baseSlotByMarca[model.marca_id]) || 'lista'
+    const baseCol = PRICE_SLOT_COLUMN[baseSlot]
+    const candidates = (activeSkus ?? model.skus)
+      .map((s) => s[baseCol])
+      .filter((v): v is number => typeof v === 'number' && v > 0)
+    if (candidates.length === 0) return null
+    return Math.min(...candidates) // "desde" → la variante más barata
+  })()
+  const hasCotizador = Boolean(cotizador && cotizador.tiers.length > 0)
+  const openCotizar = () => setCotizarModalOpen(true)
+  const scrollToPanelInTrack = (panelName: string) => {
+    const track = galleryRef.current
+    if (!track) return
+    const slide = track.querySelector<HTMLElement>(
+      `[data-panel="${panelName}"]`,
+    )
+    if (!slide) return
+    slide.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }
+  const goToComparativo = () => {
+    // Si ya está expandida, scroll directo. Sino expandimos + marcamos el
+    // panel a scrollear; el useEffect de abajo lo hace cuando el track ya
+    // está en el DOM y el slider terminó su layout.
+    if (isExpanded) {
+      scrollToPanelInTrack('comparativo')
+    } else {
+      setScrollToPanel('comparativo')
+      setIsExpanded(true)
+    }
+  }
+  // Una vez que el expand montó (next paint), si quedó un panel pendiente
+  // de scrollear, lo hacemos. Limpiamos el flag para que no vuelva a disparar.
+  useEffect(() => {
+    if (!isExpanded || !scrollToPanel) return
+    // Esperamos 2 frames: 1 para layout inicial, 2 para que el slider
+    // termine su auto-positioning (definido en el rAF de focus physics).
+    const t = window.setTimeout(() => {
+      scrollToPanelInTrack(scrollToPanel)
+      setScrollToPanel(null)
+    }, 280)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded, scrollToPanel])
 
   // Sticky CTA: mount/unmount con fade in/out manejado por dos states
   // (mounted + visible) y CSS transitions. Cuando isExpanded baja a false,
@@ -603,7 +686,11 @@ export default function ModelRow({
               </p>
               <p className="cf-row-precio">
                 <span className="cf-row-precio-lbl">Precio:</span>{' '}
-                <PrecioOrCotizar model={model} className="cf-row-precio-val" />
+                <PrecioOrCotizar
+                  model={model}
+                  className="cf-row-precio-val"
+                  onCotizarClick={hasCotizador ? openCotizar : undefined}
+                />
               </p>
             </div>
 
@@ -671,6 +758,7 @@ export default function ModelRow({
                 <PrecioOrCotizar
                   model={model}
                   style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}
+                  onCotizarClick={hasCotizador ? openCotizar : undefined}
                 />
               </div>
             </div>
@@ -791,22 +879,46 @@ export default function ModelRow({
                 {displayLinea(model.linea)}
               </span>
             </div>
-            <a
-              className="cf-row-sticky-cta-btn"
-              aria-label="Cotizar"
-              href={buildCotizarMailto({
-                modelName: model.display_name,
-                linea: displayLinea(model.linea),
-              })}
-            >
-              <span className="cf-row-sticky-cta-btn-full">
-                Cotizar
-                <span aria-hidden>→</span>
-              </span>
-              <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
-                Ver →
-              </span>
-            </a>
+            {hasCotizador ? (
+              <button
+                type="button"
+                className="cf-row-sticky-cta-btn"
+                aria-label="Cotizar"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  track('cotizar_open', {
+                    source: 'sticky_cta',
+                    model: model.display_name,
+                  })
+                  openCotizar()
+                }}
+              >
+                <span className="cf-row-sticky-cta-btn-full">
+                  Cotizar
+                  <span aria-hidden>→</span>
+                </span>
+                <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
+                  Ver →
+                </span>
+              </button>
+            ) : (
+              <a
+                className="cf-row-sticky-cta-btn"
+                aria-label="Cotizar"
+                href={buildCotizarMailto({
+                  modelName: model.display_name,
+                  linea: displayLinea(model.linea),
+                })}
+              >
+                <span className="cf-row-sticky-cta-btn-full">
+                  Cotizar
+                  <span aria-hidden>→</span>
+                </span>
+                <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
+                  Ver →
+                </span>
+              </a>
+            )}
           </div>,
           document.body,
         )}
@@ -854,6 +966,24 @@ export default function ModelRow({
           </div>,
           document.body,
         )}
+
+      {/* Modal centrada de cotización (abre desde la ficha del listado o
+          desde el sticky CTA). Adentro del comparativo (Panel7) se usa la
+          persiana que ya tiene la selección variante+SC del usuario. */}
+      {hasCotizador && cotizador && (
+        <CotizarCenteredModal
+          open={cotizarModalOpen}
+          onClose={() => setCotizarModalOpen(false)}
+          cotizador={cotizador}
+          basePriceUsd={defaultBasePriceUsd}
+          context={{
+            model: model.display_name,
+            variante: null,
+            sistema: null,
+          }}
+          onOpenComparativo={goToComparativo}
+        />
+      )}
     </div>
   )
 }

@@ -606,17 +606,25 @@ body:has(.cf-row.cf-expanded) {
   font-weight: 600;
 }
 
-/* Cuando el valor es un mailto "Cotizar", lo mostramos como link discreto:
-   subrayado fino y color CF en hover. */
-a.cf-row-precio-val {
+/* Cuando el valor es "Cotizar", lo mostramos como link discreto: subrayado
+   fino y color CF. Aplica tanto al <a> legacy (sin cotizador → mailto) como
+   al <button> nuevo (con cotizador → abre modal). */
+a.cf-row-precio-val,
+button.cf-row-precio-val {
   color: #ff003d;
   text-decoration: underline;
   text-decoration-color: rgba(255, 0, 61, 0.35);
   text-underline-offset: 2px;
   transition: text-decoration-color 0.15s ease;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
-a.cf-row-precio-val:hover {
+a.cf-row-precio-val:hover,
+button.cf-row-precio-val:hover {
   text-decoration-color: #ff003d;
 }
 
@@ -1692,6 +1700,21 @@ a.cf-row-precio-val:hover {
   line-height: 1.3;
 }
 
+/* Precio USD del tier — el dato principal de la card ahora que sacamos la
+   cuota. Se ve grande para que sea el ancla de comparación entre tramos. */
+.cf-uber-tier-price {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0a0a0a;
+  line-height: 1;
+}
+
+.cf-uber-tier.is-selected .cf-uber-tier-price {
+  color: #ff003d;
+}
+
 .cf-uber-readout {
   background: #f7f7f5;
   padding: 20px 22px;
@@ -1855,19 +1878,52 @@ a.cf-row-precio-val:hover {
   margin-top: 0;
 }
 
-.cf-cotizar-panel-divider {
-  height: 1px;
-  background: #eceae3;
-  margin: 24px 0 20px;
+/* CTAs al pie de la persiana — reemplazaron al form. Ahora la persiana
+   muestra los precios y desde acá el usuario decide reservar o conversar. */
+.cf-cotizar-panel-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
 }
 
-.cf-cotizar-panel-formlabel {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+.cf-cotizar-panel-cta-primary,
+.cf-cotizar-panel-cta-secondary {
+  flex: 1 1 200px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #aaa;
-  margin: 0 0 16px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.cf-cotizar-panel-cta-primary {
+  background: #ff003d;
+  color: #fff;
+}
+
+.cf-cotizar-panel-cta-primary:hover {
+  background: #d80035;
+  transform: translateY(-1px);
+}
+
+.cf-cotizar-panel-cta-secondary {
+  background: transparent;
+  color: #0a0a0a;
+  border-color: #0a0a0a;
+}
+
+.cf-cotizar-panel-cta-secondary:hover {
+  background: #0a0a0a;
+  color: #fff;
 }
 
 /* ── Responsive ── */
@@ -2069,6 +2125,15 @@ a.cf-row-precio-val:hover {
   line-height: 1.5;
   color: #ffffff;
   margin: 8px 0 0;
+}
+
+/* El body del SC va sobre foto oscura → texto blanco también para los
+   <p>/<ul>/<ol> del richtext (sino .cf-pn-richtext p los pone oscuros). */
+.cf-pn-sc-col-body.cf-richtext p,
+.cf-pn-sc-col-body.cf-richtext ul,
+.cf-pn-sc-col-body.cf-richtext ol,
+.cf-pn-sc-col-body.cf-richtext li {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .cf-pn-tagline {
@@ -2943,6 +3008,27 @@ a.cf-row-precio-val:hover {
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
+/* Bloque de selector de SC: label + pills. */
+.cf-pn-compare-sc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cf-pn-compare-sc-lbl {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.98);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.cf-pn-compare-sc-lbl-soft {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.82);
+}
+
 /* Pills selector de Sistema Constructivo arriba del cuadro. */
 .cf-pn-compare-sc-pills {
   display: flex;
@@ -2950,31 +3036,30 @@ a.cf-row-precio-val:hover {
   gap: 8px;
 }
 
-/* Pills SC sobre foto bg — más opacidad que el default (.cf-pn-pill 0.18)
-   para asegurar contraste sobre cielo claro/fachadas blancas. Activo
-   solido blanco con texto negro mantiene la jerarquía. */
+/* Pills SC: inactivos blancos con texto oscuro; activo rojo CF para
+   resaltarlo (el SC es la decisión más visible del comparativo). */
 .cf-pn-compare-light .cf-pn-compare-sc-pills .cf-pn-pill {
-  background: rgba(0, 0, 0, 0.42);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .cf-pn-compare-light .cf-pn-compare-sc-pills .cf-pn-pill:hover {
-  background: rgba(0, 0, 0, 0.55);
+  background: #ffffff;
 }
 
 .cf-pn-compare-light .cf-pn-compare-sc-pills .cf-pn-pill.active {
-  background: #fff;
-  color: #0a0a0a;
-  border-color: #fff;
+  background: #ff003d;
+  color: #fff;
+  border-color: #ff003d;
 }
 
-/* Tabla light — celdas semi-transparentes para dejar respirar la foto detrás
-   del cuadro vidrio. El gap de 1px de .cf-pn-compare-table hereda el bg del
-   container, así que lo subimos a un olive translúcido. */
+/* Tabla light — fondo blanco al 80% para que la foto se filtre apenas y
+   la tabla sea el foco. El gap de 1px de .cf-pn-compare-table hereda este
+   bg, así que las líneas entre celdas quedan en el mismo blanco translúcido. */
 .cf-pn-compare-light .cf-pn-compare-table {
-  background: rgba(208, 201, 179, 0.35);
-  border-color: rgba(208, 201, 179, 0.4);
+  background: rgba(255, 255, 255, 0.80);
+  border-color: rgba(255, 255, 255, 0.5);
   /* La tabla se queda flexible y, si tiene muchas variantes, scrollea
      internamente sin empujar la cotización inline fuera del slide. */
   flex: 1 1 0;
@@ -2994,7 +3079,7 @@ a.cf-row-precio-val:hover {
 
 .cf-pn-compare-light .cf-pn-compare-corner,
 .cf-pn-compare-light .cf-pn-compare-th {
-  background: rgba(240, 238, 230, 0.45);
+  background: transparent;
   color: #0a0a0a;
 }
 
@@ -3011,7 +3096,7 @@ a.cf-row-precio-val:hover {
 }
 
 .cf-pn-compare-light .cf-pn-compare-row-lbl {
-  background: rgba(240, 238, 230, 0.45);
+  background: transparent;
   color: #0a0a0a;
   border: 0;
   font-family: inherit;
@@ -3023,19 +3108,46 @@ a.cf-row-precio-val:hover {
   background: rgba(232, 227, 208, 0.6);
 }
 
+/* Línea seleccionada: beige más oscuro (en lugar del rojo) — el rojo se
+   reserva ahora para el SC seleccionado, que es la decisión más visible. */
 .cf-pn-compare-light .cf-pn-compare-row-lbl.selected {
-  background: #ff003d;
+  background: #a89e83;
   color: #fff;
 }
 
 .cf-pn-compare-light .cf-pn-compare-cell {
-  background: rgba(255, 255, 255, 0.45);
+  background: transparent;
   color: #0a0a0a;
 }
 
 .cf-pn-compare-light .cf-pn-compare-cell.selected {
-  background: #fff5f7;
-  color: #0a0a0a;
+  background: #a89e83;
+  color: #fff;
+}
+
+/* Celda "Cotizar" (columna Precio) — CTA chico por celda, abre la persiana
+   con esa variante seleccionada. Texto rojo CF para diferenciarse del resto
+   de las celdas (que muestran datos estáticos). */
+.cf-pn-compare-cell-cotizar {
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: #ff003d;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cf-pn-compare-cell-cotizar:hover {
+  background: #ff003d !important;
+  color: #fff !important;
+}
+
+.cf-pn-compare-cell-cotizar.selected {
+  /* Selected row + cotizar cell: el rojo gana sobre el beige. */
+  background: #ff003d !important;
+  color: #fff !important;
 }
 
 /* Cotización inline al pie del cuadro. */
@@ -4430,6 +4542,11 @@ a.cf-row-precio-val:hover {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
   color: #1a1a1a;
   font-family: var(--font-geist), sans-serif;
+  /* Reset de text-align: la modal vive como descendiente DOM de la ficha
+     colapsada (cf-info-expanded), que tiene text-align: right inline. El
+     `<dialog>` aparece en el top layer del browser pero la herencia CSS
+     sigue el DOM → sin esto el cuerpo de la modal salía right-aligned. */
+  text-align: left;
 }
 
 .cf-detalles-modal-close {
@@ -4463,6 +4580,224 @@ a.cf-row-precio-val:hover {
   letter-spacing: 0.16em;
   color: rgba(0, 0, 0, 0.5);
   margin: 0 0 20px;
+}
+
+/* Modal "Reservar esta casa" — mismo patrón que cf-detalles-modal: dialog
+   nativo, fondo overlay con blur, tarjeta blanca centrada con el LeadForm
+   adentro (prefilled con la selección del catálogo). */
+.cf-reservar-modal[open] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  animation: cfDetallesFade 0.18s ease-out;
+}
+
+.cf-reservar-modal::backdrop {
+  background: transparent;
+}
+
+.cf-reservar-modal-inner {
+  position: relative;
+  width: min(560px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 44px 44px 40px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
+  color: #1a1a1a;
+  font-family: var(--font-geist), sans-serif;
+  text-align: left;
+}
+
+.cf-reservar-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cf-reservar-modal-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0a0a0a;
+}
+
+.cf-reservar-modal-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #ff003d;
+  margin: 0 0 8px;
+}
+
+.cf-reservar-modal-title {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.cf-reservar-modal-detail {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 0 0 24px;
+}
+
+/* ── Modal centrada "Cotizar" (afuera del comparativo) ─────────────────
+   Mismo patrón que cf-detalles-modal / cf-reservar-modal: <dialog> nativo
+   en top layer del browser, tarjeta blanca centrada. Adentro: precios +
+   disclaimer + 3 CTAs (comparativo, Ximia, contactar). */
+.cf-cotizar-modal[open] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  animation: cfDetallesFade 0.18s ease-out;
+}
+
+.cf-cotizar-modal::backdrop {
+  background: transparent;
+}
+
+.cf-cotizar-modal-inner {
+  position: relative;
+  width: min(900px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 44px 44px 40px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
+  color: #1a1a1a;
+  font-family: var(--font-geist), sans-serif;
+  text-align: left;
+}
+
+.cf-cotizar-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cf-cotizar-modal-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0a0a0a;
+}
+
+.cf-cotizar-modal-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #ff003d;
+  margin: 0 0 8px;
+}
+
+.cf-cotizar-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.cf-cotizar-modal-detail {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 0 0 24px;
+}
+
+.cf-cotizar-modal-uber {
+  margin-bottom: 24px;
+}
+
+/* Disclaimer: visible, no letra chica. Mismo size que el body de la modal
+   con un poco de aire arriba y abajo. */
+.cf-cotizar-modal-disclaimer {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #2a2a2a;
+  background: #f7f6f1;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.cf-cotizar-modal-disclaimer p {
+  margin: 0;
+}
+
+.cf-cotizar-modal-disclaimer p + p {
+  margin-top: 12px;
+}
+
+.cf-cotizar-modal-disclaimer strong {
+  color: #0a0a0a;
+  font-weight: 700;
+}
+
+.cf-cotizar-modal-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cf-cotizar-modal-ctas .cf-cotizar-panel-cta-primary,
+.cf-cotizar-modal-ctas .cf-cotizar-panel-cta-secondary {
+  flex: 1 1 160px;
+  padding: 12px 18px;
+  font-size: 12px;
 }
 
 /* Rich-text (Tiptap, body/long_body del header): contenedor <div> con HTML
@@ -4508,6 +4843,22 @@ a.cf-row-precio-val:hover {
   font-style: italic;
 }
 
+/* Título H3 dentro del richtext — el admin puede meter H3 desde el toolbar
+   del WYSIWYG (botón "H3"). Se renderea como subtítulo claramente más grande
+   que el body. Tipografía consistente entre modales y paneles. */
+.cf-richtext h3 {
+  font-size: clamp(20px, 1.6vw, 28px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 1em 0 0.4em;
+  color: inherit;
+}
+
+.cf-richtext > h3:first-child {
+  margin-top: 0;
+}
+
 /* Modal "Condiciones de Entrega": tarjeta BLANCA, texto negro, contenida en
    la foto. Más aire entre párrafos; lead-ins en negrita bien marcados. */
 .cf-delivery-conditions {
@@ -4540,7 +4891,7 @@ a.cf-row-precio-val:hover {
 .cf-slide-banner-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.62));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.9));
 }
 
 .cf-slide-banner-content {
@@ -5202,7 +5553,7 @@ a.cf-row-precio-val:hover {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40px;
+  padding: 18px;
   color: #fff;
 }
 
@@ -7513,7 +7864,7 @@ a.cf-row-precio-val:hover {
 .cf-home-row {
   /* Hereda padding/overflow de .cf-hero-row. Background light para diferenciar
      del HeroRow (que es blanco): este es ligeramente cálido. */
-  background: #f5f5f3;
+  background: #ffffff;
 }
 
 /* Wrapper del HomeRow (CatalogPage) — el HomeRow se desmonta cuando el
@@ -7598,8 +7949,8 @@ a.cf-row-precio-val:hover {
   inset: 0;
   background: linear-gradient(180deg,
       rgba(0, 0, 0, 0.15) 0%,
-      rgba(0, 0, 0, 0.4) 50%,
-      rgba(0, 0, 0, 0.7) 100%);
+      rgba(0, 0, 0, 0.4) 30%,
+      rgba(0, 0, 0, 0.9) 100%);
   pointer-events: none;
 }
 
@@ -7721,7 +8072,7 @@ a.cf-row-precio-val:hover {
   background: linear-gradient(180deg,
       rgba(0, 0, 0, 0.15) 0%,
       rgba(0, 0, 0, 0.35) 50%,
-      rgba(0, 0, 0, 0.7) 100%);
+      rgba(0, 0, 0, 0.9) 100%);
   pointer-events: none;
 }
 

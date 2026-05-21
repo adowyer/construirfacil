@@ -26,7 +26,6 @@ import CotizarModal from './CotizarModal'
 import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
 import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
-import { applyTierModifier, pickBestCuotaArs } from '@/lib/pricing/cuota'
 import { variantLabel } from '@/lib/format/variant'
 import { ensureHtml } from '@/lib/content/rich'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
@@ -938,28 +937,15 @@ function fmtLavadero(l: string | null | undefined): string {
   return l
 }
 
-// Precio formatter: si la marca no muestra precios o el SKU no tiene precio,
-// devolvemos "Cotizar".
-function fmtPrecio(
-  sku: CatalogModel['skus'][number] | null,
-  showPrices: boolean,
-): string {
-  if (!showPrices) return 'Cotizar'
-  if (!sku?.precio_lista_usd) return 'Cotizar'
-  return `USD ${Math.round(sku.precio_lista_usd).toLocaleString('es-AR')}`
-}
-
 export function Panel7Comparativo({
   model,
   images,
   activeSkus,
-  showPrices = false,
   cotizador = null,
 }: {
   model: CatalogModel
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
-  showPrices?: boolean
   cotizador?: CotizadorData | null
 }) {
   // Una variante única por (variante × sistema) — pero como el SC se elige
@@ -997,26 +983,9 @@ export function Panel7Comparativo({
     ? [...cotizador.tiers].sort((a, b) => a.sort_order - b.sort_order)
     : []
   const hasUber = tiersOrdered.length > 0
-  const refTier =
-    tiersOrdered.find((t) => t.highlighted) ?? tiersOrdered[0] ?? null
   const baseSlot =
     (model.marca_id && cotizador?.baseSlotByMarca[model.marca_id]) || 'lista'
   const baseCol = PRICE_SLOT_COLUMN[baseSlot]
-
-  const cuotaForSku = (
-    sku: CatalogModel['skus'][number] | null,
-    modifierPct: number,
-  ): number | null => {
-    if (!sku || !cotizador || cotizador.cuotaProducts.length === 0) return null
-    const best = pickBestCuotaArs({
-      priceUsd: applyTierModifier(sku[baseCol] ?? 0, modifierPct),
-      fxRef: cotizador.fxRef,
-      products: cotizador.cuotaProducts,
-    })
-    return best?.cuotaArs ?? null
-  }
-  const fmtCuota = (n: number) =>
-    '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 }) + '/mes'
 
   const cols: {
     key: string
@@ -1031,19 +1000,12 @@ export function Panel7Comparativo({
       { key: 'parrilla', label: 'Parrilla', get: (v) => (v.parrilla ? '✓' : '—') },
       { key: 'lavadero', label: 'Lavadero', get: (v) => fmtLavadero(v.lavadero) },
       {
+        // En el comparativo NO mostramos número: la celda es muy chica para
+        // los 3 precios (lista/contado/pozo) que hoy maneja cada modelo, y
+        // un solo precio sería engañoso. El detalle va al cuadro Cotización.
         key: 'precio',
         label: 'Precio',
-        get: (v) => {
-          if (showPrices) return fmtPrecio(skuForVarSC(v), true)
-          if (hasUber && refTier) {
-            const c = cuotaForSku(
-              skuForVarSC(v),
-              refTier.price_modifier_pct,
-            )
-            if (c != null) return fmtCuota(c)
-          }
-          return 'Cotizar'
-        },
+        get: () => 'Consultar',
       },
     ]
 
@@ -1088,20 +1050,29 @@ export function Panel7Comparativo({
         </header>
 
         {model.systems.length > 1 && (
-          <div className="cf-pn-compare-sc-pills">
-            {model.systems.map((s, i) => (
-              <button
-                key={s}
-                type="button"
-                className={`cf-pn-pill ${i === selectedSCIdx ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedSCIdx(i)
-                }}
-              >
-                {displaySC(s)}
-              </button>
-            ))}
+          <div className="cf-pn-compare-sc-block">
+            <p className="cf-pn-compare-sc-lbl">
+              Seleccioná el sistema constructivo y la variante que mejor se
+              ajusten a tus necesidades.{' '}
+              <span className="cf-pn-compare-sc-lbl-soft">
+                El precio se actualiza con tu selección.
+              </span>
+            </p>
+            <div className="cf-pn-compare-sc-pills">
+              {model.systems.map((s, i) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`cf-pn-pill ${i === selectedSCIdx ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedSCIdx(i)
+                  }}
+                >
+                  {displaySC(s)}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1133,11 +1104,44 @@ export function Panel7Comparativo({
                 >
                   {variantLabel(v.variante)}
                 </button>
-                {cols.map((c) => (
-                  <div key={`${v.variante}-${c.key}`} className={cellCls}>
-                    {c.get(v)}
-                  </div>
-                ))}
+                {cols.map((c) =>
+                  c.key === 'precio' ? (
+                    /* La celda de "Precio" abre la persiana de cotización con
+                       esta variante seleccionada. Se ve como un link rojo
+                       (CTA chiquito por celda) en lugar de un dato estático. */
+                    <button
+                      key={`${v.variante}-${c.key}`}
+                      type="button"
+                      className={`${cellCls} cf-pn-compare-cell-cotizar`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedVarIdx(i)
+                        if (hasUber) {
+                          track('cotizar_open', {
+                            source: 'comparativo_cell',
+                            model: model.display_name,
+                            variante: v.variante,
+                            sistema: currentSC,
+                          })
+                          setCotizarOpen(true)
+                        } else {
+                          window.location.href = buildCotizarMailto({
+                            modelName: model.display_name,
+                            variante: v.variante,
+                            sistema: currentSC ?? undefined,
+                            linea: displayLinea(model.linea),
+                          })
+                        }
+                      }}
+                    >
+                      Cotizar
+                    </button>
+                  ) : (
+                    <div key={`${v.variante}-${c.key}`} className={cellCls}>
+                      {c.get(v)}
+                    </div>
+                  ),
+                )}
               </Fragment>
             )
           })}
@@ -1519,7 +1523,12 @@ export function PanelSCColumns({
             <p className="cf-pn-sc-col-eyebrow">Sistema constructivo</p>
             <h3 className="cf-pn-sc-col-title">{col.title}</h3>
             {col.lead && <p className="cf-pn-sc-col-sub">{col.lead}</p>}
-            {col.body && <p className="cf-pn-sc-col-body">{col.body}</p>}
+            {col.body && (
+              <div
+                className="cf-pn-sc-col-body cf-richtext cf-pn-richtext"
+                dangerouslySetInnerHTML={{ __html: ensureHtml(col.body) }}
+              />
+            )}
           </div>
         </div>
       ))}
@@ -1876,13 +1885,18 @@ export default function ExpandedPanels(props: PanelsProps) {
         />
       </div>
 
-      {/* 7. Comparativo de variantes — tabla + cotización inline. */}
-      <div className="cf-station-slide cf-slide-image">
+      {/* 7. Comparativo de variantes — tabla + cotización inline.
+          data-panel="comparativo" lo usa ModelRow para hacer scroll directo
+          a este slide cuando el usuario clickea "Ver cuadro comparativo" en
+          la modal de cotización del listado. */}
+      <div
+        className="cf-station-slide cf-slide-image"
+        data-panel="comparativo"
+      >
         <Panel7Comparativo
           model={props.model}
           images={props.images}
           activeSkus={props.activeSkus}
-          showPrices={props.model.show_prices}
           cotizador={props.cotizador ?? null}
         />
       </div>
