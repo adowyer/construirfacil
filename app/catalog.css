@@ -8284,6 +8284,16 @@ button.cf-row-precio-val:hover {
     touch-action: pan-x pan-y;
   }
 
+  /* Catch-all: TODOS los descendientes del shell solo responden a gestos
+     verticales. El shell (que es pan-x pan-y) recibe los horizontales para
+     hacer el swipe del slider. Sin esta regla, cualquier descendiente con
+     `overflow-y: auto` (panels editoriales, scrollable bodies, comparativo,
+     ficha lateral, etc. — hay 20+ scrollers en este shell) captura el
+     gesto en su primer frame e iOS Safari nunca lo cede al ancestro. */
+  .cf-row-shell.cf-expanded * {
+    touch-action: pan-y;
+  }
+
   /* Altura fija 80vh → la maneja el contenido (en landscape mobile 80vh
      ahogaba el texto). */
   .cf-station-slide {
