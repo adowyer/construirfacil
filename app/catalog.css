@@ -8745,7 +8745,7 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
    Fix: ocultamos la cf-row-info en portrait expandido. El mismo contenido
    (Línea, Estilo, descripción) está disponible en el primer panel expandido
    (Panel1Description → cf-slide-text). */
-@media (max-width: 768px) {
+@media (max-width: 768px), (orientation: landscape) and (max-height: 768px) {
 
   /* !important necesario: hay reglas con mayor especificidad (.cf-row.cf-expanded
      .cf-row-info tiene display:flex vía la regla de desktop) que sobrescriben el
@@ -8756,7 +8756,12 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
      la ficha era el bloqueo del swipe-X: aunque le sacamos overflow-y, su sola
      presencia + width:195px metía contenido al inicio del shell horizontal
      que actuaba como zona muerta para el touch del slider. Además duplicaba
-     info que ya está en Panel1Description. */
+     info que ya está en Panel1Description.
+
+     Doble condición de media query: `max-width:768px` cubre portrait mobile y
+     tablet portrait, pero NO cubre landscape mobile (donde el viewport rota a
+     ~844x390 y el width supera 768). La 2da condición — landscape con
+     max-height:768 — captura landscape de phones/tablets. */
   .cf-row.cf-expanded .cf-row-info {
     display: none !important;
     width: 0 !important;
@@ -8770,6 +8775,15 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
      necesario — la foto empieza desde el borde izquierdo. */
   .cf-row.cf-expanded {
     padding-left: 0 !important;
+  }
+}
+
+/* Mismo doble criterio para el touch-action: en landscape mobile, el viewport
+   width supera 768 y la regla original no se aplicaba — el shell volvía al
+   default desktop `pan-y` que bloquea el swipe horizontal. */
+@media (orientation: landscape) and (max-height: 768px) {
+  .cf-row-shell.cf-expanded {
+    touch-action: pan-x pan-y;
   }
 }
 
