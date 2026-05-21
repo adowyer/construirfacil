@@ -28,8 +28,9 @@ import type {
   FooterCardRow,
   FooterContentRow,
 } from '@/lib/supabase/queries/footer'
-import { buildCotizarMailto, buildAsesorMailto, getAsesorHref } from '@/lib/cta/mailto'
+import { getAsesorHref } from '@/lib/cta/mailto'
 import { useInViewport } from '@/lib/hooks/useInViewport'
+import ReservarModal from './ReservarModal'
 import { Ruler, BadgeCheck, ShieldCheck, Factory, Globe, Phone } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,6 +132,10 @@ export default function CatalogFooter({
   hideMarcaCards = false,
   footerContent = null,
 }: CatalogFooterProps) {
+  // Modal genérico de contacto (reemplaza el mailto del CTA primario y del
+  // card "Hablemos" del marquee, que rompían si el visitante no tenía un
+  // cliente de mail configurado en Chrome).
+  const [contactarOpen, setContactarOpen] = useState(false)
   return (
     <footer className="cf-footer">
       {/* ── Capa "cemento": cierre con CTAs, ancho restringido (no full-bleed),
@@ -146,9 +151,13 @@ export default function CatalogFooter({
             {footerContent?.title || 'Diseñamos tu casa a medida.'}
           </h2>
           <div className="cf-footer-cierre-ctas">
-            <a className="cf-footer-cta-primary" href={buildCotizarMailto()}>
+            <button
+              type="button"
+              className="cf-footer-cta-primary"
+              onClick={() => setContactarOpen(true)}
+            >
               {footerContent?.cta_primary_label || 'Contactanos →'}
-            </a>
+            </button>
             <a
               className="cf-footer-cta-secondary"
               href={getAsesorHref()}
@@ -161,6 +170,12 @@ export default function CatalogFooter({
         </div>
       </section>
 
+      <ReservarModal
+        open={contactarOpen}
+        onClose={() => setContactarOpen(false)}
+        context={{}}
+      />
+
       {/* ── Capa "principal": marquee de cards (CF + Marca + trust + Hablemos).
           Sin header (eyebrow/título arriba quitados a pedido del user). */}
       <FooterMarquee
@@ -169,6 +184,7 @@ export default function CatalogFooter({
         footerCardsByMarca={footerCardsByMarca}
         institutionalFooterCards={institutionalFooterCards}
         onOpenModel={onOpenModel}
+        onContactarClick={() => setContactarOpen(true)}
         hideMarcaCards={hideMarcaCards}
       />
 
@@ -297,6 +313,7 @@ function FooterMarquee({
   footerCardsByMarca,
   institutionalFooterCards,
   onOpenModel,
+  onContactarClick,
   hideMarcaCards = false,
 }: {
   featuredModels: CatalogModel[]
@@ -304,6 +321,9 @@ function FooterMarquee({
   footerCardsByMarca: Record<string, FooterCardRow[]>
   institutionalFooterCards: FooterCardRow[]
   onOpenModel?: (model: CatalogModel) => void
+  /** Click handler para el card "Hablemos" — abre el modal de contacto
+   *  desde el padre. Reemplaza el mailto que rompía sin cliente de mail. */
+  onContactarClick?: () => void
   hideMarcaCards?: boolean
 }) {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -386,15 +406,16 @@ function FooterMarquee({
     }
     if (card.kind === 'cta-hablemos') {
       return (
-        <a
+        <button
           key={key}
+          type="button"
           className="cf-footer-marquee-card cf-footer-marquee-card-cta cf-footer-marquee-card-cta-primary"
-          href={buildAsesorMailto()}
+          onClick={() => onContactarClick?.()}
         >
           <span className="cf-footer-marquee-card-eyebrow">Acción</span>
           <span className="cf-footer-marquee-card-title">Hablemos</span>
           <span className="cf-footer-marquee-card-arrow">→</span>
-        </a>
+        </button>
       )
     }
     if (card.kind === 'trust') {

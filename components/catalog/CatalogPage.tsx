@@ -40,12 +40,12 @@ import {
   pickThumb,
   pickFull,
 } from '@/lib/supabase/queries/catalog_panels'
-import { buildCotizarMailto } from '@/lib/cta/mailto'
 import CatalogFooter from './CatalogFooter'
 import { useRouter } from 'next/navigation'
 import HomeRow from './HomeRow'
 import type { HomeSlide } from '@/lib/supabase/queries/home_content'
 import CotizarModal from './CotizarModal'
+import ReservarModal from './ReservarModal'
 import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
 import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
@@ -197,6 +197,9 @@ export default function CatalogPage({
   const [bedFilters, setBedFilters] = useState<string[]>([])
   const [sizeFilters, setSizeFilters] = useState<string[]>([])
   const [sortOrder, setSortOrder] = useState<string>('recommended')
+  // Modal de contacto genérico (mid-CTA "¿Te ayudo a elegir?"). Reemplaza el
+  // mailto que rompía sin cliente de mail configurado.
+  const [contactarOpen, setContactarOpen] = useState(false)
 
   // Helpers de toggle: agregan o quitan un valor del array.
   const toggleBed = (v: string) =>
@@ -695,12 +698,13 @@ export default function CatalogPage({
               <div className="cf-mid-cta">
                 <h3>¿Te ayudo a elegir?</h3>
                 <p>Pedí una cotización y te ayudamos a encontrar la casa que mejor se adapta a vos.</p>
-                <a
+                <button
+                  type="button"
                   className="cf-mid-cta-btn"
-                  href={buildCotizarMailto()}
+                  onClick={() => setContactarOpen(true)}
                 >
                   Cotizar
-                </a>
+                </button>
               </div>
             )}
           </div>
@@ -745,6 +749,14 @@ export default function CatalogPage({
         footerContent={footerContent}
         onOpenModel={openDetail}
         hideMarcaCards={!selectedMarca}
+      />
+
+      {/* Modal genérico de contacto (mid-CTA + futuro: cualquier CTA del
+          catálogo público sin contexto de modelo). Reemplaza los mailto. */}
+      <ReservarModal
+        open={contactarOpen}
+        onClose={() => setContactarOpen(false)}
+        context={{}}
       />
 
       {/* ── Detail slider overlay ── */}

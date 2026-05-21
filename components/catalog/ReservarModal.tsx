@@ -3,9 +3,15 @@
 /**
  * components/catalog/ReservarModal.tsx
  *
- * Modal "Reservar esta casa" — abre el LeadForm con el contexto de la
- * selección (modelo + variante + SC + plan) prefilleado en el campo
- * "Contanos qué buscás" para que el usuario no escriba todo de nuevo.
+ * Modal del LeadForm — dos modos:
+ *
+ * 1. CON contexto (modelo + variante + SC + plan): "Quiero esta casa". El
+ *    LeadForm arranca con un mensaje prefilled describiendo la selección
+ *    así el usuario no escribe todo de nuevo.
+ *
+ * 2. SIN contexto: modal genérico de contacto (reemplaza los mailto del
+ *    catálogo público — footer, mid-CTA, Hablemos). El copy es
+ *    parametrizable vía props (`eyebrow`, `title`).
  *
  * Usa `<dialog>` nativo (top layer del browser) → no se ve afectado por
  * transforms/overflow de ancestros, igual que DeliveryConditionsModal.
@@ -39,10 +45,21 @@ export default function ReservarModal({
   open,
   onClose,
   context,
+  eyebrow,
+  title,
+  submitLabel,
 }: {
   open: boolean
   onClose: () => void
   context: ReservarContext
+  /** Copy del eyebrow. Default = "Quiero esta casa" (modo con contexto) o
+   *  "Contactanos" (modo genérico sin contexto). */
+  eyebrow?: string
+  /** Copy del título. Default = "Dejanos tus datos y te contactamos". */
+  title?: string
+  /** Texto del botón submit. Default = "Quiero esta casa →" (con contexto)
+   *  o "Contactanos →" (sin contexto). */
+  submitLabel?: string
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -63,6 +80,13 @@ export default function ReservarModal({
   }, [open])
 
   const message = buildPrefilledMessage(context)
+  const hasContext = !!context.model
+
+  const resolvedEyebrow =
+    eyebrow ?? (hasContext ? 'Quiero esta casa' : 'Contactanos')
+  const resolvedTitle = title ?? 'Dejanos tus datos y te contactamos'
+  const resolvedSubmitLabel =
+    submitLabel ?? (hasContext ? 'Quiero esta casa →' : 'Contactanos →')
 
   return (
     <dialog
@@ -82,10 +106,8 @@ export default function ReservarModal({
         >
           ×
         </button>
-        <p className="cf-reservar-modal-eyebrow">Quiero esta casa</p>
-        <h3 className="cf-reservar-modal-title">
-          Dejanos tus datos y te contactamos
-        </h3>
+        <p className="cf-reservar-modal-eyebrow">{resolvedEyebrow}</p>
+        <h3 className="cf-reservar-modal-title">{resolvedTitle}</h3>
         {context.model && (
           <p className="cf-reservar-modal-detail">
             {[context.model, context.variante && `Variante ${context.variante}`, context.sistema]
@@ -97,7 +119,7 @@ export default function ReservarModal({
           defaultLocalidad={null}
           defaultMessage={message}
           variant="light"
-          submitLabel="Quiero esta casa →"
+          submitLabel={resolvedSubmitLabel}
         />
       </div>
     </dialog>
