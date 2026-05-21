@@ -8745,12 +8745,18 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
    Fix: ocultamos la cf-row-info en portrait expandido. El mismo contenido
    (Línea, Estilo, descripción) está disponible en el primer panel expandido
    (Panel1Description → cf-slide-text). */
-@media (max-width: 768px) and (orientation: portrait) {
+@media (max-width: 768px) {
 
   /* !important necesario: hay reglas con mayor especificidad (.cf-row.cf-expanded
      .cf-row-info tiene display:flex vía la regla de desktop) que sobrescriben el
      display:none sin !important. También zeroeamos width y padding para que no
-     quede espacio residual aunque el display no se respete. */
+     quede espacio residual aunque el display no se respete.
+
+     2026-05-21: extendido a TODO mobile (antes era solo portrait). En landscape
+     la ficha era el bloqueo del swipe-X: aunque le sacamos overflow-y, su sola
+     presencia + width:195px metía contenido al inicio del shell horizontal
+     que actuaba como zona muerta para el touch del slider. Además duplicaba
+     info que ya está en Panel1Description. */
   .cf-row.cf-expanded .cf-row-info {
     display: none !important;
     width: 0 !important;
