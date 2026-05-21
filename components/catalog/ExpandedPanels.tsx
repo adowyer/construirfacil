@@ -374,6 +374,7 @@ function PanelImageSlider({
   ignoreViewLabel = false,
   deliveryHtml = null,
   labelClassName,
+  hideTodasTab = false,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
@@ -388,6 +389,10 @@ function PanelImageSlider({
   deliveryHtml?: string | null
   /** Modifier opcional para el label (ej. ajuste fino de margin por panel). */
   labelClassName?: string
+  /** Oculta el botón "Todas" en los tabs de variantes y arranca con la
+   *  primera variante seleccionada. Útil para galerías chicas (Planos,
+   *  Axos) donde mezclar todas las variantes confunde. */
+  hideTodasTab?: boolean
 }) {
   // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
   // y V1.2 (subversiones que solo cambian detalles internos). V3 incluye V3.1.
@@ -407,7 +412,10 @@ function PanelImageSlider({
   })
   const hasVariantTabs = majorVariants.length >= 2
 
-  const [activeMajor, setActiveMajor] = useState<string | null>(null)
+  // Si ocultamos "Todas", arrancamos en la primera variante (no null).
+  const [activeMajor, setActiveMajor] = useState<string | null>(
+    hideTodasTab && majorVariants.length > 0 ? majorVariants[0] : null,
+  )
   const [activePillIdx, setActivePillIdx] = useState(0)
 
   const filtered = images.filter((img) => {
@@ -435,16 +443,18 @@ function PanelImageSlider({
           </div>
           {hasVariantTabs && (
             <div className="cf-pn-variant-tabs">
-              <button
-                type="button"
-                className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveMajor(null)
-                  setActivePillIdx(0)
-                }}
-              >
-                Todas
-              </button>
+              {!hideTodasTab && (
+                <button
+                  type="button"
+                  className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveMajor(null)
+                    setActivePillIdx(0)
+                  }}
+                >
+                  Todas
+                </button>
+              )}
               {majorVariants.map((v) => (
                 <button
                   key={v}
@@ -511,16 +521,18 @@ function PanelImageSlider({
         {/* Tabs verticales por variante (solo si hay 2+) */}
         {hasVariantTabs && (
           <div className="cf-pn-variant-tabs">
-            <button
-              type="button"
-              className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
-              onClick={() => {
-                setActiveMajor(null)
-                setActivePillIdx(0)
-              }}
-            >
-              Todas
-            </button>
+            {!hideTodasTab && (
+              <button
+                type="button"
+                className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveMajor(null)
+                  setActivePillIdx(0)
+                }}
+              >
+                Todas
+              </button>
+            )}
             {majorVariants.map((v) => (
               <button
                 key={v}
@@ -634,6 +646,7 @@ export function PanelPlanos({
       bgSizeCss="auto 70%"
       pillFallback={(i) => `Plano ${i + 1}`}
       deliveryHtml={deliveryHtml}
+      hideTodasTab
     />
   )
 }
@@ -658,6 +671,7 @@ export function PanelAxos({
       ignoreViewLabel
       deliveryHtml={deliveryHtml}
       labelClassName="cf-pn-gallery-label--axos"
+      hideTodasTab
     />
   )
 }
