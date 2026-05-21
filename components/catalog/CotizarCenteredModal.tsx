@@ -100,7 +100,7 @@ export default function CotizarCenteredModal({
 
           <p className="cf-cotizar-modal-eyebrow">Tu cotización</p>
           <h3 className="cf-cotizar-modal-title">
-            Diseñá la casa que podés pagar
+            Cotizá tu casa: variante, sistema, terminaciones
           </h3>
           {detail && <p className="cf-cotizar-modal-detail">{detail}</p>}
 
@@ -116,24 +116,42 @@ export default function CotizarCenteredModal({
 
           <div className="cf-cotizar-modal-disclaimer">
             <p>
-              <strong>Por qué los precios son orientativos.</strong> Nuestras
-              casas no tienen un precio &ldquo;de catálogo&rdquo; porque cada
-              cliente la configura a su medida. El valor final depende de la{' '}
-              <strong>variante</strong> (m² y ambientes), el{' '}
-              <strong>sistema constructivo</strong> (Wood, Steel u Hormigón
-              Plus) y las <strong>terminaciones</strong> que elijas. Los
-              precios que ves son la referencia más cercana sobre la
-              configuración base; el número exacto lo cerramos juntos cuando
-              definimos los detalles.
+              <strong>El precio es orientativo y flexible.</strong> Nuestras casas no
+              tienen un precio &ldquo;de catálogo&rdquo; porque cada cliente las configura
+              a su preferencia. El valor final depende de la{' '}
+              <strong>variante</strong> —superficie y distribución—, el{' '}
+              <strong>sistema constructivo</strong> —Wood Plus, Steel Plus o Stone Plus—,
+              las <strong>terminaciones</strong> que elijas —revestimientos o aislaciones
+              opcionales— y los accesorios del catálogo —parrilla, lavadero exterior,
+              equipo solar, etc.—.
             </p>
+
+            <p>
+              <strong>El precio se ajusta por “tiempo” y “volumen”.</strong> Creamos un
+              exclusivo <strong>modelo de cotización colectiva por cupos</strong> que
+              premia tu flexibilidad. Al organizar las obras por ubicación y volumen de
+              ventas reducimos los costos, y trasladamos ese ahorro directo a tu precio
+              final. En cualquier caso,{' '}
+              <strong>
+                mejoramos cualquier presupuesto y somos hasta un 50% más rápidos
+              </strong>{' '}
+              que la construcción tradicional.
+            </p>
+
+            <p>
+              Los precios que ves en la casa elegida son la referencia más cercana sobre
+              la configuración estándar, sujeto a ajustes personales en el momento de la
+              formalización de la compra.
+            </p>
+
             {onOpenComparativo && (
               <p>
-                Si querés conocer más sobre las variantes disponibles en este
-                modelo y lo que cada una incluye podés ver nuestro cuadro
-                comparativo con todos los detalles.
+                Si querés conocer más sobre las variantes disponibles en este modelo y lo
+                que cada una incluye podés ver nuestro cuadro comparativo con todos los
+                detalles.
               </p>
             )}
-          </div>
+          </div>  
 
           <div className="cf-cotizar-modal-ctas">
             {onOpenComparativo && (
@@ -168,7 +186,7 @@ export default function CotizarCenteredModal({
                 setReservarOpen(true)
               }}
             >
-              Quiero que me contacten
+              Quiero esta casa →
             </button>
           </div>
         </div>

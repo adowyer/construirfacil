@@ -24,18 +24,35 @@ import { getAsesorHref } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
 
+function displaySC(sc: string): string {
+  const u = sc.toUpperCase().trim()
+  if (u === 'HORMIGÓN PLUS' || u === 'HORMIGON PLUS' || u === 'CONCRETE PLUS')
+    return 'Stone Plus'
+  return sc.toLowerCase().replace(/(?:^|\s)\S/g, (c) => c.toUpperCase())
+}
+
 export default function CotizarModal({
   open,
   onClose,
   cotizador,
   basePriceUsd,
   context,
+  systems = [],
+  priceForSC,
 }: {
   open: boolean
   onClose: () => void
   cotizador: CotizadorData
   basePriceUsd: number | null
   context: { model?: string; variante?: string | null; sistema?: string | null }
+  /** Sistemas constructivos disponibles para esta variante. Si llega vacío
+   *  o con 1 solo elemento, no se muestra el selector (siguen pasando
+   *  `basePriceUsd` y `context.sistema` originales sin cambios). */
+  systems?: string[]
+  /** Resuelve el precio para un SC dado. Permite al modal recalcular cuando
+   *  el usuario cambia el pill de SC. Si no se provee, el precio queda fijo
+   *  en `basePriceUsd`. */
+  priceForSC?: (sc: string | null) => number | null
 }) {
   useEffect(() => {
     if (!open) return
@@ -48,10 +65,25 @@ export default function CotizarModal({
 
   const [reservarOpen, setReservarOpen] = useState(false)
 
+  // Selector de SC dentro del modal (movido desde el comparativo — feedback
+  // SH 25). Default = el SC que vino del contexto, o el primero disponible.
+  const [selectedSC, setSelectedSC] = useState<string | null>(
+    context.sistema ?? systems[0] ?? null,
+  )
+  useEffect(() => {
+    // Si el contexto cambia (ej. otra variante), resincronizar.
+    setSelectedSC(context.sistema ?? systems[0] ?? null)
+  }, [context.sistema, systems])
+
+  // Precio efectivo según SC seleccionado (si se pasó el helper). Fallback
+  // al basePriceUsd original.
+  const effectivePrice =
+    priceForSC && selectedSC != null ? priceForSC(selectedSC) : basePriceUsd
+
   const detail = [
     context.model,
     context.variante ? `Variante ${context.variante}` : null,
-    context.sistema,
+    selectedSC,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -59,8 +91,8 @@ export default function CotizarModal({
   const reservarContext: ReservarContext = {
     model: context.model,
     variante: context.variante,
-    sistema: context.sistema,
-    priceUsd: basePriceUsd,
+    sistema: selectedSC,
+    priceUsd: effectivePrice,
   }
 
   return (
@@ -87,16 +119,34 @@ export default function CotizarModal({
 
         <div className="cf-cotizar-panel-scroll">
           <h3 className="cf-cotizar-panel-title">
-            Diseñá la casa que podés pagar
+            Cotizá tu casa: variante, sistema y plazo
           </h3>
           {detail && <p className="cf-cotizar-panel-detail">{detail}</p>}
+
+          {systems.length > 1 && (
+            <div className="cf-cotizar-panel-sc-block">
+              <p className="cf-cotizar-panel-sc-lbl">Sistema constructivo</p>
+              <div className="cf-cotizar-panel-sc-pills">
+                {systems.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`cf-pn-pill ${s === selectedSC ? 'active' : ''}`}
+                    onClick={() => setSelectedSC(s)}
+                  >
+                    {displaySC(s)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="cf-cotizar-panel-uber">
             <CotizadorUber
               tiers={cotizador.tiers}
-              basePriceUsd={basePriceUsd}
+              basePriceUsd={effectivePrice}
               caveatHtml={cotizador.caveatHtml}
-              context={context}
+              context={{ ...context, sistema: selectedSC }}
               hideCta
             />
           </div>
@@ -121,7 +171,7 @@ export default function CotizarModal({
                 setReservarOpen(true)
               }}
             >
-              Quiero que me contacten
+              Quiero esta casa →
             </button>
           </div>
         </div>

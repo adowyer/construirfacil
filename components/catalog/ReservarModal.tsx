@@ -32,7 +32,7 @@ function buildPrefilledMessage(ctx: ReservarContext): string {
     parts.push(`Precio estimado: USD ${ctx.priceUsd.toLocaleString('es-AR')}`)
   }
   if (parts.length === 0) return ''
-  return parts.join(' · ') + '\n\nQuiero que me contacten para avanzar con esta casa.'
+  return parts.join(' · ') + '\n\nQuiero esta casa. Por favor, contáctenme para avanzar.'
 }
 
 export default function ReservarModal({
@@ -82,7 +82,7 @@ export default function ReservarModal({
         >
           ×
         </button>
-        <p className="cf-reservar-modal-eyebrow">Quiero que me contacten</p>
+        <p className="cf-reservar-modal-eyebrow">Quiero esta casa</p>
         <h3 className="cf-reservar-modal-title">
           Dejanos tus datos y te contactamos
         </h3>
@@ -97,6 +97,7 @@ export default function ReservarModal({
           defaultLocalidad={null}
           defaultMessage={message}
           variant="light"
+          submitLabel="Quiero esta casa →"
         />
       </div>
     </dialog>

@@ -950,9 +950,10 @@ export function Panel7Comparativo({
   activeSkus: CatalogModel['skus']
   cotizador?: CotizadorData | null
 }) {
-  // Una variante única por (variante × sistema) — pero como el SC se elige
-  // arriba con pills, mostramos una fila por VARIANTE y los datos del SKU
-  // que matchea (variante + SC seleccionado).
+  // Una variante única por (variante × sistema). La elección de SC se
+  // hace DENTRO del modal de cotización (no acá) — el comparativo es solo
+  // para elegir la variante. Acá usamos el primer SC del modelo como
+  // referencia para resolver el SKU base de cada variante.
   const uniqueVars = activeSkus.reduce(
     (acc, s) => {
       if (!acc.find((v) => v.variante === s.variante)) acc.push(s)
@@ -961,14 +962,14 @@ export function Panel7Comparativo({
     [] as typeof activeSkus,
   )
 
-  // Selector de SC arriba — controla los precios de toda la tabla.
-  const [selectedSCIdx, setSelectedSCIdx] = useState(0)
-  const currentSC = model.systems[selectedSCIdx] ?? model.systems[0] ?? null
+  // SC de referencia (primer SC del modelo). El usuario lo va a poder cambiar
+  // adentro del CotizarModal si hay >1.
+  const currentSC = model.systems[0] ?? null
 
   // Selector de variante para la cotización inline al pie.
   const [selectedVarIdx, setSelectedVarIdx] = useState(0)
 
-  // SKU del cruce variante × SC seleccionado. Si la combinación no existe
+  // SKU del cruce variante × SC de referencia. Si la combinación no existe
   // (algunos SKUs solo en un SC), caemos al SKU de la variante en cualquier SC.
   const skuForVarSC = (v: CatalogModel['skus'][number]) =>
     activeSkus.find(
@@ -1001,14 +1002,9 @@ export function Panel7Comparativo({
       { key: 'toilette', label: 'Toilette', get: (v) => (v.toilette ? '✓' : '—') },
       { key: 'parrilla', label: 'Parrilla', get: (v) => (v.parrilla ? '✓' : '—') },
       { key: 'lavadero', label: 'Lavadero', get: (v) => fmtLavadero(v.lavadero) },
-      {
-        // En el comparativo NO mostramos número: la celda es muy chica para
-        // los 3 precios (lista/contado/pozo) que hoy maneja cada modelo, y
-        // un solo precio sería engañoso. El detalle va al cuadro Cotización.
-        key: 'precio',
-        label: 'Precio',
-        get: () => 'Consultar',
-      },
+      // Sacamos la columna "Precio". Antes era un mini-botón "Cotizar" por
+      // celda; ahora todo el flujo de cotización vive en el CTA grande abajo
+      // (feedback SH: evitar duplicación + celda chiquita ininteligible).
     ]
 
   const selectedVar = uniqueVars[selectedVarIdx] ?? uniqueVars[0]
@@ -1047,36 +1043,14 @@ export function Panel7Comparativo({
             Comparativo · Tipología {model.tipologia_code} · {displayLinea(model.linea)} · {model.display_name}
           </p>
           <h3 className="cf-pn-compare-sub">
-            Cotizá la variante que más se ajusta a tus necesidades
+            Cotizá la variante y configuración que más se ajusta a tus necesidades
           </h3>
         </header>
 
-        {model.systems.length > 1 && (
-          <div className="cf-pn-compare-sc-block">
-            <p className="cf-pn-compare-sc-lbl">
-              Seleccioná el sistema constructivo y la variante que mejor se
-              ajusten a tus necesidades.{' '}
-              <span className="cf-pn-compare-sc-lbl-soft">
-                El precio se actualiza con tu selección.
-              </span>
-            </p>
-            <div className="cf-pn-compare-sc-pills">
-              {model.systems.map((s, i) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`cf-pn-pill ${i === selectedSCIdx ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedSCIdx(i)
-                  }}
-                >
-                  {displaySC(s)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Selector de SC: REMOVIDO del comparativo. El SC ahora se elige
+            dentro del CotizarModal (cuando es decisión real). Antes acá
+            las pills no cambiaban nada visible en la tabla ("Consultar"
+            estático) y cargaban la parte superior. Feedback SH 25. */}
 
         <div
           className="cf-pn-compare-table"
@@ -1094,56 +1068,32 @@ export function Panel7Comparativo({
           {uniqueVars.map((v, i) => {
             const isSelected = i === selectedVarIdx
             const cellCls = `cf-pn-compare-cell${isSelected ? ' selected' : ''}`
+            // Fila clickeable entera (feedback SH 26): antes solo el botón
+            // "Variante" cambiaba la selección, el resto de las celdas no
+            // reaccionaban → confuso. Ahora todas las celdas seleccionan.
+            const selectVariant = (e: React.MouseEvent) => {
+              e.stopPropagation()
+              setSelectedVarIdx(i)
+            }
             return (
               <Fragment key={`row-${v.variante}`}>
                 <button
                   type="button"
                   className={`cf-pn-compare-row-lbl${isSelected ? ' selected' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedVarIdx(i)
-                  }}
+                  onClick={selectVariant}
                 >
                   {variantLabel(v.variante)}
                 </button>
-                {cols.map((c) =>
-                  c.key === 'precio' ? (
-                    /* La celda de "Precio" abre la persiana de cotización con
-                       esta variante seleccionada. Se ve como un link rojo
-                       (CTA chiquito por celda) en lugar de un dato estático. */
-                    <button
-                      key={`${v.variante}-${c.key}`}
-                      type="button"
-                      className={`${cellCls} cf-pn-compare-cell-cotizar`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedVarIdx(i)
-                        if (hasUber) {
-                          track('cotizar_open', {
-                            source: 'comparativo_cell',
-                            model: model.display_name,
-                            variante: v.variante,
-                            sistema: currentSC,
-                          })
-                          setCotizarOpen(true)
-                        } else {
-                          window.location.href = buildCotizarMailto({
-                            modelName: model.display_name,
-                            variante: v.variante,
-                            sistema: currentSC ?? undefined,
-                            linea: displayLinea(model.linea),
-                          })
-                        }
-                      }}
-                    >
-                      Cotizar
-                    </button>
-                  ) : (
-                    <div key={`${v.variante}-${c.key}`} className={cellCls}>
-                      {c.get(v)}
-                    </div>
-                  ),
-                )}
+                {cols.map((c) => (
+                  <div
+                    key={`${v.variante}-${c.key}`}
+                    className={cellCls}
+                    onClick={selectVariant}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {c.get(v)}
+                  </div>
+                ))}
               </Fragment>
             )
           })}
@@ -1219,6 +1169,17 @@ export function Panel7Comparativo({
             model: model.display_name,
             variante: selectedVar?.variante ?? null,
             sistema: currentSC,
+          }}
+          systems={model.systems}
+          priceForSC={(sc) => {
+            // Precio del SKU (variante × SC) en el tier base. Si no existe
+            // el cruce caemos a cualquier SKU de la variante.
+            if (!selectedVar) return null
+            const sku =
+              activeSkus.find(
+                (s) => s.variante === selectedVar.variante && s.sistema_constructivo === sc,
+              ) ?? activeSkus.find((s) => s.variante === selectedVar.variante)
+            return sku?.[baseCol] ?? null
           }}
         />
       )}

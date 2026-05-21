@@ -249,7 +249,9 @@ function SlideCrece({ growthPairs, onOpenModal, s }: { growthPairs: GrowthPair[]
               __html: s?.body || HEADER_DEFAULTS.crece?.body || '',
             }}
           />
-          {s?.long_body && (
+          {s?.cta_url ? (
+            <a href={s.cta_url} className="cf-hero-more-btn" style={{ marginTop: 'auto' }}>{s.cta_label?.trim() || 'Ver más'} →</a>
+          ) : s?.long_body && (
             <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{s?.cta_label?.trim() || 'Ver más'} →</button>
           )}
         </div>
@@ -321,7 +323,9 @@ function SlideFlex({ onOpenModal, s }: { onOpenModal: () => void, s?: HeaderSlid
               __html: s?.body || HEADER_DEFAULTS.flex?.body || '',
             }}
           />
-          {s?.long_body && (
+          {s?.cta_url ? (
+            <a href={s.cta_url} className="cf-hero-more-btn" style={{ marginTop: 'auto' }}>{s.cta_label?.trim() || 'Ver más'} →</a>
+          ) : s?.long_body && (
             <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{s?.cta_label?.trim() || 'Ver más'} →</button>
           )}
         </div>
@@ -576,7 +580,15 @@ function SlideBanner({
             dangerouslySetInnerHTML={{ __html: s.body }}
           />
         )}
-        {s.long_body && (
+        {s.cta_url ? (
+          <a
+            href={s.cta_url}
+            className="cf-hero-more-btn"
+            style={{ marginTop: 'auto' }}
+          >
+            {s.cta_label?.trim() || 'Ver más'} →
+          </a>
+        ) : s.long_body && (
           <button
             className="cf-hero-more-btn"
             onClick={onOpenModal}

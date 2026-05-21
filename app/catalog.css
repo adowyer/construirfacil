@@ -1870,6 +1870,47 @@ button.cf-row-precio-val:hover {
   margin: 6px 0 0;
 }
 
+/* Bloque selector de Sistema Constructivo dentro del modal de cotización.
+   Aparece solo si el modelo tiene >1 SC. Movido desde el comparativo
+   (feedback SH 25): ahora el SC se elige cuando es decisión real. */
+.cf-cotizar-panel-sc-block {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: #f6f5f0;
+  border-radius: 10px;
+}
+
+.cf-cotizar-panel-sc-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #555;
+  margin: 0 0 10px;
+}
+
+.cf-cotizar-panel-sc-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cf-cotizar-panel-sc-pills .cf-pn-pill {
+  background: #fff;
+  color: #2a2a2a;
+  border: 1px solid #d4d4cc;
+}
+
+.cf-cotizar-panel-sc-pills .cf-pn-pill:hover {
+  border-color: #888;
+}
+
+.cf-cotizar-panel-sc-pills .cf-pn-pill.active {
+  background: #0a0a0a;
+  color: #fff;
+  border-color: #0a0a0a;
+}
+
 .cf-cotizar-panel-uber {
   margin-top: 20px;
 }
@@ -2614,11 +2655,15 @@ button.cf-row-precio-val:hover {
   display: flex;
   flex-direction: column;
   padding: 28px 28px 0;
-  /* Capa oscura translúcida — el texto blanco necesita contraste fuerte
-     sobre fotos con cielo claro o fachadas blancas. */
-  background: rgba(0, 0, 0, 0.15);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  /* Capa gris semi-opaca. El aside vive sobre fotos editables (cliente sube
+     lo que quiera): en Atlas las fachadas son oscuras → la caja se veía negra,
+     en Bosque hay más cielo → blanca. Subimos la opacidad a 0.55 (vs los 0.28
+     de `.cf-glass-card` del HeroRow, que tiene fotos curadas) para que el
+     fondo nunca domine, sin importar la foto. Sigue siendo translúcida y
+     mantiene el blur. */
+  background: rgba(30, 30, 30, 0.55);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   color: #fff;

@@ -28,6 +28,7 @@ export function LeadForm({
   defaultLocalidad,
   defaultMessage,
   variant = 'dark',
+  submitLabel = 'Quiero que me contacten',
 }: {
   defaultLocalidad?: string | null
   /** Prefilla el campo "Contanos qué buscás" — útil cuando el form se abre
@@ -35,6 +36,10 @@ export function LeadForm({
    *  para que el usuario no escriba todo de nuevo. */
   defaultMessage?: string | null
   variant?: 'dark' | 'light'
+  /** Copy del botón submit. Default genérico para /cotizar; el catálogo
+   *  (ReservarModal) usa "Quiero esta casa →" porque ya hay un modelo
+   *  concreto y suena a cierre, no a "dejá tus datos". */
+  submitLabel?: string
 }) {
   const field = FIELD[variant]
   const lbl = LBL[variant]
@@ -179,7 +184,7 @@ export function LeadForm({
         disabled={isPending}
         className="w-full bg-[#ff003d] text-white px-8 py-4 rounded-full text-sm font-bold uppercase tracking-widest hover:bg-[#d80035] transition-colors disabled:opacity-50"
       >
-        {isPending ? 'Enviando…' : 'Quiero que me contacten'}
+        {isPending ? 'Enviando…' : submitLabel}
       </button>
 
       <p className={`text-xs text-center ${isLight ? "text-neutral-400" : "text-white/35"}`}>
