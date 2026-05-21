@@ -23,7 +23,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
-import { buildAsesorMailto } from '@/lib/cta/mailto'
+import { getAsesorHref } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
 
@@ -150,7 +150,9 @@ export default function CotizarCenteredModal({
               </button>
             )}
             <a
-              href={buildAsesorMailto({ linea: context.model ?? undefined })}
+              href={getAsesorHref()}
+              target="_blank"
+              rel="noopener noreferrer"
               className="cf-cotizar-panel-cta-secondary"
               onClick={() =>
                 track('asesor_click', { source: 'cotizar_modal', ...context })

@@ -27,6 +27,19 @@
 
 export const COTIZAR_EMAIL = 'cotizar@hausind.com'
 
+/**
+ * URL del agente Ximia. Hoy es la landing institucional (ximia.ai) — cuando
+ * el agente esté embebido en el sitio, ahí se reemplaza por la ruta interna
+ * (ej. `/chat` o un modal in-page) y todos los CTAs "Conversar con Ximia"
+ * heredan el cambio.
+ */
+export const ASESOR_URL = 'https://ximia.ai/'
+
+/** Href para los CTAs "Conversar con Ximia". Ver `ASESOR_URL`. */
+export function getAsesorHref(): string {
+  return ASESOR_URL
+}
+
 interface CotizarContext {
   /** Nombre comercial del modelo (ej. "Casa Amba'y"). Si está, el flavor
    *  es contextualizado; si falta, genérico. */

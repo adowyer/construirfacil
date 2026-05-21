@@ -21,7 +21,7 @@ import { useState, useEffect, useRef, Fragment, type ReactNode } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
-import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
+import { buildCotizarMailto, getAsesorHref } from '@/lib/cta/mailto'
 import CotizarModal from './CotizarModal'
 import { track } from '@/lib/track/client'
 import type { CotizadorData } from '@/lib/content/cotizador-data'
@@ -233,10 +233,12 @@ function PanelInlineCTA({
         </a>
         <a
           className="cf-pn-cta-secondary"
-          href={buildAsesorMailto({ linea: displayLinea(model.linea) })}
+          href={getAsesorHref()}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
         >
-          Hablar con Ximia
+          Conversar con Ximia
         </a>
       </div>
     </div>
@@ -1196,10 +1198,12 @@ export function Panel7Comparativo({
             )}
             <a
               className="cf-pn-cta-secondary"
-              href={buildAsesorMailto({ linea: displayLinea(model.linea) })}
+              href={getAsesorHref()}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
             >
-              Hablar con Ximia
+              Conversar con Ximia
             </a>
           </div>
         </div>

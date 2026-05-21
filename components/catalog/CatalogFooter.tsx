@@ -28,7 +28,7 @@ import type {
   FooterCardRow,
   FooterContentRow,
 } from '@/lib/supabase/queries/footer'
-import { buildCotizarMailto, buildAsesorMailto } from '@/lib/cta/mailto'
+import { buildCotizarMailto, buildAsesorMailto, getAsesorHref } from '@/lib/cta/mailto'
 import { useInViewport } from '@/lib/hooks/useInViewport'
 import { Ruler, BadgeCheck, ShieldCheck, Factory, Globe, Phone } from 'lucide-react'
 
@@ -149,7 +149,12 @@ export default function CatalogFooter({
             <a className="cf-footer-cta-primary" href={buildCotizarMailto()}>
               {footerContent?.cta_primary_label || 'Contactanos →'}
             </a>
-            <a className="cf-footer-cta-secondary" href={buildAsesorMailto()}>
+            <a
+              className="cf-footer-cta-secondary"
+              href={getAsesorHref()}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
             </a>
           </div>
@@ -193,11 +198,11 @@ function FooterInstitucional({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <a href="https://ximia.ai/" target="_blank" rel="noopener noreferrer"><img src="/Ximia-AI_Logo.png" alt="Link" className="cf-footer-inst-logo" /></a>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <a href="https://inbest.link/" target="_blank" rel="noopener noreferrer"><img src="/Inbest_Logo.png" alt="Link" className="cf-footer-inst-logo" /></a>
+          <a href="https://inbest.link/" target="_blank" rel="noopener noreferrer"><img src="/Inbest_Logo.png" alt="Link" className="cf-footer-inst-logo" style={{ height: '37px !important' }} /></a>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <a href="https://andreadowyer.com/" target="_blank" rel="noopener noreferrer"><img src="/AD_Logo-color.png" alt="AD" className="cf-footer-inst-logo" /></a>
+          <a href="https://andreadowyer.com/" target="_blank" rel="noopener noreferrer"><img src="/AD_Logo-color.png" alt="AD" className="cf-footer-inst-logo"/></a>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <a href="https://marketeam.xyz/" target="_blank" rel="noopener noreferrer"><img src="/Marketeam_Logo-Rojo.png" alt="Marketeam" className="cf-footer-inst-logo" style={{ height: '37px !important', marginLeft: '-10px' }} /></a>
+          <a href="https://marketeam.xyz/" target="_blank" rel="noopener noreferrer"><img src="/Marketeam_Logo-Rojo.png" alt="Marketeam" className="cf-footer-inst-logo" style={{ height: '50px !important', marginLeft: '-10px' }} /></a>
         </div>
         <div className="cf-footer-inst-meta">
           <span className="cf-footer-inst-copy">
