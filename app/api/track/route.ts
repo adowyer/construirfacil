@@ -27,6 +27,9 @@ const EVENTS = new Set([
   'landing_view',
   'model_open',
   'cotizar_open',
+  'cotizar_open_comparativo',
+  'reservar_open',
+  'asesor_click',
   'whatsapp_click',
   'lead',
 ])

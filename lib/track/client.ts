@@ -13,6 +13,12 @@ export type TrackEvent =
   | 'landing_view'
   | 'model_open'
   | 'cotizar_open'
+  /** Click en "Ver cuadro comparativo" desde la modal centrada del cotizador. */
+  | 'cotizar_open_comparativo'
+  /** Click en "Quiero que me contacten" desde persiana/modal del cotizador. */
+  | 'reservar_open'
+  /** Click en "Conversar con Ximia" desde persiana/modal del cotizador. */
+  | 'asesor_click'
   | 'whatsapp_click'
   | 'lead'
 
