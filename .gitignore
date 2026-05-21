@@ -70,3 +70,8 @@ CATALOG_AUDIT.md
 !/public/**/*.webp
 !/public/**/*.mp4
 !/public/**/*.gif
+
+# Iconos de app/ (Next.js los detecta auto: favicon.ico, icon.png,
+# apple-icon.png). Excepciones explícitas porque *.png estaba ignorado.
+!/app/icon.png
+!/app/apple-icon.png
