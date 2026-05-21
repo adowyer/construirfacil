@@ -1099,7 +1099,11 @@ export function Panel7Comparativo({
                   type="button"
                   className={`cf-pn-compare-row-lbl${isSelected ? ' selected' : ''}`}
                   onClick={selectVariant}
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`Seleccionar variante ${v.variante}`}
                 >
+                  <span className="cf-pn-compare-radio" aria-hidden="true" />
                   {variantLabel(v.variante)}
                 </button>
                 {cols.map((c) => (

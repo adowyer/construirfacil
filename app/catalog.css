@@ -2970,6 +2970,42 @@ button.cf-row-precio-val:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+}
+
+/* Checkbox visual al inicio de cada fila — pista visual estándar de
+   "elegí". Empty cuando no seleccionada, filled red con check al estarlo.
+   El comportamiento real lo maneja el button click (selectVariant). */
+.cf-pn-compare-radio {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 2px solid currentColor;
+  opacity: 0.5;
+  position: relative;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.cf-pn-compare-row-lbl.selected .cf-pn-compare-radio {
+  opacity: 1;
+  border-color: #ff003d;
+  background: #ff003d;
+}
+
+/* Tilde del checkbox cuando está seleccionado. */
+.cf-pn-compare-row-lbl.selected .cf-pn-compare-radio::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Celdas con valores — solo el dato, sin label inline. */
@@ -4089,9 +4125,13 @@ button.cf-row-precio-val:hover {
   display: none;
 }
 
-/* ── Mobile: la barra de filtros se reduce a una hamburguesa que abre los
-   filtros en un overlay translúcido que baja desde arriba (portal a body). */
-@media (max-width: 768px) {
+/* ── Mobile + tablets + laptops chicas: la barra de filtros se reduce a una
+   hamburguesa que abre los filtros en un overlay translúcido que baja desde
+   arriba (portal a body). Antes el breakpoint era 768px y dejaba la barra
+   inline rota en viewports 768-1280: cortaba "Precio ↑" y similares con un
+   overflow-x:auto poco descubrible. Subido a 1280px para cubrir laptops
+   13" y tablets landscape. */
+@media (max-width: 1280px) {
   .cf-sticky-filters {
     padding: 0 16px;
   }
@@ -7978,9 +8018,36 @@ button.cf-row-precio-val:hover {
   font-size: 26px !important;
 }
 
-.cf-home-row-slide.cf-home-row-slide--narrow .cf-home-row-slide-title {
-  font-size: clamp(24px, 2vw, 34px) !important;
+/* Título grande del slide narrow. Dos selectores porque el HomeRow tiene
+   dos vías de generar "narrow":
+   (a) Banner con `banner_width = 'narrow'` → clase `cf-home-row-slide--narrow`
+   (b) Slide canónico (home-1..5) con flag legacy `narrow: true` → clase
+       `cf-hero-row-slide-intro` (heredada del HeroRow original). */
+.cf-home-row-slide.cf-home-row-slide--narrow .cf-home-row-slide-title,
+.cf-hero-row-slide-intro .cf-home-row-slide-title {
+  font-size: clamp(36px, 4.2vw, 56px) !important;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  margin-top: auto;
 }
+
+/* Layout específico del narrow (estilo "Garantía Real"): eyebrow arriba +
+   body en el medio + título GRANDE abajo. Se logra con flex column +
+   `order` por hijo, manteniendo la misma estructura del JSX que el resto. */
+.cf-home-row-slide--narrow .cf-home-row-slide-content,
+.cf-hero-row-slide-intro .cf-home-row-slide-content {
+  justify-content: flex-start;
+  gap: 18px;
+  padding: 32px 28px;
+}
+.cf-home-row-slide--narrow .cf-home-row-slide-eyebrow,
+.cf-hero-row-slide-intro .cf-home-row-slide-eyebrow { order: 1; }
+.cf-home-row-slide--narrow .cf-home-row-slide-body,
+.cf-hero-row-slide-intro .cf-home-row-slide-body    { order: 2; }
+.cf-home-row-slide--narrow .cf-home-row-slide-title,
+.cf-hero-row-slide-intro .cf-home-row-slide-title   { order: 3; }
+.cf-home-row-slide--narrow .cf-home-row-slide-cta,
+.cf-hero-row-slide-intro .cf-home-row-slide-cta     { order: 4; }
 
 .cf-home-row-slide.cf-home-row-slide--text .cf-home-row-slide-title {
   font-size: clamp(28px, 2.6vw, 38px) !important;

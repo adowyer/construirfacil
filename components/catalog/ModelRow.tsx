@@ -573,9 +573,13 @@ export default function ModelRow({
   // Hint de scroll horizontal al abrir: usuarios reales no descubrían que el
   // slider corre a la derecha. B = nudge del track con tween rAF PROPIO
   // (no scrollTo nativo — en Safari es seco/"flick"); va ~130px suave y
-  // vuelve. C = chevron pulsante. Se descarta al primer gesto real de
-  // navegación (wheel / scroll del usuario una vez terminado el nudge) o a
-  // los ~8s. El nudge NO se autodescarta (se ignora el scroll programático).
+  // vuelve para llamar la atención al inicio. C = chevron pulsante.
+  //
+  // 2026-05-21: el chevron ahora se queda VISIBLE mientras la fila está
+  // expandida — un user testing dio cuenta de que la primera animación + el
+  // dismiss a los 2s no alcanzaba para que el usuario nuevo descubriera el
+  // scroll. Mientras esté abierto el slider, el chevron pulsa permanente.
+  // Al cerrar la fila, el cleanup oculta el chevron (efecto cancelado).
   useEffect(() => {
     if (!isExpanded) {
       setScrollHint(false)
@@ -607,26 +611,17 @@ export default function ModelRow({
       rafId = requestAnimationFrame(step)
     }
 
-    // dismiss: SOLO oculta el chevron. El nudge ya terminó cuando se
-    // engancha, así que no toca el tween.
-    const dismiss = () => setScrollHint(false)
-
     // Aparece ~450ms tras abrir (ya asentó el scroll de apertura de 150ms).
     timers.push(
       setTimeout(() => {
         if (cancelled) return
         setScrollHint(true)
-        // Visible ~2s y se va (pedido del user). El nudge (~1.6s) corre
-        // dentro de esa ventana — el movimiento del chevron acompaña.
-        timers.push(setTimeout(() => setScrollHint(false), 2000))
+        // Tween nudge: el track se mueve hacia la derecha y vuelve. Llama
+        // la atención sobre el contenido fuera de viewport.
         tween(0, NUDGE_DIST, OUT_MS, () =>
           tween(NUDGE_DIST, 0, BACK_MS, () => {
-            const s = shellRef.current
-            if (cancelled || !s) return
-            s.scrollLeft = 0
-            // Si el user navega antes de los 2s, también lo descarta.
-            s.addEventListener('wheel', dismiss, { once: true, passive: true })
-            s.addEventListener('scroll', dismiss, { once: true, passive: true })
+            if (cancelled || !shellRef.current) return
+            shellRef.current.scrollLeft = 0
           }),
         )
       }, 450),
@@ -636,8 +631,6 @@ export default function ModelRow({
       cancelled = true
       if (rafId) cancelAnimationFrame(rafId)
       timers.forEach(clearTimeout)
-      shell.removeEventListener('wheel', dismiss)
-      shell.removeEventListener('scroll', dismiss)
     }
   }, [isExpanded])
 
@@ -936,7 +929,7 @@ export default function ModelRow({
             }`}
             aria-hidden="true"
           >
-            <svg viewBox="0 0 24 24" width="72" height="72" fill="none">
+            <svg viewBox="0 0 24 24" width="56" height="56" fill="none">
               <path
                 d="M9 6l6 6-6 6"
                 stroke="currentColor"
