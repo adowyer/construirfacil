@@ -116,7 +116,7 @@ const STATIONS: { id: Station; label: string }[] = [
   { id: 'datos', label: 'Datos' },
 ]
 
-const LINE_ORDER = ['ATLAS', 'BOSQUE', 'TERRA']
+const LINE_ORDER = ['LÍNEA ATLAS', 'LÍNEA BOSQUE', 'LÍNEA TERRA']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
@@ -326,9 +326,9 @@ export default function CatalogPage({
   // /public para las 3 líneas Hausind. Para otras líneas (Patagonia, futuras)
   // sin icon_url y sin fallback, queda null y no se muestra ícono.
   const LINEA_ICON_FALLBACK: Record<string, string> = {
-    BOSQUE: '/bosque-icon.png',
-    ATLAS: '/atlas-icon.png',
-    TERRA: '/terra-icon.png',
+    'LÍNEA BOSQUE': '/bosque-icon.png',
+    'LÍNEA ATLAS': '/atlas-icon.png',
+    'LÍNEA TERRA': '/terra-icon.png',
   }
   const iconByLineaName: Record<string, string | null> = lineas.reduce(
     (acc, l) => {
@@ -419,7 +419,7 @@ export default function CatalogPage({
   // y `variante`). Buscamos la foto exterior que matchee la variante de
   // cada sku para armar el par.
   const growthPairs: GrowthPair[] = (() => {
-    const bosque = models.filter((m) => m.linea === 'BOSQUE')
+    const bosque = models.filter((m) => m.linea === 'LÍNEA BOSQUE')
     const pairs: GrowthPair[] = []
 
     const findExteriorForSku = (skuId: string): string | undefined => {

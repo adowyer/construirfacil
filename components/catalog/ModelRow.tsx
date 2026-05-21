@@ -232,9 +232,9 @@ function displaySCName(sc: string): string {
 
 // Cada línea tiene su SC principal; las demás son alternativas.
 const LINEA_TO_PRIMARY_SC: Record<string, string> = {
-  BOSQUE: 'Wood Plus',
-  ATLAS: 'Steel Plus',
-  TERRA: 'Stone Plus',
+  'LÍNEA BOSQUE': 'Wood Plus',
+  'LÍNEA ATLAS': 'Steel Plus',
+  'LÍNEA TERRA': 'Stone Plus',
 }
 
 function orderSystemsByLinea(

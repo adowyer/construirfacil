@@ -130,15 +130,28 @@ export function displayLinea(linea: string | null | undefined): string {
 /** Solo title-case del nombre, sin prefijo "Línea". "BOSQUE" → "Bosque". */
 export function lineaTitleCase(linea: string | null | undefined): string {
   if (!linea) return ''
-  return linea[0].toUpperCase() + linea.slice(1).toLowerCase()
+  const bare = linea.replace(/^\s*L[ÍI]NEA\s+/i, '').trim()
+  return bare ? bare[0].toUpperCase() + bare.slice(1).toLowerCase() : ''
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Slug del grupo
 // ─────────────────────────────────────────────────────────────────────────────
 
+function lineaToken(linea: string): string {
+  // Quita prefijo 'LÍNEA '/'LINEA ' y strip-ea diacríticos para que el slug
+  // sobreviva al cambio de canónico 'BOSQUE' → 'LÍNEA BOSQUE'.
+  const bare = (linea ?? '').replace(/^\s*L[ÍI]NEA\s+/i, '')
+  return bare.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+function styleToken(style_name: string): string {
+  return (style_name ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/['’`´]/g, '')
+}
 function groupSlug(linea: string, style_name: string, tipologia_code: string): string {
-  return [linea, style_name, `t${tipologia_code}`]
+  return [lineaToken(linea), styleToken(style_name), `t${tipologia_code}`]
     .join('-')
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '')
@@ -405,18 +418,19 @@ export async function getGroupDetail(
   supabase: SupabaseClient,
   group_slug: string
 ): Promise<GroupDetail | null> {
-  // Parsear el slug: bosque-ambay-t1 → linea=BOSQUE, style=AMBAY, tip=1
-  const parts = group_slug.split('-')
-  const tipCode = parts[parts.length - 1].replace('t', '').toUpperCase()
-  const linea = parts[0].toUpperCase()
-  const style = parts.slice(1, -1).join('').toUpperCase()
+  // Post-mig 0023, el slug ya no permite reconstruir linea/style canónicos
+  // (LÍNEA BOSQUE → 'lneabosque', AMBA'Y → 'ambay'). Resolvemos via el catálogo
+  // agrupado y tomamos los valores canónicos del CatalogModel.
+  const catalogAll = await getGroupedCatalog(supabase)
+  const target = catalogAll.find((m) => m.group_slug === group_slug)
+  if (!target) return null
 
   const { data: rows } = await supabase
     .from('house_catalog')
     .select('*')
-    .eq('linea', linea)
-    .eq('style_name', style)
-    .eq('tipologia_code', tipCode)
+    .eq('linea', target.linea)
+    .eq('style_name', target.style_name)
+    .eq('tipologia_code', target.tipologia_code)
     .eq('status', 'active')
     .order('variante')
 
@@ -468,10 +482,7 @@ export async function getGroupDetail(
     }
   }
 
-  // Construir el modelo del grupo (reutilizamos la lógica)
-  const catalog = await getGroupedCatalog(supabase, { linea })
-  const model = catalog.find(m => m.group_slug === group_slug)
-  if (!model) return null
-
-  return { model, exterior_images, interior_images }
+  // Construir el modelo del grupo: ya lo tenemos resuelto arriba (`target`),
+  // que vino de `getGroupedCatalog(supabase)` con linea canónica. Reusamos.
+  return { model: target, exterior_images, interior_images }
 }

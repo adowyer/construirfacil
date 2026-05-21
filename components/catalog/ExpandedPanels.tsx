@@ -1328,9 +1328,9 @@ const CANONICAL_SCS: {
   title: string
   preferredLinea: string
 }[] = [
-    { sc: 'STEEL PLUS', key: 'system_steel', title: 'Steel Plus', preferredLinea: 'BOSQUE' },
-    { sc: 'WOOD PLUS', key: 'system_wood', title: 'Wood Plus', preferredLinea: 'ATLAS' },
-    { sc: 'STONE PLUS', key: 'system_concrete', title: 'Stone Plus', preferredLinea: 'TERRA' },
+    { sc: 'STEEL PLUS', key: 'system_steel', title: 'Steel Plus', preferredLinea: 'LÍNEA BOSQUE' },
+    { sc: 'WOOD PLUS', key: 'system_wood', title: 'Wood Plus', preferredLinea: 'LÍNEA ATLAS' },
+    { sc: 'STONE PLUS', key: 'system_concrete', title: 'Stone Plus', preferredLinea: 'LÍNEA TERRA' },
   ]
 
 // Splittea body en primera línea (copy/tagline) + resto. La primera línea

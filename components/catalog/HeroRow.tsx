@@ -399,7 +399,7 @@ type LineaInfo = {
 const LINEAS: LineaInfo[] = [
   {
     name: 'Bosque',
-    dbKey: 'BOSQUE',
+    dbKey: 'LÍNEA BOSQUE',
     sub: 'Standard | Ecológica',
     bg: '/bosque.jpg',
     teaser:
@@ -409,7 +409,7 @@ const LINEAS: LineaInfo[] = [
   },
   {
     name: 'Atlas',
-    dbKey: 'ATLAS',
+    dbKey: 'LÍNEA ATLAS',
     sub: 'Estándar | Simétrica',
     bg: '/atlas.jpg',
     teaser:
@@ -419,7 +419,7 @@ const LINEAS: LineaInfo[] = [
   },
   {
     name: 'Terra',
-    dbKey: 'TERRA',
+    dbKey: 'LÍNEA TERRA',
     sub: 'Modular | Económica',
     bg: '/terra.jpg',
     teaser:

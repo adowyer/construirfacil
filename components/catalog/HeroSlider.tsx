@@ -287,7 +287,13 @@ function SlideLineas({ lineas, lineContent }: { lineas: LineaRow[]; lineContent:
       <div className="cf-slide-edu-right">
         {lineas.map(linea => {
           const slugUpper = linea.slug.toUpperCase()
-          const content = lineContent.find(l => l.linea === slugUpper && !l.tipologia_code)
+          // Post-mig 0023: line_content.linea es 'LÍNEA <X>'. El slug sigue siendo
+          // 'bosque/atlas/terra', así que comparamos contra el `name` canónico
+          // de la línea (que también pasó a 'LÍNEA <X>').
+          const lineaName = linea.name?.toUpperCase().trim() ?? `LÍNEA ${slugUpper}`
+          const content = lineContent.find(
+            l => (l.linea?.toUpperCase().trim() === lineaName) && !l.tipologia_code,
+          )
           return (
             <div
               key={linea.id}
