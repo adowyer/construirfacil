@@ -627,7 +627,11 @@ export function PanelPlanos({
       activeSkus={activeSkus}
       label="Planos"
       bgSize="contain"
-      bgSizeCss="75% auto"
+      // `auto 70%`: limita el alto al 70% del slide (deja margen arriba/abajo
+      // para overlay+pills), width proporcional. Antes era `75% auto` (width
+      // 75%, height auto) → con plantas verticales el alto auto excedía el
+      // slide y la imagen se cortaba por arriba/abajo.
+      bgSizeCss="auto 70%"
       pillFallback={(i) => `Plano ${i + 1}`}
       deliveryHtml={deliveryHtml}
     />
