@@ -1036,7 +1036,7 @@ button.cf-row-precio-val:hover {
   display: block;
   height: 112px;
   width: auto;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  /*filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));*/
 }
 
 .cf-row-scrollhint--right .cf-row-scrollhint-img {
@@ -1045,12 +1045,12 @@ button.cf-row-precio-val:hover {
 
 .cf-row-scrollhint-visible {
   opacity: 1;
-  transform: translateY(-50%) scale(1);
+  transform: translateY(-50%) scale(0.7);
   pointer-events: auto;
 }
 
 .cf-row-scrollhint-visible:hover {
-  transform: translateY(-50%) scale(1.12);
+  transform: translateY(-50%) scale(0.9);
 }
 
 /* Pulse animación que sugiere "hay más por acá" — apunta hacia la dirección
@@ -4146,13 +4146,32 @@ button.cf-row-precio-val:hover {
    ============================================================================ */
 /* El wrapper externo es transparente — el glass vive en el inner para que
    el pill se vea "flotando" con margen al borde del viewport. */
+/* La barra NO usa `position: sticky`: el catálogo vive dentro del acordeón
+   `.cf-section-shell-inner` con `overflow: hidden`, que crea un scroll
+   container y mata el sticky. En su lugar, StickyFilters detecta el scroll
+   con un sentinel y le pone `.is-stuck` → `position: fixed`, que escapa el
+   overflow del acordeón (ningún ancestro tiene transform). */
 .cf-sticky-filters {
-  position: sticky;
-  top: 16px;
+  position: relative;
   z-index: 40;
   /* Mismo clamp que .cf-grid y .cf-hero-row-track → barra alineada con
      la grilla en cualquier viewport. */
   padding: 0 clamp(24px, 5vw, 80px);
+}
+
+/* Sentinel de 0px que queda SIEMPRE en flujo: marca dónde "querría" estar
+   la barra. Cuando su top cruza los 16px, StickyFilters fija la barra. */
+.cf-sticky-filters-sentinel {
+  height: 0;
+}
+
+/* Barra fija al scrollear. left/right 0 → full width; el padding lateral y
+   el `max-width` del inner la mantienen alineada igual que en flujo. */
+.cf-sticky-filters.is-stuck {
+  position: fixed;
+  top: 16px;
+  left: 0;
+  right: 0;
 }
 
 .cf-sticky-filters-inner {
@@ -4305,6 +4324,13 @@ button.cf-row-precio-val:hover {
     margin: 0 0 2px;
   }
 
+  /* En el sheet mobile "Elegí" ocupa su propia línea como encabezado. */
+  .cf-sticky-filters-inner--sheet .cf-stf-elegi {
+    display: block;
+    width: 100%;
+    margin: 0 0 4px;
+  }
+
   .cf-sticky-filters-inner--sheet .cf-stf-spacer {
     display: none;
   }
@@ -4327,6 +4353,17 @@ button.cf-row-precio-val:hover {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.9);
   margin-right: 6px;
+}
+
+/* "Elegí" — texto intro de la barra (reemplaza el viejo filtro de Estilo).
+   Más prominente que un label: invita a usar los filtros de al lado. */
+.cf-stf-elegi {
+  font-size: 20px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: #fff;
+  margin-right: 12px;
+  white-space: nowrap;
 }
 
 /* Pills: blancos por defecto sobre barra roja → activos pasan a negro. */

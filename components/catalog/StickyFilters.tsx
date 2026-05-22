@@ -3,33 +3,29 @@
 /**
  * components/catalog/StickyFilters.tsx
  *
- * Pill amarilla CF sticky con los filtros del catálogo público:
- *   - Estilo (select; los estilos vienen de los modelos disponibles)
+ * Pill roja CF sticky con los filtros del catálogo público:
+ *   - "Elegí tu casa" — texto intro de la barra
  *   - Dormitorios (pills 1 / 2 / 3 / 4+)
- *   - Superficie (pills S / SM / M / L / XL / XXL — buckets en m²)
+ *   - Superficie (pills S / SM / M / L — 4 buckets en m²)
  *   - Orden (pills: Relevante / Precio↑ / Precio↓)
  *
  * Sin opción "Todos": el filtro vacío equivale a no filtrar. El componente
  * no muestra el count de modelos para mantener la barra compacta.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface StickyFiltersProps {
-  estiloFilter: string
   /** Multi-select: arrays de valores activos. Click en pill → toggle. */
   bedFilters: string[]
   sizeFilters: string[]
   sortOrder: string
-  availableEstilos: string[]
   /** Sets de opciones que SÍ tienen resultados con los otros filtros activos.
    *  Si una opción no está en el set, se renderiza disabled. Las ya activas
    *  siempre quedan habilitadas (para poder destildarlas). */
   enabledBeds?: Set<string>
   enabledSizes?: Set<string>
-  enabledEstilos?: Set<string>
-  onEstiloChange: (v: string) => void
   onBedToggle: (v: string) => void
   onSizeToggle: (v: string) => void
   onSortChange: (v: string) => void
@@ -37,16 +33,15 @@ interface StickyFiltersProps {
 
 const BED_OPTIONS = ['1', '2', '3', '4+'] as const
 
-// 5 buckets por perfil de uso, alineados a la distribución real del
+// 4 buckets por perfil de uso, alineados a la distribución real del
 // catálogo: S = cabaña/individual, SM = pareja/familia chica, M = familiar,
-// L = familia grande, XL = premium. Los predicados en CatalogPage usan los
-// mismos rangos.
+// L = familia grande / premium (+120). Los predicados en CatalogPage usan
+// los mismos rangos.
 const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: 'S', label: '–70m²' },
   { value: 'SM', label: '70–90m²' },
   { value: 'M', label: '90–120m²' },
-  { value: 'L', label: '120–200m²' },
-  { value: 'XL', label: '+200m²' },
+  { value: 'L', label: '+120m²' },
 ]
 
 // "+ Relevante" ordena por house_catalog.featured_rank asc nulls last
@@ -59,15 +54,11 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
 ]
 
 export default function StickyFilters({
-  estiloFilter,
   bedFilters,
   sizeFilters,
   sortOrder,
-  availableEstilos,
   enabledBeds,
   enabledSizes,
-  enabledEstilos,
-  onEstiloChange,
   onBedToggle,
   onSizeToggle,
   onSortChange,
@@ -80,8 +71,6 @@ export default function StickyFilters({
     !enabledBeds || enabledBeds.has(v) || bedFilters.includes(v)
   const isSizeEnabled = (v: string) =>
     !enabledSizes || enabledSizes.has(v) || sizeFilters.includes(v)
-  const isEstiloEnabled = (v: string) =>
-    !enabledEstilos || enabledEstilos.has(v) || estiloFilter === v
 
   // Mobile: la barra se reduce a una hamburguesa que abre los filtros en
   // un overlay translúcido desde arriba. Portal a <body> porque el shell
@@ -89,6 +78,52 @@ export default function StickyFilters({
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+
+  // ── Sticky por scroll ───────────────────────────────────────────────
+  // La barra NO puede usar `position: sticky`: el catálogo vive dentro del
+  // acordeón `.cf-section-shell-inner` con `overflow: hidden`, que crea un
+  // scroll container y mata el sticky. En su lugar: un sentinel de 0px en
+  // flujo marca la posición natural; cuando su top cruza 16px fijamos la
+  // barra (`position: fixed`, escapa el overflow) y un spacer del alto de
+  // la barra evita que el catálogo pegue un salto.
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+  const barHRef = useRef(0)
+  const [stuck, setStuck] = useState(false)
+  const [barH, setBarH] = useState(0)
+
+  useEffect(() => {
+    const measure = () => {
+      const h = barRef.current?.offsetHeight ?? 0
+      barHRef.current = h
+      setBarH(h)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const update = () => {
+      const sentinelTop = sentinel.getBoundingClientRect().top
+      const parent = sentinel.parentElement
+      const parentBottom = parent
+        ? parent.getBoundingClientRect().bottom
+        : Number.POSITIVE_INFINITY
+      // Fija cuando pasamos el sentinel Y todavía queda catálogo abajo; al
+      // llegar al final del catálogo la soltamos (como haría sticky).
+      setStuck(sentinelTop <= 16 && parentBottom - 16 > barHRef.current)
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -104,34 +139,18 @@ export default function StickyFilters({
   }, [open])
 
   const activeCount =
-    (estiloFilter ? 1 : 0) +
     bedFilters.length +
     sizeFilters.length +
     (sortOrder && sortOrder !== 'recommended' ? 1 : 0)
 
   const groups = (
     <>
-      {/* ESTILO — select */}
-        <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Estilo</span>
-          <select
-            className={`cf-stf-select ${estiloFilter ? 'active' : ''}`}
-            value={estiloFilter}
-            onChange={(e) => onEstiloChange(e.target.value)}
-            aria-label="Filtrar por estilo"
-          >
-            <option value="">Cualquiera</option>
-            {availableEstilos.map((e) => (
-              <option key={e} value={e} disabled={!isEstiloEnabled(e)}>
-                {e}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* ELEGÍ — intro de la barra (reemplaza el viejo filtro de Estilo) */}
+        <span className="cf-stf-elegi">Elegí tu casa</span>
 
         {/* DORMITORIOS — pills (multi-select) */}
         <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Dorm.</span>
+          <span className="cf-stf-lbl">Dormitorios</span>
           {BED_OPTIONS.map((v) => {
             const enabled = isBedEnabled(v)
             const active = bedFilters.includes(v)
@@ -193,7 +212,28 @@ export default function StickyFilters({
   )
 
   return (
-    <div className={`cf-sticky-filters${open ? ' is-open' : ''}`}>
+    <>
+      {/* Sentinel en flujo: referencia fija para detectar el scroll. */}
+      <div
+        ref={sentinelRef}
+        className="cf-sticky-filters-sentinel"
+        aria-hidden="true"
+      />
+      {/* Spacer: cuando la barra se fija sale del flujo; este div ocupa su
+          lugar para que el catálogo no salte hacia arriba. */}
+      {stuck && (
+        <div
+          className="cf-sticky-filters-spacer"
+          style={{ height: barH }}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        ref={barRef}
+        className={`cf-sticky-filters${open ? ' is-open' : ''}${
+          stuck ? ' is-stuck' : ''
+        }`}
+      >
       {/* Mobile: trigger hamburguesa (oculto en desktop por CSS). */}
       <button
         type="button"
@@ -245,6 +285,7 @@ export default function StickyFilters({
           </div>,
           document.body,
         )}
-    </div>
+      </div>
+    </>
   )
 }

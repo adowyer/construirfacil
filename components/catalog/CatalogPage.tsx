@@ -190,9 +190,6 @@ export default function CatalogPage({
 
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
   const [station, setStation] = useState<Station>('portada')
-  // '' significa "sin filtrar" (mostrar todos). Antes había un valor 'ALL'
-  // explícito; lo eliminamos para que la barra no muestre la opción "todos".
-  const [estiloFilter, setEstiloFilter] = useState<string>('')
   // Multi-select: arrays. '' inicial sería un valor inválido, así que arrays vacíos.
   const [bedFilters, setBedFilters] = useState<string[]>([])
   const [sizeFilters, setSizeFilters] = useState<string[]>([])
@@ -212,10 +209,9 @@ export default function CatalogPage({
   const detailTrackRef = useRef<HTMLDivElement>(null)
 
   // ── Filter models ──
-  // Convención: filtro vacío ('') = "sin filtrar". Se aceptan estos valores:
-  //   estiloFilter: '' | <nombre exacto del estilo>
+  // Convención: filtro vacío = "sin filtrar". Se aceptan estos valores:
   //   bedFilter:    '' | '1' | '2' | '3' | '4+'
-  //   sizeFilter:   '' | 'S' | 'SM' | 'M' | 'L' | 'XL' | 'XXL'
+  //   sizeFilter:   '' | 'S' | 'SM' | 'M' | 'L'
 
   // Predicados puros (reusables tanto en filter principal como en cálculo
   // de "qué opciones están enabled").
@@ -228,12 +224,11 @@ export default function CatalogPage({
   }
   const skuMatchesSize = (sku: CatalogModel['skus'][number], sf: string): boolean => {
     const a = sku.area_m2 ?? 0
-    // 5 buckets por perfil — labels en StickyFilters.SIZE_OPTIONS.
+    // 4 buckets por perfil — labels en StickyFilters.SIZE_OPTIONS.
     if (sf === 'S') return a < 70                    // cabaña / individual
     if (sf === 'SM') return a >= 70 && a < 90        // pareja / familia chica
     if (sf === 'M') return a >= 90 && a < 120        // familiar
-    if (sf === 'L') return a >= 120 && a < 200       // familia grande
-    if (sf === 'XL') return a >= 200                 // premium
+    if (sf === 'L') return a >= 120                  // familia grande / premium
     return true
   }
 
@@ -246,11 +241,10 @@ export default function CatalogPage({
     return true
   }
 
-  // Modelo visible si está pasa el estilo Y al menos un SKU pasa los filtros.
+  // Modelo visible si al menos un SKU pasa los filtros.
   // El sort por precio usa price_from interno (los precios no se muestran al
   // público pero la data sigue siendo válida para ordenar).
   const filtered = models.filter(m => {
-    if (estiloFilter && m.estilo !== estiloFilter) return false
     if (bedFilters.length === 0 && sizeFilters.length === 0) return true
     return m.skus.some(skuMatchesFilters)
   }).sort((a, b) => {
@@ -268,23 +262,17 @@ export default function CatalogPage({
     return 0
   })
 
-  // Lista única de estilos disponibles, ordenada alfabéticamente. Alimenta
-  // el dropdown de Estilo en la barra sticky.
-  const availableEstilos = Array.from(new Set(models.map((m) => m.estilo).filter(Boolean)))
-    .sort((a, b) => a.localeCompare(b, 'es'))
-
   // ── Filtros dinámicos: qué opciones tendrían al menos 1 modelo si se
   // combinaran con los OTROS filtros activos. Las que no, van disabled en
   // la barra sticky para evitar que el usuario llegue a un listado vacío.
   const BED_OPTIONS = ['1', '2', '3', '4+']
-  const SIZE_OPTIONS = ['S', 'SM', 'M', 'L', 'XL']
+  const SIZE_OPTIONS = ['S', 'SM', 'M', 'L']
 
-  // ¿Hay al menos 1 modelo que pase (estilo, beds[], sizes[])?
+  // ¿Hay al menos 1 modelo que pase (beds[], sizes[])?
   // Misma lógica OR-dentro/AND-entre que skuMatchesFilters, pero con arrays
   // que el caller controla.
-  const hasResultsFor = (estilo: string, beds: string[], sizes: string[]): boolean =>
+  const hasResultsFor = (beds: string[], sizes: string[]): boolean =>
     models.some((m) => {
-      if (estilo && m.estilo !== estilo) return false
       if (beds.length === 0 && sizes.length === 0) return true
       return m.skus.some((s) => {
         if (beds.length > 0 && !beds.some((b) => skuMatchesBed(s, b))) return false
@@ -299,17 +287,12 @@ export default function CatalogPage({
   // por sí sola haya match — se va a unir vía OR con las ya activas.
   const enabledBeds = new Set(
     BED_OPTIONS.filter(
-      (b) => bedFilters.includes(b) || hasResultsFor(estiloFilter, [b], sizeFilters),
+      (b) => bedFilters.includes(b) || hasResultsFor([b], sizeFilters),
     ),
   )
   const enabledSizes = new Set(
     SIZE_OPTIONS.filter(
-      (s) => sizeFilters.includes(s) || hasResultsFor(estiloFilter, bedFilters, [s]),
-    ),
-  )
-  const enabledEstilos = new Set(
-    availableEstilos.filter(
-      (e) => estiloFilter === e || hasResultsFor(e, bedFilters, sizeFilters),
+      (s) => sizeFilters.includes(s) || hasResultsFor(bedFilters, [s]),
     ),
   )
 
@@ -601,15 +584,11 @@ export default function CatalogPage({
             }`}
           >
           <StickyFilters
-            estiloFilter={estiloFilter}
             bedFilters={bedFilters}
             sizeFilters={sizeFilters}
             sortOrder={sortOrder}
-            availableEstilos={availableEstilos}
             enabledBeds={enabledBeds}
             enabledSizes={enabledSizes}
-            enabledEstilos={enabledEstilos}
-            onEstiloChange={setEstiloFilter}
             onBedToggle={toggleBed}
             onSizeToggle={toggleSize}
             onSortChange={setSortOrder}
