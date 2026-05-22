@@ -4,24 +4,28 @@
  * components/catalog/CotizadorUber.tsx
  *
  * Selector "Uber": el cliente elige el trade-off precio↔tiempo (3 tramos).
- * Cada tramo muestra el PRECIO USD final = basePrice × (1 + modifier_pct).
+ * Cada tramo muestra el PRECIO USD REAL de su columna de house_catalog
+ * (opción A): el SKU trae los 3 precios — lista / contado / pozo — y cada
+ * tramo lee el suyo vía TIER_PRICE_SLOT. Ya no se aplica ningún modificador.
  *
  * Antes mostrábamos la cuota mensual, pero acceder al crédito depende de
  * los bancos, anticipo y precalificación del cliente — prometer una cuota
  * era engañoso. El precio USD por tramo es la información honesta: cuánto
  * cuesta la casa según cuánto estás dispuesto a esperar.
  *
- * Sin precio base (modelo o SC sin precio cargado) → "Consultar" por tramo.
+ * Sin precio cargado para ese tramo → "Consultar" en esa card.
  *
- * Cálculo client-side con función pura (applyTierModifier). El CTA lleva
- * a /cotizar (cierra el embudo). Datos: lib/content/cotizador-data.ts.
+ * El CTA lleva a /cotizar (cierra el embudo). Datos: cotizador-data.ts.
  */
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { applyTierModifier } from '@/lib/pricing/cuota'
 import { track } from '@/lib/track/client'
-import type { CotizadorTier } from '@/lib/content/cotizador-data'
+import {
+  TIER_PRICE_SLOT,
+  type CotizadorTier,
+  type SkuPrices,
+} from '@/lib/content/cotizador-data'
 
 function fmtUsd(n: number): string {
   return 'USD ' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 })
@@ -29,7 +33,7 @@ function fmtUsd(n: number): string {
 
 export default function CotizadorUber({
   tiers,
-  basePriceUsd,
+  pricesUsd,
   caveatHtml,
   ctaHref = '/cotizar',
   context,
@@ -37,7 +41,8 @@ export default function CotizadorUber({
   onTierChange,
 }: {
   tiers: CotizadorTier[]
-  basePriceUsd: number | null
+  /** Los 3 precios del SKU. Cada tramo lee el suyo vía TIER_PRICE_SLOT. */
+  pricesUsd: SkuPrices
   caveatHtml: string | null
   ctaHref?: string
   context?: {
@@ -67,32 +72,33 @@ export default function CotizadorUber({
   const [sel, setSel] = useState(defaultIdx)
   const tier = ordered[sel] ?? ordered[0]
 
-  /** Precio USD por tramo = basePrice × (1 + modifier_pct/100). Si no hay
-   *  basePrice (modelo sin precio cargado), devolvemos null para mostrar
-   *  "Consultar" en la card en lugar de un número inventado. */
+  /** Precio USD por tramo = la columna real del SKU que le toca a ese tramo
+   *  (TIER_PRICE_SLOT). Sin precio cargado para esa columna → null →
+   *  "Consultar" en la card, en lugar de un número inventado. La clave
+   *  primitiva `pricesKey` mantiene el memo estable cuando los valores no
+   *  cambian (pricesUsd es un objeto nuevo en cada render del padre). */
+  const pricesKey = `${pricesUsd.lista}|${pricesUsd.contado}|${pricesUsd.pozo}`
   const priceByTierKey = useMemo(() => {
     const out: Record<string, number | null> = {}
     for (const t of ordered) {
-      out[t.key] =
-        basePriceUsd != null
-          ? Math.round(applyTierModifier(basePriceUsd, t.price_modifier_pct))
-          : null
+      const slot = TIER_PRICE_SLOT[t.key]
+      const p = slot ? pricesUsd[slot] : null
+      out[t.key] = p != null ? Math.round(p) : null
     }
     return out
-  }, [ordered, basePriceUsd])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ordered, pricesKey])
 
   // Avisar al padre el tramo elegido (mount + cada cambio de selección o de
-  // precio base). `priceByTierKey` ya trae el precio con el modificador
-  // aplicado, así "Quiero esta casa" usa ese y no el base.
+  // precio). Dependemos de primitivas (key/label/precio) para no disparar
+  // el efecto —y el setState del padre— en cada render.
+  const selTier = ordered[sel]
+  const selPrice = selTier ? priceByTierKey[selTier.key] ?? null : null
   useEffect(() => {
-    const t = ordered[sel]
-    if (!t) return
-    onTierChange?.({
-      key: t.key,
-      label: t.label,
-      priceUsd: priceByTierKey[t.key] ?? null,
-    })
-  }, [sel, ordered, priceByTierKey, onTierChange])
+    if (!selTier) return
+    onTierChange?.({ key: selTier.key, label: selTier.label, priceUsd: selPrice })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selTier?.key, selTier?.label, selPrice, onTierChange])
 
   if (ordered.length === 0) return null
 

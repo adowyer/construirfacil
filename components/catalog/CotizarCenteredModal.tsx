@@ -25,20 +25,21 @@ import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
 import { getAsesorHref } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
-import type { CotizadorData } from '@/lib/content/cotizador-data'
+import type { CotizadorData, SkuPrices } from '@/lib/content/cotizador-data'
 
 export default function CotizarCenteredModal({
   open,
   onClose,
   cotizador,
-  basePriceUsd,
+  pricesUsd,
   context,
   onOpenComparativo,
 }: {
   open: boolean
   onClose: () => void
   cotizador: CotizadorData
-  basePriceUsd: number | null
+  /** Los 3 precios del SKU de referencia (variante elegida o "desde"). */
+  pricesUsd: SkuPrices
   context: {
     model?: string
     variante?: string | null
@@ -88,7 +89,7 @@ export default function CotizarCenteredModal({
     variante: context.variante,
     sistema: context.sistema,
     tier: selectedTier?.label ?? null,
-    priceUsd: selectedTier?.priceUsd ?? basePriceUsd,
+    priceUsd: selectedTier?.priceUsd ?? pricesUsd.lista ?? null,
   }
 
   return (
@@ -120,7 +121,7 @@ export default function CotizarCenteredModal({
           <div className="cf-cotizar-modal-uber">
             <CotizadorUber
               tiers={cotizador.tiers}
-              basePriceUsd={basePriceUsd}
+              pricesUsd={pricesUsd}
               caveatHtml={cotizador.caveatHtml}
               context={context}
               hideCta

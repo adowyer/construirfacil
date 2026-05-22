@@ -24,8 +24,11 @@ import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import { buildCotizarMailto, getAsesorHref } from '@/lib/cta/mailto'
 import CotizarModal from './CotizarModal'
 import { track } from '@/lib/track/client'
-import type { CotizadorData } from '@/lib/content/cotizador-data'
-import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
+import {
+  skuPrices,
+  type CotizadorData,
+  type SkuPrices,
+} from '@/lib/content/cotizador-data'
 import { variantLabel } from '@/lib/format/variant'
 import { ensureHtml } from '@/lib/content/rich'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
@@ -93,10 +96,10 @@ interface PanelsProps {
    *  null/sin tramos → "Cotizar" de siempre (cero regresión). */
   cotizador?: CotizadorData | null
   /** Notifica al ModelRow la variante elegida en el cuadro comparativo, para
-   *  que el CTA flotante cotice esa selección (precio + nombre) y no el "desde". */
+   *  que el CTA flotante cotice esa selección (precios + nombre) y no el "desde". */
   onComparativoSelect?: (sel: {
     variante: string | null
-    basePriceUsd: number | null
+    pricesUsd: SkuPrices
   }) => void
 }
 
@@ -974,9 +977,9 @@ export function Panel7Comparativo({
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   cotizador?: CotizadorData | null
-  /** Notifica al ModelRow la variante elegida (nombre + precio base) para que
+  /** Notifica al ModelRow la variante elegida (nombre + precios) para que
    *  el CTA flotante cotice ESA selección y no el precio "desde". */
-  onSelect?: (sel: { variante: string | null; basePriceUsd: number | null }) => void
+  onSelect?: (sel: { variante: string | null; pricesUsd: SkuPrices }) => void
 }) {
   // Una variante única por (variante × sistema). La elección de SC se
   // hace DENTRO del modal de cotización (no acá) — el comparativo es solo
@@ -1006,17 +1009,13 @@ export function Panel7Comparativo({
     activeSkus.find((s) => s.variante === v.variante) ??
     null
 
-  // ── Cuota (cotizador Uber) ───────────────────────────────────────────
-  // El precio base sale del slot que la marca marcó como base (degrada a
-  // 'lista'). La columna PRECIO de la tabla usa un tramo de referencia
-  // (el destacado) para que las variantes sean comparables entre sí.
+  // ── Cotizador Uber ───────────────────────────────────────────────────
+  // Cada tramo del cotizador lee su columna real del SKU (opción A); acá
+  // sólo resolvemos qué SKU corresponde a la variante elegida.
   const tiersOrdered = cotizador
     ? [...cotizador.tiers].sort((a, b) => a.sort_order - b.sort_order)
     : []
   const hasUber = tiersOrdered.length > 0
-  const baseSlot =
-    (model.marca_id && cotizador?.baseSlotByMarca[model.marca_id]) || 'lista'
-  const baseCol = PRICE_SLOT_COLUMN[baseSlot]
 
   const cols: {
     key: string
@@ -1037,9 +1036,9 @@ export function Panel7Comparativo({
 
   const selectedVar = uniqueVars[selectedVarIdx] ?? uniqueVars[0]
   const [cotizarOpen, setCotizarOpen] = useState(false)
-  const selectedBasePrice = selectedVar
-    ? skuForVarSC(selectedVar)?.[baseCol] ?? null
-    : null
+  const selectedPrices: SkuPrices = selectedVar
+    ? skuPrices(skuForVarSC(selectedVar))
+    : {}
 
   // Foto de fondo del panel (item 14: la foto está bien, solo el CUADRO
   // interno va blanco). Preferimos la variante más grande con floors=2,
@@ -1104,7 +1103,7 @@ export function Panel7Comparativo({
               setSelectedVarIdx(i)
               onSelect?.({
                 variante: v.variante,
-                basePriceUsd: skuForVarSC(v)?.[baseCol] ?? null,
+                pricesUsd: skuPrices(skuForVarSC(v)),
               })
             }
             return (
@@ -1200,22 +1199,22 @@ export function Panel7Comparativo({
           open={cotizarOpen}
           onClose={() => setCotizarOpen(false)}
           cotizador={cotizador}
-          basePriceUsd={selectedBasePrice}
+          pricesUsd={selectedPrices}
           context={{
             model: model.display_name,
             variante: selectedVar?.variante ?? null,
             sistema: currentSC,
           }}
           systems={model.systems}
-          priceForSC={(sc) => {
-            // Precio del SKU (variante × SC) en el tier base. Si no existe
-            // el cruce caemos a cualquier SKU de la variante.
-            if (!selectedVar) return null
+          pricesForSC={(sc) => {
+            // Los 3 precios del SKU (variante × SC). Si no existe el cruce
+            // caemos a cualquier SKU de la variante.
+            if (!selectedVar) return {}
             const sku =
               activeSkus.find(
                 (s) => s.variante === selectedVar.variante && s.sistema_constructivo === sc,
               ) ?? activeSkus.find((s) => s.variante === selectedVar.variante)
-            return sku?.[baseCol] ?? null
+            return skuPrices(sku)
           }}
         />
       )}

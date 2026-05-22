@@ -47,8 +47,7 @@ import type { HomeSlide } from '@/lib/supabase/queries/home_content'
 import CotizarModal from './CotizarModal'
 import ReservarModal from './ReservarModal'
 import { track } from '@/lib/track/client'
-import type { CotizadorData } from '@/lib/content/cotizador-data'
-import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
+import { skuPrices, type CotizadorData } from '@/lib/content/cotizador-data'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -631,7 +630,20 @@ export default function CatalogPage({
                         img.is_exterior === true &&
                         img.image_type === 'render',
                     )
-                    .sort((a, b) => a.sku_ids.length - b.sku_ids.length)[0]
+                    .sort((a, b) => {
+                      // El cover SIEMPRE es de frente; a igualdad, la foto
+                      // más específica de la variante (menos SKUs linkeados).
+                      const af = (a.view_label ?? '')
+                        .trim()
+                        .toLowerCase()
+                        .startsWith('frente')
+                      const bf = (b.view_label ?? '')
+                        .trim()
+                        .toLowerCase()
+                        .startsWith('frente')
+                      if (af !== bf) return af ? -1 : 1
+                      return a.sku_ids.length - b.sku_ids.length
+                    })[0]
                 : null
               const dynamicCoverUrl = dynamicCoverImg
                 ? pickThumb(dynamicCoverImg)
@@ -1026,14 +1038,9 @@ export function StationDatos({
       && s.sistema_constructivo === model.systems[selectedSystem]
   ) ?? model.skus[0]
 
-  // Precio base de la cuota = la columna que esta marca marcó como base
-  // (degrada a 'lista'). El selector Uber no muestra este número: deriva
-  // la cuota. Sin tramos → cae al CTA "Cotizar" de siempre (cero regresión).
-  const baseSlot =
-    (model.marca_id && cotizador?.baseSlotByMarca[model.marca_id]) || 'lista'
-  const basePriceUsd = currentSku
-    ? currentSku[PRICE_SLOT_COLUMN[baseSlot]] ?? null
-    : null
+  // Los 3 precios del SKU seleccionado — el cotizador Uber muestra el real
+  // de cada tramo. Sin tramos → cae al CTA "Cotizar" de siempre.
+  const pricesUsd = skuPrices(currentSku)
   const hasUber = !!cotizador && cotizador.tiers.length > 0
   const [cotizarOpen, setCotizarOpen] = useState(false)
   const ctx = {
@@ -1094,7 +1101,7 @@ export function StationDatos({
             open={cotizarOpen}
             onClose={() => setCotizarOpen(false)}
             cotizador={cotizador}
-            basePriceUsd={basePriceUsd}
+            pricesUsd={pricesUsd}
             context={ctx}
           />
         </>

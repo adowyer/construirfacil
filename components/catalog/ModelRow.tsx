@@ -24,9 +24,12 @@ import ExpandedPanels from './ExpandedPanels'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import CotizarCenteredModal from '@/components/catalog/CotizarCenteredModal'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
-import { PRICE_SLOT_COLUMN } from '@/lib/supabase/queries/marca_price_slot'
 import { track } from '@/lib/track/client'
-import type { CotizadorData } from '@/lib/content/cotizador-data'
+import {
+  skuPrices,
+  type CotizadorData,
+  type SkuPrices,
+} from '@/lib/content/cotizador-data'
 
 interface BrandContentLite {
   key: string
@@ -299,20 +302,20 @@ export default function ModelRow({
   // en vez del "desde" (precio más bajo). Se resetea al cerrar la fila.
   const [comparativoSel, setComparativoSel] = useState<{
     variante: string | null
-    basePriceUsd: number | null
+    pricesUsd: SkuPrices
   } | null>(null)
-  /** Precio base de "referencia" para la modal del listado: primer SKU
-   *  por sort + columna base de la marca (lista/contado/pozo). */
-  const defaultBasePriceUsd = (() => {
-    if (!cotizador) return null
-    const baseSlot =
-      (model.marca_id && cotizador.baseSlotByMarca[model.marca_id]) || 'lista'
-    const baseCol = PRICE_SLOT_COLUMN[baseSlot]
-    const candidates = (activeSkus ?? model.skus)
-      .map((s) => s[baseCol])
-      .filter((v): v is number => typeof v === 'number' && v > 0)
-    if (candidates.length === 0) return null
-    return Math.min(...candidates) // "desde" → la variante más barata
+  /** Precios de "referencia" para la modal del listado: los del SKU más
+   *  barato (por precio de lista) → el cotizador arranca en el "desde". */
+  const defaultPricesUsd: SkuPrices = (() => {
+    if (!cotizador) return {}
+    const skus = (activeSkus ?? model.skus).filter(
+      (s) => typeof s.precio_lista_usd === 'number' && s.precio_lista_usd > 0,
+    )
+    if (skus.length === 0) return {}
+    const cheapest = skus.reduce((a, b) =>
+      (a.precio_lista_usd as number) <= (b.precio_lista_usd as number) ? a : b,
+    )
+    return skuPrices(cheapest)
   })()
   const hasCotizador = Boolean(cotizador && cotizador.tiers.length > 0)
   const openCotizar = () => setCotizarModalOpen(true)
@@ -1079,8 +1082,8 @@ export default function ModelRow({
           onClose={() => setCotizarModalOpen(false)}
           cotizador={cotizador}
           // Si el usuario ya eligió variante en el comparativo, cotizamos esa
-          // (precio + nombre); si no, el "desde" (variante más barata).
-          basePriceUsd={comparativoSel?.basePriceUsd ?? defaultBasePriceUsd}
+          // (precios + nombre); si no, el "desde" (variante más barata).
+          pricesUsd={comparativoSel?.pricesUsd ?? defaultPricesUsd}
           context={{
             model: model.display_name,
             variante: comparativoSel?.variante ?? null,

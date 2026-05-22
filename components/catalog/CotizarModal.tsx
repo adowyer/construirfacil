@@ -22,7 +22,7 @@ import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
 import { getAsesorHref } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
-import type { CotizadorData } from '@/lib/content/cotizador-data'
+import type { CotizadorData, SkuPrices } from '@/lib/content/cotizador-data'
 
 function displaySC(sc: string): string {
   const u = sc.toUpperCase().trim()
@@ -35,24 +35,25 @@ export default function CotizarModal({
   open,
   onClose,
   cotizador,
-  basePriceUsd,
+  pricesUsd,
   context,
   systems = [],
-  priceForSC,
+  pricesForSC,
 }: {
   open: boolean
   onClose: () => void
   cotizador: CotizadorData
-  basePriceUsd: number | null
+  /** Los 3 precios del SKU de la variante elegida (SC del contexto). */
+  pricesUsd: SkuPrices
   context: { model?: string; variante?: string | null; sistema?: string | null }
   /** Sistemas constructivos disponibles para esta variante. Si llega vacío
    *  o con 1 solo elemento, no se muestra el selector (siguen pasando
-   *  `basePriceUsd` y `context.sistema` originales sin cambios). */
+   *  `pricesUsd` y `context.sistema` originales sin cambios). */
   systems?: string[]
-  /** Resuelve el precio para un SC dado. Permite al modal recalcular cuando
-   *  el usuario cambia el pill de SC. Si no se provee, el precio queda fijo
-   *  en `basePriceUsd`. */
-  priceForSC?: (sc: string | null) => number | null
+  /** Resuelve los 3 precios para un SC dado. Permite al modal recalcular
+   *  cuando el usuario cambia el pill de SC. Si no se provee, los precios
+   *  quedan fijos en `pricesUsd`. */
+  pricesForSC?: (sc: string | null) => SkuPrices
 }) {
   useEffect(() => {
     if (!open) return
@@ -82,10 +83,10 @@ export default function CotizarModal({
     setSelectedSC(context.sistema ?? systems[0] ?? null)
   }, [context.sistema, systems])
 
-  // Precio efectivo según SC seleccionado (si se pasó el helper). Fallback
-  // al basePriceUsd original.
-  const effectivePrice =
-    priceForSC && selectedSC != null ? priceForSC(selectedSC) : basePriceUsd
+  // Precios efectivos según SC seleccionado (si se pasó el helper). Fallback
+  // a los pricesUsd originales.
+  const effectivePrices: SkuPrices =
+    pricesForSC && selectedSC != null ? pricesForSC(selectedSC) : pricesUsd
 
   const detail = [
     context.model,
@@ -100,7 +101,7 @@ export default function CotizarModal({
     variante: context.variante,
     sistema: selectedSC,
     tier: selectedTier?.label ?? null,
-    priceUsd: selectedTier?.priceUsd ?? effectivePrice,
+    priceUsd: selectedTier?.priceUsd ?? effectivePrices.lista ?? null,
   }
 
   return (
@@ -152,7 +153,7 @@ export default function CotizarModal({
           <div className="cf-cotizar-panel-uber">
             <CotizadorUber
               tiers={cotizador.tiers}
-              basePriceUsd={effectivePrice}
+              pricesUsd={effectivePrices}
               caveatHtml={cotizador.caveatHtml}
               context={{ ...context, sistema: selectedSC }}
               hideCta

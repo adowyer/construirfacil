@@ -256,7 +256,7 @@ export async function getGroupedCatalog(
     loadAllLinks(),
     supabase
       .from('model_images')
-      .select('id, storage_url, thumb_url, webp_url, lqip_color, sort_order')
+      .select('id, storage_url, thumb_url, webp_url, lqip_color, sort_order, view_label')
       .neq('status', 'archived')
       .eq('is_exterior', true)
       .eq('image_type', 'render')
@@ -268,29 +268,42 @@ export async function getGroupedCatalog(
   // Index image_id → image (solo exteriores tipo render).
   // El cover del catálogo se usa en cards/listados → preferimos thumb_url
   // (~400px WebP). Fallback a webp_url (full) y por último al original.
+  // `isFrente`: el cover SIEMPRE debe ser una foto de frente — una imagen
+  // "Frente" (view_label) le gana a cualquier contrafrente/lateral aunque
+  // tenga sort_order mayor.
   const imgById = new Map<
     string,
-    { url: string; lqip: string; sort_order: number }
+    { url: string; lqip: string; sort_order: number; isFrente: boolean }
   >()
   for (const img of imgsRes.data ?? []) {
     imgById.set(img.id, {
       url: img.thumb_url ?? img.webp_url ?? img.storage_url,
       lqip: img.lqip_color ?? '#d4d4cc',
       sort_order: img.sort_order,
+      isFrente: (img.view_label ?? '')
+        .trim()
+        .toLowerCase()
+        .startsWith('frente'),
     })
   }
 
-  // Para cada SKU (house_catalog_id), tomar la primera imagen exterior por
-  // sort_order. Una imagen puede aplicar a múltiples SKUs vía model_image_skus.
+  // Para cada SKU (house_catalog_id), la mejor foto de cover: frente le gana
+  // a no-frente; a igualdad, menor sort_order. Una imagen puede aplicar a
+  // múltiples SKUs vía model_image_skus.
   const coverByHouseCatalogId = new Map<
     string,
-    { url: string; lqip: string; sort_order: number }
+    { url: string; lqip: string; sort_order: number; isFrente: boolean }
   >()
   for (const link of allLinks) {
     const img = imgById.get(link.image_id)
     if (!img) continue
     const existing = coverByHouseCatalogId.get(link.house_catalog_id)
-    if (!existing || img.sort_order < existing.sort_order) {
+    const better =
+      !existing ||
+      (img.isFrente && !existing.isFrente) ||
+      (img.isFrente === existing.isFrente &&
+        img.sort_order < existing.sort_order)
+    if (better) {
       coverByHouseCatalogId.set(link.house_catalog_id, img)
     }
   }

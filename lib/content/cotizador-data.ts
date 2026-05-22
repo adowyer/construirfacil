@@ -25,9 +25,51 @@ export interface CotizadorTier {
   key: string
   label: string
   lead_time_label: string | null
+  /** Obsoleto desde la opción A (precios reales por columna). Cada tramo
+   *  lee su columna de house_catalog vía TIER_PRICE_SLOT; ya no se aplica
+   *  ningún modificador. Se conserva en el tipo por compat con el admin. */
   price_modifier_pct: number
   highlighted: boolean
   sort_order: number
+}
+
+/** Las 3 columnas de precio de un SKU (house_catalog). */
+export type SkuPrices = Partial<Record<PriceSlotKey, number | null>>
+
+/**
+ * Tramo del cotizador → slot de precio de house_catalog. Opción A: cada
+ * tramo muestra el precio REAL de su columna (no hay más `+25/0/−10`). La
+ * relación es 1:1 y estable; cuando se rehaga el admin de precios se podrá
+ * volver configurable (hoy hardcodeada a propósito).
+ *   fast  → lista   (PRECIO LISTA  · "Mudate ya")
+ *   cupo  → contado (PRECIO CUPO   · "Entrega Programada")
+ *   sin_apuro → pozo (PRECIO POZO  · "Esperá y Ahorrá")
+ */
+export const TIER_PRICE_SLOT: Record<string, PriceSlotKey> = {
+  fast: 'lista',
+  cupo: 'contado',
+  sin_apuro: 'pozo',
+}
+
+/** Extrae las 3 columnas de precio de un SKU. Valores ≤0/ausentes → null. */
+export function skuPrices(
+  sku:
+    | {
+        precio_lista_usd?: number | null
+        precio_contado_usd?: number | null
+        precio_pozo_usd?: number | null
+      }
+    | null
+    | undefined,
+): SkuPrices {
+  if (!sku) return {}
+  const num = (v: number | null | undefined) =>
+    typeof v === 'number' && v > 0 ? v : null
+  return {
+    lista: num(sku.precio_lista_usd),
+    contado: num(sku.precio_contado_usd),
+    pozo: num(sku.precio_pozo_usd),
+  }
 }
 
 export interface CotizadorData {
