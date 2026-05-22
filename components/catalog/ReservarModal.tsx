@@ -115,7 +115,12 @@ export default function ReservarModal({
               .join(' · ')}
           </p>
         )}
+        {/* key={message}: el textarea de LeadForm usa defaultValue (no
+            controlado), que se lee una sola vez al montar. LeadForm se monta
+            con ReservarModal — antes de que el usuario elija variante/tramo.
+            Cambiar el key lo remonta con el mensaje prefilled actualizado. */}
         <LeadForm
+          key={message}
           defaultLocalidad={null}
           defaultMessage={message}
           variant="light"

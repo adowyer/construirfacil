@@ -17,7 +17,7 @@
  * a /cotizar (cierra el embudo). Datos: lib/content/cotizador-data.ts.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { applyTierModifier } from '@/lib/pricing/cuota'
 import { track } from '@/lib/track/client'
@@ -34,6 +34,7 @@ export default function CotizadorUber({
   ctaHref = '/cotizar',
   context,
   hideCta = false,
+  onTierChange,
 }: {
   tiers: CotizadorTier[]
   basePriceUsd: number | null
@@ -46,6 +47,14 @@ export default function CotizadorUber({
   }
   /** En modal el CTA lo da el form de abajo — acá sólo plan + cuota. */
   hideCta?: boolean
+  /** Notifica al padre qué tramo está elegido (key + label + precio ya
+   *  modificado). Lo usan las modales para que "Quiero esta casa" lleve el
+   *  precio del tramo seleccionado y no el base. */
+  onTierChange?: (tier: {
+    key: string
+    label: string
+    priceUsd: number | null
+  }) => void
 }) {
   const ordered = useMemo(
     () => [...tiers].sort((a, b) => a.sort_order - b.sort_order),
@@ -71,6 +80,19 @@ export default function CotizadorUber({
     }
     return out
   }, [ordered, basePriceUsd])
+
+  // Avisar al padre el tramo elegido (mount + cada cambio de selección o de
+  // precio base). `priceByTierKey` ya trae el precio con el modificador
+  // aplicado, así "Quiero esta casa" usa ese y no el base.
+  useEffect(() => {
+    const t = ordered[sel]
+    if (!t) return
+    onTierChange?.({
+      key: t.key,
+      label: t.label,
+      priceUsd: priceByTierKey[t.key] ?? null,
+    })
+  }, [sel, ordered, priceByTierKey, onTierChange])
 
   if (ordered.length === 0) return null
 

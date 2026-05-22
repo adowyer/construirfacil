@@ -92,6 +92,12 @@ interface PanelsProps {
    *  Comparativo lo usa para mostrar la cuota por variante + el selector.
    *  null/sin tramos → "Cotizar" de siempre (cero regresión). */
   cotizador?: CotizadorData | null
+  /** Notifica al ModelRow la variante elegida en el cuadro comparativo, para
+   *  que el CTA flotante cotice esa selección (precio + nombre) y no el "desde". */
+  onComparativoSelect?: (sel: {
+    variante: string | null
+    basePriceUsd: number | null
+  }) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -962,11 +968,15 @@ export function Panel7Comparativo({
   images,
   activeSkus,
   cotizador = null,
+  onSelect,
 }: {
   model: CatalogModel
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   cotizador?: CotizadorData | null
+  /** Notifica al ModelRow la variante elegida (nombre + precio base) para que
+   *  el CTA flotante cotice ESA selección y no el precio "desde". */
+  onSelect?: (sel: { variante: string | null; basePriceUsd: number | null }) => void
 }) {
   // Una variante única por (variante × sistema). La elección de SC se
   // hace DENTRO del modal de cotización (no acá) — el comparativo es solo
@@ -1092,6 +1102,10 @@ export function Panel7Comparativo({
             const selectVariant = (e: React.MouseEvent) => {
               e.stopPropagation()
               setSelectedVarIdx(i)
+              onSelect?.({
+                variante: v.variante,
+                basePriceUsd: skuForVarSC(v)?.[baseCol] ?? null,
+              })
             }
             return (
               <Fragment key={`row-${v.variante}`}>
@@ -1885,6 +1899,7 @@ export default function ExpandedPanels(props: PanelsProps) {
           images={props.images}
           activeSkus={props.activeSkus}
           cotizador={props.cotizador ?? null}
+          onSelect={props.onComparativoSelect}
         />
       </div>
 

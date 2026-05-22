@@ -64,6 +64,13 @@ export default function CotizarModal({
   }, [open, onClose])
 
   const [reservarOpen, setReservarOpen] = useState(false)
+  // Tramo elegido en el cotizador (key + label + precio ya modificado).
+  // "Quiero esta casa" lo usa para llevar el precio del tramo, no el base.
+  const [selectedTier, setSelectedTier] = useState<{
+    key: string
+    label: string
+    priceUsd: number | null
+  } | null>(null)
 
   // Selector de SC dentro del modal (movido desde el comparativo — feedback
   // SH 25). Default = el SC que vino del contexto, o el primero disponible.
@@ -92,7 +99,8 @@ export default function CotizarModal({
     model: context.model,
     variante: context.variante,
     sistema: selectedSC,
-    priceUsd: effectivePrice,
+    tier: selectedTier?.label ?? null,
+    priceUsd: selectedTier?.priceUsd ?? effectivePrice,
   }
 
   return (
@@ -148,6 +156,7 @@ export default function CotizarModal({
               caveatHtml={cotizador.caveatHtml}
               context={{ ...context, sistema: selectedSC }}
               hideCta
+              onTierChange={setSelectedTier}
             />
           </div>
 

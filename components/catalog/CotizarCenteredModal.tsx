@@ -39,13 +39,26 @@ export default function CotizarCenteredModal({
   onClose: () => void
   cotizador: CotizadorData
   basePriceUsd: number | null
-  context: { model?: string; variante?: string | null; sistema?: string | null }
+  context: {
+    model?: string
+    variante?: string | null
+    sistema?: string | null
+    marca?: string | null
+    linea?: string | null
+  }
   /** Si está, se muestra el link "Ver comparativo" — el callback debería
    *  cerrar la modal y expandir/scrollear al cuadro comparativo del modelo. */
   onOpenComparativo?: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [reservarOpen, setReservarOpen] = useState(false)
+  // Tramo elegido en el cotizador (key + label + precio ya modificado).
+  // "Quiero esta casa" lo usa para llevar el precio del tramo, no el base.
+  const [selectedTier, setSelectedTier] = useState<{
+    key: string
+    label: string
+    priceUsd: number | null
+  } | null>(null)
 
   useEffect(() => {
     const dlg = dialogRef.current
@@ -63,19 +76,19 @@ export default function CotizarCenteredModal({
     }
   }, [open])
 
-  const detail = [
-    context.model,
-    context.variante ? `Variante ${context.variante}` : null,
-    context.sistema,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  // Línea de contexto: "Estás viendo: Casa X - Marca, Línea". La variante
+  // elegida no se nombra acá — se refleja en el precio del cotizador.
+  const subject = [context.marca, context.linea].filter(Boolean).join(', ')
+  const detail = context.model
+    ? `Estás viendo: ${context.model}${subject ? ` - ${subject}` : ''}`
+    : ''
 
   const reservarContext: ReservarContext = {
     model: context.model,
     variante: context.variante,
     sistema: context.sistema,
-    priceUsd: basePriceUsd,
+    tier: selectedTier?.label ?? null,
+    priceUsd: selectedTier?.priceUsd ?? basePriceUsd,
   }
 
   return (
@@ -100,7 +113,7 @@ export default function CotizarCenteredModal({
 
           <p className="cf-cotizar-modal-eyebrow">Tu cotización</p>
           <h3 className="cf-cotizar-modal-title">
-            Cotizá tu casa: variante, sistema, terminaciones
+            Cotizá tu casa: variante, sistema y terminaciones
           </h3>
           {detail && <p className="cf-cotizar-modal-detail">{detail}</p>}
 
@@ -111,6 +124,7 @@ export default function CotizarCenteredModal({
               caveatHtml={cotizador.caveatHtml}
               context={context}
               hideCta
+              onTierChange={setSelectedTier}
             />
           </div>
 

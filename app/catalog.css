@@ -987,62 +987,119 @@ button.cf-row-precio-val:hover {
   }
 }
 
-/* Chevron hint de scroll horizontal del expandido (C). Portal a body,
-   fixed al borde derecho centro. Decorativo. Fade por -visible; el chevron
-   pulsa solo mientras está visible. Se descarta al primer gesto del user. */
+/* Chevrons de scroll horizontal del slider expandido (← / →). Portal a body,
+   fixed al borde lateral. Buttons reales (no decorativos) — el click llama
+   `scrollShellBy(±1)` que mueve el shell ~80% del viewport.
+
+   Visibilidad dinámica: aparece con `-visible` cuando hay scroll posible
+   en esa dirección (canScrollLeft / canScrollRight calculados en JS desde
+   un scroll listener). Pulse animación SOLO mientras visible. */
 .cf-row-scrollhint {
   position: fixed;
-  right: 26px;
   top: 50%;
   z-index: 60;
-  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #5e5e5e;
-  /* chevron gris oscuro, sin círculo */
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  cursor: pointer;
+  /* Default invisible. */
   opacity: 0;
   transform: translateY(-50%) scale(0.85);
+  pointer-events: none;
+  /* Fade-out rápido (180ms) para que cuando el slider sale del viewport
+     vertical los chevrons no queden flotando. Fade-in un poco más largo
+     para que entren elegante. */
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.cf-row-scrollhint-visible {
   transition: opacity 0.4s ease,
     transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Sombra sutil para que el chevron gris se lea sobre fotos claras u oscuras
-   sin necesitar un fondo/círculo. */
-.cf-row-scrollhint svg {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+.cf-row-scrollhint--right {
+  right: 26px;
+}
+
+.cf-row-scrollhint--left {
+  left: 26px;
+}
+
+/* Flecha fina (asset PNG). El archivo apunta a la IZQUIERDA; el chevron
+   derecho lo rota 180° (es simétrico vertical, así que rotar = espejar).
+   Sombra sutil para que se lea sobre fotos claras u oscuras. */
+.cf-row-scrollhint-img {
+  display: block;
+  height: 112px;
+  width: auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
+.cf-row-scrollhint--right .cf-row-scrollhint-img {
+  transform: rotate(180deg);
 }
 
 .cf-row-scrollhint-visible {
   opacity: 1;
   transform: translateY(-50%) scale(1);
+  pointer-events: auto;
 }
 
-.cf-row-scrollhint-visible svg {
-  animation: cfScrollHintPulse 1.2s ease-in-out infinite;
+.cf-row-scrollhint-visible:hover {
+  transform: translateY(-50%) scale(1.12);
 }
 
-@keyframes cfScrollHintPulse {
+/* Pulse animación que sugiere "hay más por acá" — apunta hacia la dirección
+   del chevron. El derecho conserva el rotate(180deg) en cada keyframe. */
+.cf-row-scrollhint--right.cf-row-scrollhint-visible .cf-row-scrollhint-img {
+  animation: cfScrollHintPulseRight 1.2s ease-in-out infinite;
+}
 
-  0%,
-  100% {
-    transform: translateX(-4px);
-  }
+.cf-row-scrollhint--left.cf-row-scrollhint-visible .cf-row-scrollhint-img {
+  animation: cfScrollHintPulseLeft 1.2s ease-in-out infinite;
+}
 
-  50% {
-    transform: translateX(6px);
-  }
+/* En el chevron derecho el eje X está invertido por el rotate(180deg):
+   translateX positivo mueve visualmente hacia la izquierda. */
+@keyframes cfScrollHintPulseRight {
+  0%, 100% { transform: rotate(180deg) translateX(4px);  }
+  50%      { transform: rotate(180deg) translateX(-6px); }
+}
+
+@keyframes cfScrollHintPulseLeft {
+  0%, 100% { transform: translateX(4px);  }
+  50%      { transform: translateX(-6px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cf-row-scrollhint-visible svg {
+  .cf-row-scrollhint-visible .cf-row-scrollhint-img {
     animation: none;
   }
 }
 
-@media (max-width: 768px) {
+/* En mobile/touch, los chevrons quedan decorativos. El usuario navega con
+   swipe gestual nativo; tocar un chevron a 56px en un borde con el dedo
+   es incómodo (más chico que el target táctil recomendado de 44px). */
+@media (max-width: 768px), (orientation: landscape) and (max-height: 768px) {
   .cf-row-scrollhint {
-    right: 14px;
+    right: auto;
+    left: auto;
+  }
+  .cf-row-scrollhint--right { right: 14px; }
+  .cf-row-scrollhint--left  { left: 14px;  }
+
+  /* Más chica en mobile: 112px ocupaba demasiado del borde en pantallas
+     bajas. Acá es puramente decorativa (el swipe es el camino primario). */
+  .cf-row-scrollhint-img {
+    height: 76px;
+  }
+
+  .cf-row-scrollhint-visible {
+    pointer-events: none;
   }
 }
 
@@ -1519,7 +1576,7 @@ button.cf-row-precio-val:hover {
 }
 
 .cf-st-section-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -4837,7 +4894,7 @@ button.cf-row-precio-val:hover {
 }
 
 .cf-cotizar-modal-detail {
-  font-size: 13px;
+  font-size: 17px;
   color: rgba(0, 0, 0, 0.55);
   margin: 0 0 24px;
 }
@@ -6540,7 +6597,7 @@ button.cf-row-precio-val:hover {
   transform: scale(1.04);
 }
 
-/* Desktop: botón completo "Cotizar →"; el mini "$" solo en mobile. */
+/* Desktop: botón completo "Cotizar →"; el mini "Ver →" solo en mobile. */
 .cf-row-sticky-cta-btn-full {
   display: inline-flex;
   align-items: center;
@@ -6552,7 +6609,7 @@ button.cf-row-precio-val:hover {
 }
 
 /* Mobile: el bar "Estás viendo… Cotizar" ocupa demasiado → se reduce a un
-   botón redondo flotante con solo el "$" (abajo a la derecha). */
+   botón redondo flotante con el mini "Ver →" (abajo a la derecha). */
 @media (max-width: 580px) {
   .cf-row-sticky-cta {
     left: auto;

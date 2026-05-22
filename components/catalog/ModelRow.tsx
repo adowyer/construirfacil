@@ -273,9 +273,16 @@ export default function ModelRow({
   const displayCoverUrl = coverUrl ?? model.cover_url
   const [hovered, setHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
-  // Hint de scroll horizontal al abrir el expandido (nudge + chevron). Se
-  // descarta al primer gesto real del usuario o por timeout.
-  const [scrollHint, setScrollHint] = useState(false)
+  // Chevrons de scroll horizontal del slider expandido. Aparecen/desaparecen
+  // dinámicamente según si hay contenido fuera de viewport en cada dirección.
+  // En desktop son clickeables (mueven el shell ~80% del viewport). En
+  // mobile/touch son decorativos (el swipe gestual es el camino primario).
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  // Si el slider sale del viewport (user scrollea verticalmente con la fila
+  // expandida), ocultamos los chevrons aunque haya scroll horizontal pendiente.
+  // Sin esto los chevrons quedaban flotando solos cuando el shell ya no se veía.
+  const [shellInView, setShellInView] = useState(true)
   const shellRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
   const galleryRef = useRef<HTMLDivElement>(null)
@@ -287,6 +294,13 @@ export default function ModelRow({
   // todavía no está expandida, expandimos + dejamos un flag que dispara
   // (post-mount) el scroll al panel marcado con data-panel="comparativo".
   const [scrollToPanel, setScrollToPanel] = useState<string | null>(null)
+  // Variante elegida en el cuadro comparativo. Mientras exista, el CTA
+  // flotante "Cotizar" abre la modal con el precio + nombre de ESA variante
+  // en vez del "desde" (precio más bajo). Se resetea al cerrar la fila.
+  const [comparativoSel, setComparativoSel] = useState<{
+    variante: string | null
+    basePriceUsd: number | null
+  } | null>(null)
   /** Precio base de "referencia" para la modal del listado: primer SKU
    *  por sort + columna base de la marca (lista/contado/pozo). */
   const defaultBasePriceUsd = (() => {
@@ -436,6 +450,9 @@ export default function ModelRow({
     if (!isExpanded) {
       if (shellRef.current) shellRef.current.scrollLeft = 0
       if (rowRef.current) rowRef.current.style.removeProperty('--expand-progress')
+      // La fila se cerró → el comparativo se desmonta y su selección se
+      // pierde; limpiamos para que el próximo open arranque en "desde".
+      setComparativoSel(null)
       return
     }
 
@@ -570,23 +587,51 @@ export default function ModelRow({
     }
   }, [isExpanded])
 
-  // Hint de scroll horizontal al abrir: usuarios reales no descubrían que el
-  // slider corre a la derecha. B = nudge del track con tween rAF PROPIO
-  // (no scrollTo nativo — en Safari es seco/"flick"); va ~130px suave y
-  // vuelve para llamar la atención al inicio. C = chevron pulsante.
+  // Chevrons + nudge inicial del slider expandido.
   //
-  // 2026-05-21: el chevron ahora se queda VISIBLE mientras la fila está
-  // expandida — un user testing dio cuenta de que la primera animación + el
-  // dismiss a los 2s no alcanzaba para que el usuario nuevo descubriera el
-  // scroll. Mientras esté abierto el slider, el chevron pulsa permanente.
-  // Al cerrar la fila, el cleanup oculta el chevron (efecto cancelado).
+  // El nudge tween llama la atención al abrir (mueve ~180px y vuelve). Los
+  // chevrons aparecen dinámicamente según `canScrollLeft`/`canScrollRight`,
+  // que se updatean con un listener de scroll: el chevron derecho aparece
+  // cuando hay contenido fuera de viewport a la derecha; el izquierdo
+  // cuando ya scrolleamos algo.
+  //
+  // Sin chevrons + sin nudge, usuarios reales en testing no descubrían que
+  // se puede mover horizontal. El nudge aporta el "kick" inicial; los
+  // chevrons quedan como guía permanente bidireccional.
   useEffect(() => {
     if (!isExpanded) {
-      setScrollHint(false)
+      setCanScrollLeft(false)
+      setCanScrollRight(false)
       return
     }
     const shell = shellRef.current
     if (!shell) return
+
+    // Listener: actualiza qué chevrons están activos según posición + tamaño.
+    const update = () => {
+      const max = shell.scrollWidth - shell.clientWidth
+      setCanScrollLeft(shell.scrollLeft > 2)
+      setCanScrollRight(shell.scrollLeft < max - 2)
+    }
+
+    // Initial check tras layout estable (img heights ya resueltos).
+    const initTimer = setTimeout(update, 400)
+    shell.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+
+    // IntersectionObserver para detectar si el slider está visible en el
+    // viewport. Si baja del 35% visible, ocultamos los chevrons. Usar
+    // thresholds múltiples para tener buena respuesta a movimientos suaves.
+    let io: IntersectionObserver | null = null
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          setShellInView(entry.intersectionRatio > 0.35)
+        },
+        { threshold: [0, 0.35, 0.7, 1] },
+      )
+      io.observe(shell)
+    }
 
     let cancelled = false
     let rafId = 0
@@ -595,7 +640,6 @@ export default function ModelRow({
     const NUDGE_DIST = 180
     const OUT_MS = 720
     const BACK_MS = 900
-    // easeInOutCubic
     const ease = (t: number) =>
       t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 
@@ -611,17 +655,15 @@ export default function ModelRow({
       rafId = requestAnimationFrame(step)
     }
 
-    // Aparece ~450ms tras abrir (ya asentó el scroll de apertura de 150ms).
+    // Nudge inicial: ~450ms tras abrir, mueve a la derecha y vuelve.
     timers.push(
       setTimeout(() => {
         if (cancelled) return
-        setScrollHint(true)
-        // Tween nudge: el track se mueve hacia la derecha y vuelve. Llama
-        // la atención sobre el contenido fuera de viewport.
         tween(0, NUDGE_DIST, OUT_MS, () =>
           tween(NUDGE_DIST, 0, BACK_MS, () => {
             if (cancelled || !shellRef.current) return
             shellRef.current.scrollLeft = 0
+            update()
           }),
         )
       }, 450),
@@ -631,8 +673,49 @@ export default function ModelRow({
       cancelled = true
       if (rafId) cancelAnimationFrame(rafId)
       timers.forEach(clearTimeout)
+      clearTimeout(initTimer)
+      shell.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      io?.disconnect()
     }
   }, [isExpanded])
+
+  // Click handler para los chevrons: mueve el shell ~80% del viewport con
+  // un tween rAF propio. El `scrollBy({behavior:'smooth'})` nativo es seco
+  // en Safari (~250ms) y rompe con la suavidad del resto del catálogo.
+  // Acá usamos easeInOutCubic + ~900ms — coherente con el nudge inicial y
+  // las demás transitions cubic-bezier(0.16,1,0.3,1) del slider.
+  const scrollTweenRef = useRef<{ cancelled: boolean } | null>(null)
+  const scrollShellBy = (dir: 1 | -1) => {
+    const shell = shellRef.current
+    if (!shell) return
+
+    // Cancelar cualquier tween en curso (doble click en chevron antes de
+    // que termine el anterior → arrancar el nuevo desde donde está, no
+    // pelearse con el rAF viejo).
+    if (scrollTweenRef.current) scrollTweenRef.current.cancelled = true
+    const token = { cancelled: false }
+    scrollTweenRef.current = token
+
+    const from = shell.scrollLeft
+    const max = shell.scrollWidth - shell.clientWidth
+    const to = Math.max(0, Math.min(max, from + shell.clientWidth * 0.8 * dir))
+    if (Math.abs(to - from) < 1) return
+
+    const duration = 900
+    const ease = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+    const t0 = performance.now()
+    const step = (now: number) => {
+      if (token.cancelled || !shellRef.current) return
+      const p = Math.min(1, (now - t0) / duration)
+      shellRef.current.scrollLeft = from + (to - from) * ease(p)
+      if (p < 1) requestAnimationFrame(step)
+      else scrollTweenRef.current = null
+    }
+    requestAnimationFrame(step)
+  }
 
 
   return (
@@ -750,7 +833,8 @@ export default function ModelRow({
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Precio</span>
                 <PrecioOrCotizar
                   model={model}
-                  style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}
+                  className="cf-row-precio-val"
+                  style={{ fontSize: 13 }}
                   onCotizarClick={hasCotizador ? openCotizar : undefined}
                 />
               </div>
@@ -839,6 +923,7 @@ export default function ModelRow({
               allModels={allModels}
               deliveryConditionsHtml={deliveryConditionsHtml}
               cotizador={cotizador}
+              onComparativoSelect={setComparativoSel}
             />
           )}
         </div>
@@ -872,6 +957,10 @@ export default function ModelRow({
                 {displayLinea(model.linea)}
               </span>
             </div>
+            {/* El sticky abre la MISMA modal que los botones "Cotizar" de la
+                ficha — un único comportamiento en todo el catálogo. La modal
+                muestra el precio "desde" + disclaimer y desde ahí se entra al
+                cuadro comparativo para cotizar la variante concreta. */}
             {hasCotizador ? (
               <button
                 type="button"
@@ -916,29 +1005,50 @@ export default function ModelRow({
           document.body,
         )}
 
-      {/* C — chevron hint de scroll horizontal. Portal a body (mismo motivo
-          que el sticky CTA: el transform del shell atrapa position:fixed).
-          Decorativo (pointer-events:none). Montado mientras está expandido;
-          la clase -visible controla fade-in/out + pulse. */}
+      {/* C — chevrons de scroll horizontal (← + →). Portal a body (el
+          transform del shell atrapa position:fixed). En desktop son
+          clickeables (scrollBy ~80% viewport). En mobile/touch son
+          decorativos (CSS pointer-events:none vía media query). Aparecen/
+          desaparecen según canScrollLeft / canScrollRight. */}
       {isExpanded &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div
-            className={`cf-row-scrollhint${
-              scrollHint ? ' cf-row-scrollhint-visible' : ''
-            }`}
-            aria-hidden="true"
-          >
-            <svg viewBox="0 0 24 24" width="56" height="56" fill="none">
-              <path
-                d="M9 6l6 6-6 6"
-                stroke="currentColor"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          <>
+            <button
+              type="button"
+              className={`cf-row-scrollhint cf-row-scrollhint--left${
+                canScrollLeft && shellInView ? ' cf-row-scrollhint-visible' : ''
+              }`}
+              aria-label="Slide anterior"
+              tabIndex={canScrollLeft && shellInView ? 0 : -1}
+              onClick={() => scrollShellBy(-1)}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/arrow-scroll.png"
+                alt=""
+                aria-hidden="true"
+                className="cf-row-scrollhint-img"
               />
-            </svg>
-          </div>,
+            </button>
+            <button
+              type="button"
+              className={`cf-row-scrollhint cf-row-scrollhint--right${
+                canScrollRight && shellInView ? ' cf-row-scrollhint-visible' : ''
+              }`}
+              aria-label="Slide siguiente"
+              tabIndex={canScrollRight && shellInView ? 0 : -1}
+              onClick={() => scrollShellBy(1)}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/arrow-scroll.png"
+                alt=""
+                aria-hidden="true"
+                className="cf-row-scrollhint-img"
+              />
+            </button>
+          </>,
           document.body,
         )}
 
@@ -968,11 +1078,15 @@ export default function ModelRow({
           open={cotizarModalOpen}
           onClose={() => setCotizarModalOpen(false)}
           cotizador={cotizador}
-          basePriceUsd={defaultBasePriceUsd}
+          // Si el usuario ya eligió variante en el comparativo, cotizamos esa
+          // (precio + nombre); si no, el "desde" (variante más barata).
+          basePriceUsd={comparativoSel?.basePriceUsd ?? defaultBasePriceUsd}
           context={{
             model: model.display_name,
-            variante: null,
+            variante: comparativoSel?.variante ?? null,
             sistema: null,
+            marca: model.marca_name,
+            linea: displayLinea(model.linea),
           }}
           onOpenComparativo={goToComparativo}
         />
