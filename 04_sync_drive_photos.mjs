@@ -470,13 +470,14 @@ async function main() {
   console.log(`  ✓ ${allFiles.length} archivos aceptados`)
 
   // ── 2. Cargar index de SKUs ───────────────────────────────────────────
-  let skuIndex = null
-  if (!DRY_RUN || VERBOSE) {
-    const sb = supabase || createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
-    skuIndex = await loadSkuIndex(sb)
-    const totalSkus = [...skuIndex.byTipologia.values()].reduce((a, b) => a + b.length, 0)
-    console.log(`  ✓ ${totalSkus} SKUs cargados de house_catalog`)
-  }
+  // Cargamos siempre (también en dry-run) para que el log muestre el
+  // verdadero count de SKUs por archivo. El gate previo `if (!DRY_RUN || VERBOSE)`
+  // dejaba skuIndex=null en dry-run y todos los logs reportaban "0 SKUs"
+  // aunque el match estuviera bien.
+  const sb = supabase || createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
+  const skuIndex = await loadSkuIndex(sb)
+  const totalSkus = [...skuIndex.byTipologia.values()].reduce((a, b) => a + b.length, 0)
+  console.log(`  ✓ ${totalSkus} SKUs cargados de house_catalog`)
 
   // ── 3. Cargar registros existentes (para idempotencia + archive) ──────
   const existingByDriveId = new Map()
