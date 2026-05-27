@@ -30,6 +30,7 @@ import {
   type SkuPrices,
 } from '@/lib/content/cotizador-data'
 import { variantLabel } from '@/lib/format/variant'
+import { styleDisplayName } from '@/lib/content/model-naming'
 import { ensureHtml } from '@/lib/content/rich'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import {
@@ -238,7 +239,7 @@ function PanelInlineCTA({
           })}
           onClick={(e) => e.stopPropagation()}
         >
-          {primaryLabel ?? 'Cotizar'} →
+          {primaryLabel ?? 'Ver precio'} →
         </a>
         <a
           className="cf-pn-cta-secondary"
@@ -384,6 +385,7 @@ function PanelImageSlider({
   deliveryHtml = null,
   labelClassName,
   hideTodasTab = false,
+  varianteLabels = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
@@ -402,6 +404,8 @@ function PanelImageSlider({
    *  primera variante seleccionada. Útil para galerías chicas (Planos,
    *  Axos) donde mezclar todas las variantes confunde. */
   hideTodasTab?: boolean
+  /** Mapping variante base → label user-facing (de la línea). NULL = fallback "Variante N". */
+  varianteLabels?: Record<string, string> | null
 }) {
   // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
   // y V1.2 (subversiones que solo cambian detalles internos). V3 incluye V3.1.
@@ -474,7 +478,7 @@ function PanelImageSlider({
                     setActivePillIdx(0)
                   }}
                 >
-                  {variantLabel(v)}
+                  {variantLabel(v, { variante_labels: varianteLabels })}
                 </button>
               ))}
             </div>
@@ -552,7 +556,7 @@ function PanelImageSlider({
                   setActivePillIdx(0)
                 }}
               >
-                {variantLabel(v)}
+                {variantLabel(v, { variante_labels: varianteLabels })}
               </button>
             ))}
           </div>
@@ -598,10 +602,12 @@ export function PanelExteriores({
   images,
   activeSkus,
   deliveryHtml = null,
+  varianteLabels = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   deliveryHtml?: string | null
+  varianteLabels?: Record<string, string> | null
 }) {
   return (
     <PanelImageSlider
@@ -611,6 +617,7 @@ export function PanelExteriores({
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
       deliveryHtml={deliveryHtml}
+      varianteLabels={varianteLabels}
     />
   )
 }
@@ -618,9 +625,11 @@ export function PanelExteriores({
 export function PanelInteriores({
   images,
   activeSkus,
+  varianteLabels = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
+  varianteLabels?: Record<string, string> | null
 }) {
   return (
     <PanelImageSlider
@@ -629,6 +638,7 @@ export function PanelInteriores({
       label="Interiores"
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
+      varianteLabels={varianteLabels}
     />
   )
 }
@@ -637,10 +647,12 @@ export function PanelPlanos({
   images,
   activeSkus,
   deliveryHtml = null,
+  varianteLabels = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   deliveryHtml?: string | null
+  varianteLabels?: Record<string, string> | null
 }) {
   return (
     <PanelImageSlider
@@ -656,6 +668,7 @@ export function PanelPlanos({
       pillFallback={(i) => `Plano ${i + 1}`}
       deliveryHtml={deliveryHtml}
       hideTodasTab
+      varianteLabels={varianteLabels}
     />
   )
 }
@@ -664,10 +677,12 @@ export function PanelAxos({
   images,
   activeSkus,
   deliveryHtml = null,
+  varianteLabels = null,
 }: {
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   deliveryHtml?: string | null
+  varianteLabels?: Record<string, string> | null
 }) {
   return (
     <PanelImageSlider
@@ -681,6 +696,7 @@ export function PanelAxos({
       deliveryHtml={deliveryHtml}
       labelClassName="cf-pn-gallery-label--axos"
       hideTodasTab
+      varianteLabels={varianteLabels}
     />
   )
 }
@@ -708,7 +724,8 @@ export function Panel3Tipologia({
     <div className="cf-pn cf-pn-text">
       <div className="cf-pn-text-inner">
         <p className="cf-pn-eyebrow">Distribución arquitectónica</p>
-        <p className="cf-pn-tipo-code">Tipología {model.tipologia_code}</p>
+        {/* "Tipología X" removida: el code ya está en el display_name de
+            la card y la ficha (CASA NODO Estilo PAMPA). */}
         <h2 className="cf-pn-title">
           {row?.subtitle ?? 'Una tipología que integra distintos espacios'}
         </h2>
@@ -827,8 +844,8 @@ export function PanelEstilosCompare({
           <span className="cf-pn-gallery-label">Estilo</span>
         </div>
         <aside className="cf-pn-estilos-aside">
-          <p className="cf-pn-eyebrow">Estilo</p>
-          <h3 className="cf-pn-estilos-aside-title">{current.estilo}</h3>
+          <p className="cf-pn-eyebrow">Estilo {current.estilo}</p>
+          <h3 className="cf-pn-estilos-aside-title">{styleDisplayName(current.style_name).toUpperCase()}</h3>
           <p className="cf-pn-body-empty">
             Esta tipología solo se ofrece en este estilo.
           </p>
@@ -852,8 +869,8 @@ export function PanelEstilosCompare({
 
       {/* Columna lateral con texto del estilo seleccionado, scrolleable */}
       <aside className="cf-pn-estilos-aside">
-        <p className="cf-pn-eyebrow">{displayLinea(current.linea)} · Estilo</p>
-        <h3 className="cf-pn-estilos-aside-title">{current.estilo}</h3>
+        <p className="cf-pn-eyebrow">{displayLinea(current.linea)} · Estilo {current.estilo}</p>
+        <h3 className="cf-pn-estilos-aside-title">{styleDisplayName(current.style_name).toUpperCase()}</h3>
         <p className="cf-pn-estilos-aside-sub">{current.display_name}</p>
         <div className="cf-pn-estilos-aside-body">
           {currentContent?.body ? (
@@ -869,7 +886,8 @@ export function PanelEstilosCompare({
         </div>
       </aside>
 
-      {/* Pills bottom */}
+      {/* Pills bottom — solo el nombre de la casa. El aesthetic estilo
+          (Moderno/Nórdico) queda en el aside grande, no en los pills. */}
       <div className="cf-pn-estilos-cmp-pills">
         {allStyles.map((m, i) => (
           <button
@@ -878,7 +896,7 @@ export function PanelEstilosCompare({
             className={`cf-pn-pill ${i === active ? 'active' : ''}`}
             onClick={() => setActive(i)}
           >
-            {m.estilo}
+            {styleDisplayName(m.style_name).toUpperCase()}
           </button>
         ))}
       </div>
@@ -1067,7 +1085,7 @@ export function Panel7Comparativo({
       <div className="cf-pn-compare-feature">
         <header className="cf-pn-compare-header">
           <p className="cf-pn-eyebrow">
-            Comparativo · Tipología {model.tipologia_code} · {displayLinea(model.linea)} · {model.display_name}
+            Comparativo · {displayLinea(model.linea)} · {model.display_name}
           </p>
           <h3 className="cf-pn-compare-sub">
             Cotizá la variante y configuración que más se ajusta a tus necesidades
@@ -1117,7 +1135,10 @@ export function Panel7Comparativo({
                   aria-label={`Seleccionar variante ${v.variante}`}
                 >
                   <span className="cf-pn-compare-radio" aria-hidden="true" />
-                  {variantLabel(v.variante)}
+                  {variantLabel(v.variante, {
+                    variante_labels: model.variante_labels,
+                    feature_delta: v.feature_delta,
+                  })}
                 </button>
                 {cols.map((c) => (
                   <div
@@ -1145,7 +1166,12 @@ export function Panel7Comparativo({
           <div className="cf-pn-compare-inline-info">
             <span className="cf-pn-compare-inline-eyebrow">Tu selección</span>
             <span className="cf-pn-compare-inline-detail">
-              {selectedVar ? variantLabel(selectedVar.variante) : ''}
+              {selectedVar
+                ? variantLabel(selectedVar.variante, {
+                    variante_labels: model.variante_labels,
+                    feature_delta: selectedVar.feature_delta,
+                  })
+                : ''}
               {currentSC ? ` · ${displaySC(currentSC)}` : ''}
             </span>
           </div>
@@ -1165,7 +1191,7 @@ export function Panel7Comparativo({
                   setCotizarOpen(true)
                 }}
               >
-                Cotizar tu selección →
+                Ver precio →
               </button>
             ) : (
               <a
@@ -1178,7 +1204,7 @@ export function Panel7Comparativo({
                 })}
                 onClick={(e) => e.stopPropagation()}
               >
-                Cotizar →
+                Ver precio →
               </a>
             )}
             <a
@@ -1215,6 +1241,16 @@ export function Panel7Comparativo({
                 (s) => s.variante === selectedVar.variante && s.sistema_constructivo === sc,
               ) ?? activeSkus.find((s) => s.variante === selectedVar.variante)
             return skuPrices(sku)
+          }}
+          offerForSC={(sc) => {
+            // Oferta del SKU concreto (variante × SC) si está activa.
+            if (!selectedVar) return null
+            const sku =
+              activeSkus.find(
+                (s) => s.variante === selectedVar.variante && s.sistema_constructivo === sc,
+              ) ?? activeSkus.find((s) => s.variante === selectedVar.variante)
+            if (!sku?.is_offer || sku.offer_pct == null) return null
+            return { pct: sku.offer_pct, label: sku.offer_label?.trim() || 'Oferta' }
           }}
         />
       )}
@@ -1646,7 +1682,10 @@ export function Panel9Datos({
               className={`cf-pn-datos-vcard ${i === selectedVariant ? 'selected' : ''}`}
               onClick={() => setSelectedVariant(i)}
             >
-              <p className="cf-pn-variant-name">{variantLabel(v.variante)}</p>
+              <p className="cf-pn-variant-name">{variantLabel(v.variante, {
+                variante_labels: model.variante_labels,
+                feature_delta: v.feature_delta,
+              })}</p>
               <p className="cf-pn-variant-meta">
                 {v.area_m2 ? `${Math.round(v.area_m2)} m²` : '—'}
                 {v.bedrooms_label ? ` · ${v.bedrooms_label} dorm.` : ''}
@@ -1681,7 +1720,7 @@ export function Panel9Datos({
           className="cf-pn-datos-cta"
           onClick={(e) => e.stopPropagation()}
         >
-          Cotizar →
+          Ver precio →
         </a>
       </div>
     </div>
@@ -1823,6 +1862,7 @@ export default function ExpandedPanels(props: PanelsProps) {
             images={props.images}
             activeSkus={props.activeSkus}
             deliveryHtml={props.deliveryConditionsHtml ?? null}
+            varianteLabels={props.model.variante_labels}
           />
         </div>
       )}
@@ -1830,7 +1870,11 @@ export default function ExpandedPanels(props: PanelsProps) {
       {/* 3. Interiores — solo si hay fotos */}
       {hasInt && (
         <div className="cf-station-slide cf-slide-image">
-          <PanelInteriores images={props.images} activeSkus={props.activeSkus} />
+          <PanelInteriores
+            images={props.images}
+            activeSkus={props.activeSkus}
+            varianteLabels={props.model.variante_labels}
+          />
         </div>
       )}
 
@@ -1849,6 +1893,7 @@ export default function ExpandedPanels(props: PanelsProps) {
             images={props.images}
             activeSkus={props.activeSkus}
             deliveryHtml={props.deliveryConditionsHtml ?? null}
+            varianteLabels={props.model.variante_labels}
           />
         </div>
       )}
@@ -1925,6 +1970,7 @@ export default function ExpandedPanels(props: PanelsProps) {
             images={props.images}
             activeSkus={props.activeSkus}
             deliveryHtml={props.deliveryConditionsHtml ?? null}
+            varianteLabels={props.model.variante_labels}
           />
         </div>
       )}

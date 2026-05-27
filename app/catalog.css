@@ -556,6 +556,25 @@ body:has(.cf-row.cf-expanded) {
   letter-spacing: -0.015em;
 }
 
+/* "CASA EJE" arriba — eyebrow gris/chico, no bold. Forzamos block para no
+   depender de display:flex en el padre (otras reglas pueden pisarlo). */
+.cf-row-name-eyebrow {
+  display: block;
+  font-size: 0.85em;
+  font-weight: 500;
+  letter-spacing: normal;
+  color: #666;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+/* "ALECRÍN" abajo — protagonista, hereda el size del h3 padre + bold. */
+.cf-row-name-hero {
+  display: block;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .cf-row-bedrooms {
   font-size: 11px;
   font-weight: 500;
@@ -2468,6 +2487,7 @@ button.cf-row-precio-val:hover {
   color: #fff;
 }
 
+
 /* Pills invertidos cuando el panel galería es light (Planos / Axos):
    sobre bg blanco no se ven los pills traslúcidos blancos. */
 .cf-pn-gallery-light .cf-pn-pill {
@@ -2732,11 +2752,12 @@ button.cf-row-precio-val:hover {
 }
 
 .cf-pn-estilos-aside-title {
-  font-size: clamp(22px, 2.4vw, 30px);
-  font-weight: 500;
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 4px;
   color: #fff;
+  text-transform: uppercase;
 }
 
 .cf-pn-estilos-aside-sub {
@@ -4177,8 +4198,8 @@ button.cf-row-precio-val:hover {
 .cf-sticky-filters-inner {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 15px 22px;
+  gap: 14px;
+  padding: 14px 20px;
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
@@ -4343,26 +4364,25 @@ button.cf-row-precio-val:hover {
 .cf-stf-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .cf-stf-lbl {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.9);
-  margin-right: 6px;
+  margin-right: 5px;
 }
 
-/* "Elegí" — texto intro de la barra (reemplaza el viejo filtro de Estilo).
-   Más prominente que un label: invita a usar los filtros de al lado. */
+/* "Elegí" — texto intro de la barra (reemplaza el viejo filtro de Estilo). */
 .cf-stf-elegi {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 500;
   text-transform: uppercase;
   color: #fff;
-  margin-right: 12px;
+  margin-right: 10px;
   white-space: nowrap;
 }
 
@@ -4373,12 +4393,12 @@ button.cf-row-precio-val:hover {
   backdrop-filter: none;
   border: 0;
   color: #0a0a0a;
-  padding: 7px 16px;
+  padding: 6px 14px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  border-radius: 10px;
+  border-radius: 9px;
   transition: background 0.2s, color 0.2s;
   white-space: nowrap;
 }
@@ -4416,11 +4436,11 @@ button.cf-row-precio-val:hover {
   backdrop-filter: none;
   border: 0;
   color: #0a0a0a;
-  padding: 5px 28px 5px 13px;
+  padding: 5px 26px 5px 12px;
   font-size: 14px;
   font-weight: 500;
   font-family: inherit;
-  border-radius: 10px;
+  border-radius: 9px;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;

@@ -36,6 +36,7 @@ import type { FooterCardRow } from '@/lib/supabase/queries/footer'
 import { getFooterContent } from '@/lib/supabase/queries/footer'
 import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
 import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
+import { getAllProvincias, getActiveMarcaZonas } from '@/lib/supabase/queries/zones'
 import CatalogPage from '@/components/catalog/CatalogPage'
 
 export const dynamic = 'force-dynamic'
@@ -66,6 +67,8 @@ export default async function EmpresasPage() {
     deliveryConditions,
     cotizador,
     institutionalFooterCards,
+    provincias,
+    marcaZonas,
   ] = await Promise.all([
     getGroupedCatalog(supabase, {}),
     getResolvedBrandContent(supabase, null),
@@ -84,6 +87,8 @@ export default async function EmpresasPage() {
     getDeliveryConditions(supabase, null),
     loadCotizadorData(supabase),
     getInstitutionalFooterCards(supabase),
+    getAllProvincias(supabase),
+    getActiveMarcaZonas(supabase),
   ])
 
   const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
@@ -130,6 +135,8 @@ export default async function EmpresasPage() {
       variant="b2b"
       cotizador={cotizador}
       institutionalFooterCards={institutionalFooterCards}
+      provincias={provincias}
+      marcaZonas={marcaZonas}
     />
   )
 }

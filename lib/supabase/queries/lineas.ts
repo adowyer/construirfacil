@@ -18,6 +18,15 @@ export interface LineaRow {
   icon_url: string | null
   sort_order: number
   status: 'active' | 'inactive' | 'archived'
+  /** Texto del concepto de la línea (banner en la ficha de cada casa). */
+  concept_blurb: string | null
+  /** Estrategia de naming. Default {order:'tipologia-first',suffix_source:'tipologia'}. */
+  naming_strategy: {
+    order: 'tipologia-first' | 'style-first'
+    suffix_source: 'tipologia' | 'variante'
+  } | null
+  /** Mapping variante base → label. Ej Atlas {"0":"Compacta","1":"1 Dormitorio",...}. */
+  variante_labels: Record<string, string> | null
   created_at: string
   updated_at: string
 }

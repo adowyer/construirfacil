@@ -4,73 +4,81 @@
  * components/catalog/StickyFilters.tsx
  *
  * Pill roja CF sticky con los filtros del catálogo público:
- *   - "Elegí tu casa" — texto intro de la barra
+ *   - "Elegí" — intro de la barra
  *   - Dormitorios (pills 1 / 2 / 3 / 4+)
- *   - Superficie (pills S / SM / M / L — 4 buckets en m²)
- *   - Orden (pills: Relevante / Precio↑ / Precio↓)
+ *   - Superficie (pills S/M/L/XL — 4 buckets en m²)
+ *   - Precio (pills, 4 bandas USD)
+ *   - Provincia (select — 24 jurisdicciones; aplica reglas zonales si las hay)
+ *   - Ofertas (pill toggle, único)
  *
- * Sin opción "Todos": el filtro vacío equivale a no filtrar. El componente
- * no muestra el count de modelos para mantener la barra compacta.
+ * Sin "Todos": el filtro vacío equivale a no filtrar.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { ProvinciaRow } from '@/lib/supabase/queries/zones'
 
 interface StickyFiltersProps {
   /** Multi-select: arrays de valores activos. Click en pill → toggle. */
   bedFilters: string[]
   sizeFilters: string[]
-  sortOrder: string
-  /** Sets de opciones que SÍ tienen resultados con los otros filtros activos.
-   *  Si una opción no está en el set, se renderiza disabled. Las ya activas
-   *  siempre quedan habilitadas (para poder destildarlas). */
+  priceFilters: string[]
+  provinciaId: string | null
+  onlyOffers: boolean
+  /** Sets de opciones que SÍ tienen resultados con los otros filtros activos. */
   enabledBeds?: Set<string>
   enabledSizes?: Set<string>
+  enabledPrices?: Set<string>
+  provincias: ProvinciaRow[]
   onBedToggle: (v: string) => void
   onSizeToggle: (v: string) => void
-  onSortChange: (v: string) => void
+  onPriceToggle: (v: string) => void
+  onProvinciaChange: (id: string | null) => void
+  onOffersToggle: () => void
 }
 
 const BED_OPTIONS = ['1', '2', '3', '4+'] as const
 
-// 4 buckets por perfil de uso, alineados a la distribución real del
-// catálogo: S = cabaña/individual, SM = pareja/familia chica, M = familiar,
-// L = familia grande / premium (+120). Los predicados en CatalogPage usan
-// los mismos rangos.
+// 4 buckets, alineados a la distribución real. Los predicados en CatalogPage
+// usan los mismos rangos.
 const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: 'S', label: '–70m²' },
-  { value: 'SM', label: '70–90m²' },
-  { value: 'M', label: '90–120m²' },
-  { value: 'L', label: '+120m²' },
+  { value: 'M', label: '70–100m²' },
+  { value: 'L', label: '100–150m²' },
+  { value: 'XL', label: '+150m²' },
 ]
 
-// "+ Relevante" ordena por house_catalog.featured_rank asc nulls last
-// (admin lo setea por modelo; ver CatalogPage sortOrder). Precio asc/desc
-// usa price_from interno aunque los precios no sean visibles al público.
-const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'recommended', label: '+ Relevante' },
-  { value: 'price-asc', label: 'Precio ↑' },
-  { value: 'price-desc', label: 'Precio ↓' },
+// 4 bandas de precio (USD lista). Cubren la distribución real:
+//   ~30% catálogo < 100k, ~30% en 100-150k, ~30% en 150-300k, ~10% > 300k.
+const PRICE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'lt100', label: '< 100k' },
+  { value: '100-150', label: '100–150k' },
+  { value: '150-300', label: '150–300k' },
+  { value: 'gt300', label: '+ 300k' },
 ]
 
 export default function StickyFilters({
   bedFilters,
   sizeFilters,
-  sortOrder,
+  priceFilters,
+  provinciaId,
+  onlyOffers,
   enabledBeds,
   enabledSizes,
+  enabledPrices,
+  provincias,
   onBedToggle,
   onSizeToggle,
-  onSortChange,
+  onPriceToggle,
+  onProvinciaChange,
+  onOffersToggle,
 }: StickyFiltersProps) {
-  // Una opción está habilitada si:
-  //   - no le pasamos sets de "enabled" (modo retro-compat / sin filtros activos), o
-  //   - está en el set, o
-  //   - es una opción ya activa (para poder destildarla).
   const isBedEnabled = (v: string) =>
     !enabledBeds || enabledBeds.has(v) || bedFilters.includes(v)
   const isSizeEnabled = (v: string) =>
     !enabledSizes || enabledSizes.has(v) || sizeFilters.includes(v)
+  const isPriceEnabled = (v: string) =>
+    !enabledPrices || enabledPrices.has(v) || priceFilters.includes(v)
 
   // Mobile: la barra se reduce a una hamburguesa que abre los filtros en
   // un overlay translúcido desde arriba. Portal a <body> porque el shell
@@ -80,12 +88,6 @@ export default function StickyFilters({
   useEffect(() => setMounted(true), [])
 
   // ── Sticky por scroll ───────────────────────────────────────────────
-  // La barra NO puede usar `position: sticky`: el catálogo vive dentro del
-  // acordeón `.cf-section-shell-inner` con `overflow: hidden`, que crea un
-  // scroll container y mata el sticky. En su lugar: un sentinel de 0px en
-  // flujo marca la posición natural; cuando su top cruza 16px fijamos la
-  // barra (`position: fixed`, escapa el overflow) y un spacer del alto de
-  // la barra evita que el catálogo pegue un salto.
   const sentinelRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const barHRef = useRef(0)
@@ -112,8 +114,6 @@ export default function StickyFilters({
       const parentBottom = parent
         ? parent.getBoundingClientRect().bottom
         : Number.POSITIVE_INFINITY
-      // Fija cuando pasamos el sentinel Y todavía queda catálogo abajo; al
-      // llegar al final del catálogo la soltamos (como haría sticky).
       setStuck(sentinelTop <= 16 && parentBottom - 16 > barHRef.current)
     }
     update()
@@ -141,86 +141,118 @@ export default function StickyFilters({
   const activeCount =
     bedFilters.length +
     sizeFilters.length +
-    (sortOrder && sortOrder !== 'recommended' ? 1 : 0)
+    priceFilters.length +
+    (provinciaId ? 1 : 0) +
+    (onlyOffers ? 1 : 0)
 
   const groups = (
     <>
-      {/* ELEGÍ — intro de la barra (reemplaza el viejo filtro de Estilo) */}
-        <span className="cf-stf-elegi">Elegí tu casa</span>
+      {/* ELEGÍ — intro de la barra */}
+      <span className="cf-stf-elegi">Elegí</span>
 
-        {/* DORMITORIOS — pills (multi-select) */}
-        <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Dormitorios</span>
-          {BED_OPTIONS.map((v) => {
-            const enabled = isBedEnabled(v)
-            const active = bedFilters.includes(v)
-            return (
-              <button
-                key={v}
-                type="button"
-                className={`cf-stf-pill ${active ? 'active' : ''} ${
-                  enabled ? '' : 'cf-stf-pill-disabled'
-                }`}
-                disabled={!enabled}
-                onClick={() => onBedToggle(v)}
-              >
-                {v}
-              </button>
-            )
-          })}
-        </div>
+      {/* DORMITORIOS — pills (multi-select) */}
+      <div className="cf-stf-group">
+        <span className="cf-stf-lbl">Dorm.</span>
+        {BED_OPTIONS.map((v) => {
+          const enabled = isBedEnabled(v)
+          const active = bedFilters.includes(v)
+          return (
+            <button
+              key={v}
+              type="button"
+              className={`cf-stf-pill ${active ? 'active' : ''} ${
+                enabled ? '' : 'cf-stf-pill-disabled'
+              }`}
+              disabled={!enabled}
+              onClick={() => onBedToggle(v)}
+            >
+              {v}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* SUPERFICIE — pills (multi-select) */}
-        <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Superficie</span>
-          {SIZE_OPTIONS.map((s) => {
-            const enabled = isSizeEnabled(s.value)
-            const active = sizeFilters.includes(s.value)
-            return (
-              <button
-                key={s.value}
-                type="button"
-                className={`cf-stf-pill ${active ? 'active' : ''} ${
-                  enabled ? '' : 'cf-stf-pill-disabled'
-                }`}
-                disabled={!enabled}
-                onClick={() => onSizeToggle(s.value)}
-              >
-                {s.label}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="cf-stf-spacer" />
-
-        {/* ORDEN — pills */}
-        <div className="cf-stf-group">
-          <span className="cf-stf-lbl">Orden</span>
-          {SORT_OPTIONS.map((s) => (
+      {/* SUPERFICIE — pills (multi-select) */}
+      <div className="cf-stf-group">
+        <span className="cf-stf-lbl">m²</span>
+        {SIZE_OPTIONS.map((s) => {
+          const enabled = isSizeEnabled(s.value)
+          const active = sizeFilters.includes(s.value)
+          return (
             <button
               key={s.value}
               type="button"
-              className={`cf-stf-pill cf-stf-pill-dark ${sortOrder === s.value ? 'active' : ''}`}
-              onClick={() => onSortChange(s.value)}
+              className={`cf-stf-pill ${active ? 'active' : ''} ${
+                enabled ? '' : 'cf-stf-pill-disabled'
+              }`}
+              disabled={!enabled}
+              onClick={() => onSizeToggle(s.value)}
             >
               {s.label}
             </button>
+          )
+        })}
+      </div>
+
+      {/* PRECIO — pills (multi-select) */}
+      <div className="cf-stf-group">
+        <span className="cf-stf-lbl">USD</span>
+        {PRICE_OPTIONS.map((p) => {
+          const enabled = isPriceEnabled(p.value)
+          const active = priceFilters.includes(p.value)
+          return (
+            <button
+              key={p.value}
+              type="button"
+              className={`cf-stf-pill ${active ? 'active' : ''} ${
+                enabled ? '' : 'cf-stf-pill-disabled'
+              }`}
+              disabled={!enabled}
+              onClick={() => onPriceToggle(p.value)}
+            >
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* UBICACIÓN — select de provincia */}
+      <div className="cf-stf-group">
+        <span className="cf-stf-lbl">Zona</span>
+        <select
+          className={`cf-stf-select ${provinciaId ? 'active' : ''}`}
+          value={provinciaId ?? ''}
+          onChange={(e) => onProvinciaChange(e.target.value || null)}
+        >
+          <option value="">Todo el país</option>
+          {provincias.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
           ))}
-        </div>
+        </select>
+      </div>
+
+      {/* OFERTAS — pill toggle. Inline (sin spacer) para no romper la barra
+          en desktops chicos. */}
+      <button
+        type="button"
+        className={`cf-stf-pill cf-stf-pill-dark ${onlyOffers ? 'active' : ''}`}
+        onClick={onOffersToggle}
+        aria-pressed={onlyOffers}
+      >
+        Ofertas
+      </button>
     </>
   )
 
   return (
     <>
-      {/* Sentinel en flujo: referencia fija para detectar el scroll. */}
       <div
         ref={sentinelRef}
         className="cf-sticky-filters-sentinel"
         aria-hidden="true"
       />
-      {/* Spacer: cuando la barra se fija sale del flujo; este div ocupa su
-          lugar para que el catálogo no salte hacia arriba. */}
       {stuck && (
         <div
           className="cf-sticky-filters-spacer"
@@ -234,57 +266,53 @@ export default function StickyFilters({
           stuck ? ' is-stuck' : ''
         }`}
       >
-      {/* Mobile: trigger hamburguesa (oculto en desktop por CSS). */}
-      <button
-        type="button"
-        className="cf-stf-hamburger"
-        aria-label="Abrir filtros"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-      >
-        <span aria-hidden="true" className="cf-stf-hamburger-icon">
-          ☰
-        </span>
-        Filtros
-        {activeCount > 0 && (
-          <span className="cf-stf-hamburger-badge">{activeCount}</span>
-        )}
-      </button>
+        <button
+          type="button"
+          className="cf-stf-hamburger"
+          aria-label="Abrir filtros"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+        >
+          <span aria-hidden="true" className="cf-stf-hamburger-icon">
+            ☰
+          </span>
+          Filtros
+          {activeCount > 0 && (
+            <span className="cf-stf-hamburger-badge">{activeCount}</span>
+          )}
+        </button>
 
-      {/* Desktop: barra inline de siempre (oculta en mobile por CSS). */}
-      <div className="cf-sticky-filters-inner">{groups}</div>
+        <div className="cf-sticky-filters-inner">{groups}</div>
 
-      {/* Mobile: overlay translúcido desde arriba. Portal a <body> para
-          escapar el transform del shell del catálogo. */}
-      {mounted &&
-        open &&
-        createPortal(
-          <div
-            className="cf-stf-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Filtros"
-            onClick={() => setOpen(false)}
-          >
+        {mounted &&
+          open &&
+          createPortal(
             <div
-              className="cf-stf-sheet"
-              onClick={(e) => e.stopPropagation()}
+              className="cf-stf-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Filtros"
+              onClick={() => setOpen(false)}
             >
-              <button
-                type="button"
-                className="cf-stf-close"
-                aria-label="Cerrar filtros"
-                onClick={() => setOpen(false)}
+              <div
+                className="cf-stf-sheet"
+                onClick={(e) => e.stopPropagation()}
               >
-                ×
-              </button>
-              <div className="cf-sticky-filters-inner cf-sticky-filters-inner--sheet">
-                {groups}
+                <button
+                  type="button"
+                  className="cf-stf-close"
+                  aria-label="Cerrar filtros"
+                  onClick={() => setOpen(false)}
+                >
+                  ×
+                </button>
+                <div className="cf-sticky-filters-inner cf-sticky-filters-inner--sheet">
+                  {groups}
+                </div>
               </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+            </div>,
+            document.body,
+          )}
       </div>
     </>
   )

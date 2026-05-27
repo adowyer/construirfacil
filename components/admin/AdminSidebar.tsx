@@ -20,6 +20,7 @@ import {
   PanelTop,
   GalleryHorizontal,
   Layers,
+  Boxes,
   ScrollText,
   Megaphone,
   Calculator,
@@ -52,6 +53,7 @@ const SECTIONS_TOP: { title: string | null; items: NavItem[] }[] = [
     items: [
       { href: '/admin/brand', label: 'Contenido del sitio', icon: FileText },
       { href: '/admin/sistemas', label: 'Sistemas constructivos', icon: Layers },
+      { href: '/admin/tipologias', label: 'Tipologías', icon: Boxes },
       { href: '/admin/header', label: 'Header', icon: PanelTop },
       { href: '/admin/home', label: 'HomeRow', icon: GalleryHorizontal },
       { href: '/admin/campanas', label: 'Campañas', icon: Megaphone },

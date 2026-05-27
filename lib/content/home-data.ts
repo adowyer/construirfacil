@@ -32,6 +32,7 @@ import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
 import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
 import { loadCotizadorData } from '@/lib/content/cotizador-data'
 import { getInstitutionalFooterCards } from '@/lib/supabase/queries/footer'
+import { getAllProvincias, getActiveMarcaZonas } from '@/lib/supabase/queries/zones'
 
 export async function loadHomeData(supabase: SupabaseClient) {
   // Home = agregador sin marca activa → contenido GLOBAL (marca_id NULL),
@@ -53,6 +54,8 @@ export async function loadHomeData(supabase: SupabaseClient) {
     deliveryConditions,
     cotizador,
     institutionalFooterCards,
+    provincias,
+    marcaZonas,
   ] = await Promise.all([
     getGroupedCatalog(supabase, {}),
     getResolvedBrandContent(supabase, null),
@@ -70,6 +73,8 @@ export async function loadHomeData(supabase: SupabaseClient) {
     getDeliveryConditions(supabase, null),
     loadCotizadorData(supabase),
     getInstitutionalFooterCards(supabase),
+    getAllProvincias(supabase),
+    getActiveMarcaZonas(supabase),
   ])
 
   const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
@@ -112,6 +117,8 @@ export async function loadHomeData(supabase: SupabaseClient) {
     deliveryConditionsHtml,
     cotizador,
     institutionalFooterCards,
+    provincias,
+    marcaZonas,
   }
 }
 

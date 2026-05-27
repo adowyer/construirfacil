@@ -8,6 +8,8 @@ import type { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveCampaignSlugs } from '@/lib/supabase/queries/campaigns'
+import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
+import { modelGroupSlug } from '@/lib/content/model-slug'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,18 +24,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   let campaignUrls: MetadataRoute.Sitemap = []
+  let modelUrls: MetadataRoute.Sitemap = []
   try {
     const supabase = await createClient()
-    const slugs = await getActiveCampaignSlugs(supabase)
+    const [slugs, models] = await Promise.all([
+      getActiveCampaignSlugs(supabase),
+      getGroupedCatalog(supabase, {}),
+    ])
     campaignUrls = slugs.map((slug) => ({
       url: `${SITE_URL}/casa-financiada/${slug}`,
       lastModified: now,
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     }))
+    // Solo modelos con tipologia_code_new → slug canónico estable. Los que
+    // todavía no migraron se omiten (no rompemos sitemap si una marca queda
+    // fuera del nuevo esquema).
+    const seen = new Set<string>()
+    modelUrls = models
+      .map((m) => {
+        if (!m.tipologia_code_new) return null
+        const slug = modelGroupSlug({
+          style_name: m.style_name,
+          tipologia_code_new: m.tipologia_code_new,
+        })
+        if (seen.has(slug)) return null
+        seen.add(slug)
+        return {
+          url: `${SITE_URL}/modelos/${slug}`,
+          lastModified: now,
+          changeFrequency: 'weekly' as const,
+          priority: 0.6,
+        }
+      })
+      .filter((u): u is NonNullable<typeof u> => u !== null)
   } catch {
     /* sin DB → sitemap igual con las páginas base */
   }
 
-  return [...base, ...campaignUrls]
+  return [...base, ...campaignUrls, ...modelUrls]
 }

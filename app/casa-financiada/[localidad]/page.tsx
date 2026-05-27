@@ -94,6 +94,23 @@ export default async function CampaignLandingPage({
     ? [campaignPrincipalSlide(campaign), ...data.headerSlides]
     : data.headerSlides
 
+  // Provincia inicial: si la campaña la declara, la matcheamos contra el
+  // seed de provincias (por slug primero, luego por nombre normalizado).
+  // Permite que la landing arranque ya filtrada por la zona de la localidad
+  // (aplica modifier / extra_charge / promo de la marca para esa provincia).
+  function provinciaIdFromCampaign(): string | null {
+    const raw = campaign?.provincia?.trim()
+    if (!raw) return null
+    const norm = (s: string) =>
+      s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+    const target = norm(raw)
+    const match = data.provincias.find(
+      (p) => norm(p.name) === target || p.slug === target,
+    )
+    return match?.id ?? null
+  }
+  const initialProvinciaId = provinciaIdFromCampaign()
+
   const jsonLd = campaign
     ? {
         '@context': 'https://schema.org',
@@ -130,6 +147,7 @@ export default async function CampaignLandingPage({
         headerSlides={headerSlides}
         selectedMarca={null}
         initialHomeMode={true}
+        initialProvinciaId={initialProvinciaId}
       />
     </>
   )

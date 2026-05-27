@@ -108,6 +108,23 @@ export default async function AdminMarcaEditPage({ params }: PageProps) {
         />
       </section>
 
+      {/* ── Zonas: link al CRUD ────────────────────────────────────── */}
+      <section className="mb-10">
+        <h2 className="text-[11px] uppercase tracking-widest text-neutral-400 mb-3">
+          Zonas
+        </h2>
+        <Link
+          href={`/admin/marcas/${id}/zonas`}
+          className="inline-flex items-center gap-2 text-sm border border-[#E8E8E5] rounded-lg px-4 py-2 hover:border-[#ff003d] transition-colors"
+        >
+          Administrar reglas por provincia →
+        </Link>
+        <p className="text-xs text-neutral-400 mt-2">
+          Excluir provincias, ajustar precios, cargar transporte, marcar
+          promociones o derivar a cotización personal.
+        </p>
+      </section>
+
       {/* Edit form */}
       <MarcaForm
         action={updateMarcaWithId}

@@ -43,6 +43,11 @@ function normalizeLineaName(name: string): string {
   return name.trim().toUpperCase()
 }
 
+type NamingStrategy = {
+  order: 'tipologia-first' | 'style-first'
+  suffix_source: 'tipologia' | 'variante'
+}
+
 type LineaPayload = {
   marca_id: string
   name: string
@@ -52,10 +57,45 @@ type LineaPayload = {
   hero_image_url: string | null
   sort_order: number
   status: 'active' | 'inactive' | 'archived'
+  // naming (lineas)
+  concept_blurb: string | null
+  naming_strategy: NamingStrategy
+  /** null = no se editó válidamente; el action NO toca la columna. */
+  variante_labels: Record<string, string> | null
   // editorial (line_content)
   tipologia_code: string | null
   title: string | null
   subtitle: string | null
+}
+
+/** Parsea el JSON del textarea; si es inválido devuelve null. */
+function parseVarianteLabelsJSON(
+  value: FormDataEntryValue | null,
+): Record<string, string> | null {
+  const raw = parseOptionalText(value)
+  if (!raw) return {} // vacío = "" → guardamos {} explícito
+  try {
+    const obj = JSON.parse(raw)
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      const out: Record<string, string> = {}
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === 'string') out[String(k)] = v
+      }
+      return out
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function parseNamingStrategy(formData: FormData): NamingStrategy {
+  const order = parseOptionalText(formData.get('naming_order')) ?? 'tipologia-first'
+  const suffix = parseOptionalText(formData.get('naming_suffix_source')) ?? 'tipologia'
+  return {
+    order: order === 'style-first' ? 'style-first' : 'tipologia-first',
+    suffix_source: suffix === 'variante' ? 'variante' : 'tipologia',
+  }
 }
 
 function buildPayload(formData: FormData): LineaPayload {
@@ -77,6 +117,9 @@ function buildPayload(formData: FormData): LineaPayload {
     hero_image_url: parseOptionalText(formData.get('hero_image_url')),
     sort_order: parseSortOrder(formData.get('sort_order')),
     status: ['active', 'inactive', 'archived'].includes(status) ? status : 'active',
+    concept_blurb: parseOptionalText(formData.get('concept_blurb')),
+    naming_strategy: parseNamingStrategy(formData),
+    variante_labels: parseVarianteLabelsJSON(formData.get('variante_labels_json')),
     tipologia_code: parseOptionalText(formData.get('tipologia_code')),
     title: parseOptionalText(formData.get('title')),
     subtitle: parseOptionalText(formData.get('subtitle')),
@@ -164,18 +207,25 @@ export async function createLinea(
     }
   }
 
+  const insertRow: Record<string, unknown> = {
+    marca_id: payload.marca_id,
+    name: payload.name,
+    slug: payload.slug,
+    tagline: payload.tagline,
+    description: payload.description,
+    hero_image_url: payload.hero_image_url,
+    sort_order: payload.sort_order,
+    status: payload.status,
+    concept_blurb: payload.concept_blurb,
+    naming_strategy: payload.naming_strategy,
+  }
+  // variante_labels: null = JSON inválido → no tocamos (cae al default '{}').
+  if (payload.variante_labels !== null) {
+    insertRow.variante_labels = payload.variante_labels
+  }
   const { data: inserted, error } = await admin
     .from('lineas')
-    .insert({
-      marca_id: payload.marca_id,
-      name: payload.name,
-      slug: payload.slug,
-      tagline: payload.tagline,
-      description: payload.description,
-      hero_image_url: payload.hero_image_url,
-      sort_order: payload.sort_order,
-      status: payload.status,
-    })
+    .insert(insertRow)
     .select('id')
     .single()
 
@@ -231,18 +281,24 @@ export async function updateLinea(
     }
   }
 
+  const updateRow: Record<string, unknown> = {
+    marca_id: payload.marca_id,
+    name: payload.name,
+    slug: payload.slug,
+    tagline: payload.tagline,
+    description: payload.description,
+    hero_image_url: payload.hero_image_url,
+    sort_order: payload.sort_order,
+    status: payload.status,
+    concept_blurb: payload.concept_blurb,
+    naming_strategy: payload.naming_strategy,
+  }
+  if (payload.variante_labels !== null) {
+    updateRow.variante_labels = payload.variante_labels
+  }
   const { error } = await admin
     .from('lineas')
-    .update({
-      marca_id: payload.marca_id,
-      name: payload.name,
-      slug: payload.slug,
-      tagline: payload.tagline,
-      description: payload.description,
-      hero_image_url: payload.hero_image_url,
-      sort_order: payload.sort_order,
-      status: payload.status,
-    })
+    .update(updateRow)
     .eq('id', id)
 
   if (error) {

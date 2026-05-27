@@ -25,7 +25,11 @@ import ModelRow from './ModelRow'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import { variantLabel } from '@/lib/format/variant'
+import { modelGroupSlug } from '@/lib/content/model-slug'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
+import type { ProvinciaRow } from '@/lib/supabase/queries/zones'
+import type { MarcaZonaRule, EffectiveZoneRule } from '@/lib/content/zones'
+import { resolveZoneRule, applyZonePricing } from '@/lib/content/zones'
 import type { Marca } from '@/types/database'
 import type {
   FooterCardRow,
@@ -103,6 +107,20 @@ interface PageProps {
   /** Cards institucionales (marca_id NULL) para reemplazar TRUST_CARDS
    *  hardcodeadas en el agregador y como fallback per-marca sin cards. */
   institutionalFooterCards?: FooterCardRow[]
+  /** Si está seteado, el catálogo arranca en modo catalog (no home) y abre
+   *  inmediatamente el modelo cuyo slug nuevo (`casa-<tipo>-<style>`) matchea.
+   *  Lo usa /modelos/[slug] para deep-linking con SEO. */
+  initialModelSlug?: string | null
+  /** Lista de provincias para el selector "Ubicación" de StickyFilters. */
+  provincias?: ProvinciaRow[]
+  /** Reglas zonales activas (marca_zonas). Vacío = sin reglas, todos los
+   *  modelos se muestran sin modificaciones. */
+  marcaZonas?: MarcaZonaRule[]
+  /** Provincia inicial a aplicar si el usuario no eligió ninguna todavía
+   *  (no hay valor en localStorage). Lo usan las landings de campaña de
+   *  /casa-financiada/[localidad] para que la página arranque con la
+   *  provincia correcta sin que el visitante tenga que setearla. */
+  initialProvinciaId?: string | null
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -142,6 +160,10 @@ export default function CatalogPage({
   deliveryConditionsHtml = null,
   cotizador = null,
   institutionalFooterCards = [],
+  initialModelSlug = null,
+  provincias = [],
+  marcaZonas = [],
+  initialProvinciaId = null,
 }: PageProps) {
   const router = useRouter()
   // Máquina de estados de transición home ↔ catálogo.
@@ -188,11 +210,47 @@ export default function CatalogPage({
   const catalogFadingOut = phase === 'closing'
 
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
+
+  // Deep-link a /modelos/[slug]: al montar buscamos el modelo cuyo slug nuevo
+  // matchea el initialModelSlug y lo abrimos. Una vez (no re-corre si el
+  // usuario navega manualmente después).
+  useEffect(() => {
+    if (!initialModelSlug || activeModel) return
+    const target = models.find((m) =>
+      modelGroupSlug({
+        style_name: m.style_name,
+        tipologia_code_new: m.tipologia_code_new,
+      }) === initialModelSlug,
+    )
+    if (target) setActiveModel(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialModelSlug])
   const [station, setStation] = useState<Station>('portada')
   // Multi-select: arrays. '' inicial sería un valor inválido, así que arrays vacíos.
   const [bedFilters, setBedFilters] = useState<string[]>([])
   const [sizeFilters, setSizeFilters] = useState<string[]>([])
-  const [sortOrder, setSortOrder] = useState<string>('recommended')
+  const [priceFilters, setPriceFilters] = useState<string[]>([])
+  const [provinciaId, setProvinciaId] = useState<string | null>(null)
+  const [onlyOffers, setOnlyOffers] = useState<boolean>(false)
+  // Orden fijo a "recommended" — sacamos el selector del UI (decisión del cliente).
+  // El sort por featured_rank vive inline en el .sort() del listado.
+
+  // Persistencia de la provincia entre sesiones (la ubicación es contexto del
+  // usuario, no estado efímero). Si la página recibe initialProvinciaId
+  // (campañas /casa-financiada/[localidad]) y no hay valor previo, lo usamos
+  // como semilla (y se persiste vía el otro effect).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem('cf-provincia-id')
+    if (stored) setProvinciaId(stored)
+    else if (initialProvinciaId) setProvinciaId(initialProvinciaId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (provinciaId) window.localStorage.setItem('cf-provincia-id', provinciaId)
+    else window.localStorage.removeItem('cf-provincia-id')
+  }, [provinciaId])
   // Modal de contacto genérico (mid-CTA "¿Te ayudo a elegir?"). Reemplaza el
   // mailto que rompía sin cliente de mail configurado.
   const [contactarOpen, setContactarOpen] = useState(false)
@@ -202,6 +260,9 @@ export default function CatalogPage({
     setBedFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
   const toggleSize = (v: string) =>
     setSizeFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
+  const togglePrice = (v: string) =>
+    setPriceFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
+  const toggleOffers = () => setOnlyOffers((v) => !v)
 
 
   const detailRef = useRef<HTMLDivElement>(null)
@@ -223,12 +284,60 @@ export default function CatalogPage({
   }
   const skuMatchesSize = (sku: CatalogModel['skus'][number], sf: string): boolean => {
     const a = sku.area_m2 ?? 0
-    // 4 buckets por perfil — labels en StickyFilters.SIZE_OPTIONS.
-    if (sf === 'S') return a < 70                    // cabaña / individual
-    if (sf === 'SM') return a >= 70 && a < 90        // pareja / familia chica
-    if (sf === 'M') return a >= 90 && a < 120        // familiar
-    if (sf === 'L') return a >= 120                  // familia grande / premium
+    // 4 buckets — labels en StickyFilters.SIZE_OPTIONS.
+    if (sf === 'S')  return a < 70             // cabaña / individual
+    if (sf === 'M')  return a >= 70 && a < 100 // pareja / familia chica
+    if (sf === 'L')  return a >= 100 && a < 150 // familiar
+    if (sf === 'XL') return a >= 150           // familia grande / premium
     return true
+  }
+  // Bandas de precio (USD lista). Cubren la distribución real del catálogo.
+  const skuMatchesPrice = (sku: CatalogModel['skus'][number], pf: string): boolean => {
+    const p = sku.precio_lista_usd ?? 0
+    if (p <= 0) return false
+    if (pf === 'lt100')   return p < 100_000
+    if (pf === '100-150') return p >= 100_000 && p < 150_000
+    if (pf === '150-300') return p >= 150_000 && p < 300_000
+    if (pf === 'gt300')   return p >= 300_000
+    return true
+  }
+
+  // ── Resolución de reglas zonales por (modelo, provincia) ────────────
+  // Pre-computamos la regla "general" (linea=null, sc=null) por modelo y el
+  // mapa de reglas más específicas por SKU. El catálogo público usa la
+  // general para badges y el wrapper de precio del modelo; CotizarModal usa
+  // la más específica del SKU concreto.
+  //
+  // Si provinciaId == null, no aplicamos nada (mismo comportamiento de antes).
+  // Si la marca/línea/SC no tiene regla, la rule es vacía (EMPTY_RULE).
+  const zoneByModel = new Map<string, EffectiveZoneRule>()
+  const zoneBySku = new Map<string, EffectiveZoneRule>()
+  if (provinciaId) {
+    for (const m of models) {
+      if (!m.marca_id) continue
+      // Encontramos la lineaId via el primer SKU (todos los SKUs del grupo
+      // comparten línea — está agrupado por linea, style, tipologia).
+      // marca_zonas.linea_id matchea contra lineas.id; CatalogModel guarda
+      // linea como text canónico, no id, así que la resolución por línea
+      // necesita un pasaje vía nombre→id. Por ahora resolvemos sin lineaId
+      // (treated as null). Refinamiento futuro: hidratar linea_id en el bag.
+      const modelRule = resolveZoneRule(marcaZonas, {
+        marca_id: m.marca_id,
+        provincia_id: provinciaId,
+        linea_id: null,
+        sc: null,
+      })
+      zoneByModel.set(m.group_slug, modelRule)
+      for (const s of m.skus) {
+        const skuRule = resolveZoneRule(marcaZonas, {
+          marca_id: m.marca_id,
+          provincia_id: provinciaId,
+          linea_id: null,
+          sc: s.sistema_constructivo,
+        })
+        zoneBySku.set(s.id, skuRule)
+      }
+    }
   }
 
   // Match contra los arrays de filtros activos. Lógica OR dentro del mismo
@@ -237,6 +346,7 @@ export default function CatalogPage({
   const skuMatchesFilters = (sku: CatalogModel['skus'][number]): boolean => {
     if (bedFilters.length > 0 && !bedFilters.some((b) => skuMatchesBed(sku, b))) return false
     if (sizeFilters.length > 0 && !sizeFilters.some((s) => skuMatchesSize(sku, s))) return false
+    if (priceFilters.length > 0 && !priceFilters.some((p) => skuMatchesPrice(sku, p))) return false
     return true
   }
 
@@ -244,38 +354,37 @@ export default function CatalogPage({
   // El sort por precio usa price_from interno (los precios no se muestran al
   // público pero la data sigue siendo válida para ordenar).
   const filtered = models.filter(m => {
-    if (bedFilters.length === 0 && sizeFilters.length === 0) return true
+    // Ofertas (oculta modelos sin ningún SKU en oferta activa).
+    if (onlyOffers && !m.skus.some((s) => s.is_offer)) return false
+    if (bedFilters.length === 0 && sizeFilters.length === 0 && priceFilters.length === 0) return true
     return m.skus.some(skuMatchesFilters)
   }).sort((a, b) => {
-    if (sortOrder === 'price-asc') return (a.price_from ?? 0) - (b.price_from ?? 0)
-    if (sortOrder === 'price-desc') return (b.price_from ?? 0) - (a.price_from ?? 0)
-    if (sortOrder === 'recommended') {
-      // featured_rank asc, NULL al final.
-      const ra = a.featured_rank
-      const rb = b.featured_rank
-      if (ra == null && rb == null) return 0
-      if (ra == null) return 1
-      if (rb == null) return -1
-      return ra - rb
-    }
-    return 0
+    // Solo "recommended" en el UI público. featured_rank asc, NULL al final.
+    const ra = a.featured_rank
+    const rb = b.featured_rank
+    if (ra == null && rb == null) return 0
+    if (ra == null) return 1
+    if (rb == null) return -1
+    return ra - rb
   })
 
   // ── Filtros dinámicos: qué opciones tendrían al menos 1 modelo si se
   // combinaran con los OTROS filtros activos. Las que no, van disabled en
   // la barra sticky para evitar que el usuario llegue a un listado vacío.
   const BED_OPTIONS = ['1', '2', '3', '4+']
-  const SIZE_OPTIONS = ['S', 'SM', 'M', 'L']
+  const SIZE_OPTIONS = ['S', 'M', 'L', 'XL']
+  const PRICE_OPTIONS = ['lt100', '100-150', '150-300', 'gt300']
 
-  // ¿Hay al menos 1 modelo que pase (beds[], sizes[])?
+  // ¿Hay al menos 1 modelo que pase (beds[], sizes[], prices[])?
   // Misma lógica OR-dentro/AND-entre que skuMatchesFilters, pero con arrays
   // que el caller controla.
-  const hasResultsFor = (beds: string[], sizes: string[]): boolean =>
+  const hasResultsFor = (beds: string[], sizes: string[], prices: string[] = priceFilters): boolean =>
     models.some((m) => {
-      if (beds.length === 0 && sizes.length === 0) return true
+      if (beds.length === 0 && sizes.length === 0 && prices.length === 0) return true
       return m.skus.some((s) => {
         if (beds.length > 0 && !beds.some((b) => skuMatchesBed(s, b))) return false
         if (sizes.length > 0 && !sizes.some((sz) => skuMatchesSize(s, sz))) return false
+        if (prices.length > 0 && !prices.some((pp) => skuMatchesPrice(s, pp))) return false
         return true
       })
     })
@@ -286,12 +395,17 @@ export default function CatalogPage({
   // por sí sola haya match — se va a unir vía OR con las ya activas.
   const enabledBeds = new Set(
     BED_OPTIONS.filter(
-      (b) => bedFilters.includes(b) || hasResultsFor([b], sizeFilters),
+      (b) => bedFilters.includes(b) || hasResultsFor([b], sizeFilters, priceFilters),
     ),
   )
   const enabledSizes = new Set(
     SIZE_OPTIONS.filter(
-      (s) => sizeFilters.includes(s) || hasResultsFor(bedFilters, [s]),
+      (s) => sizeFilters.includes(s) || hasResultsFor(bedFilters, [s], priceFilters),
+    ),
+  )
+  const enabledPrices = new Set(
+    PRICE_OPTIONS.filter(
+      (p) => priceFilters.includes(p) || hasResultsFor(bedFilters, sizeFilters, [p]),
     ),
   )
 
@@ -374,12 +488,15 @@ export default function CatalogPage({
           cover_url: m.cover_url ?? null,
           lqip_color: m.lqip_color ?? '#d4d4cc',
           estilo: m.estilo ?? '',
-          tipologias: m.tipologia_code ? [m.tipologia_code] : [],
+          tipologias: m.tipologia_code_new
+            ? [m.tipologia_code_new]
+            : m.tipologia_code ? [m.tipologia_code] : [],
           group_slugs: [m.group_slug],
         })
       } else {
-        if (m.tipologia_code && !existing.tipologias.includes(m.tipologia_code)) {
-          existing.tipologias.push(m.tipologia_code)
+        const tipCode = m.tipologia_code_new ?? m.tipologia_code
+        if (tipCode && !existing.tipologias.includes(tipCode)) {
+          existing.tipologias.push(tipCode)
         }
         if (!existing.group_slugs.includes(m.group_slug)) {
           existing.group_slugs.push(m.group_slug)
@@ -585,12 +702,18 @@ export default function CatalogPage({
           <StickyFilters
             bedFilters={bedFilters}
             sizeFilters={sizeFilters}
-            sortOrder={sortOrder}
+            priceFilters={priceFilters}
+            provinciaId={provinciaId}
+            onlyOffers={onlyOffers}
             enabledBeds={enabledBeds}
             enabledSizes={enabledSizes}
+            enabledPrices={enabledPrices}
+            provincias={provincias}
             onBedToggle={toggleBed}
             onSizeToggle={toggleSize}
-            onSortChange={setSortOrder}
+            onPriceToggle={togglePrice}
+            onProvinciaChange={setProvinciaId}
+            onOffersToggle={toggleOffers}
           />
 
           <div className="cf-grid">
@@ -680,6 +803,7 @@ export default function CatalogPage({
                   lineaIconUrl={iconByLineaName[model.linea] ?? null}
                   deliveryConditionsHtml={deliveryConditionsHtml}
                   cotizador={cotizador}
+                  zoneRule={zoneByModel.get(model.group_slug) ?? null}
                 />
               )
             })}
@@ -1060,7 +1184,10 @@ export function StationDatos({
             className={`cf-variant-card ${i === selectedVariante ? 'selected' : ''}`}
             onClick={() => setSelectedVariante(i)}
           >
-            <p className="cf-variant-name">{variantLabel(v.variante)}</p>
+            <p className="cf-variant-name">{variantLabel(v.variante, {
+              variante_labels: model.variante_labels,
+              feature_delta: v.feature_delta,
+            })}</p>
             <p className="cf-variant-meta">
               {v.area_m2 ? Math.round(v.area_m2) + ' m²' : '—'}
               {v.bedrooms_label ? ` · ${v.bedrooms_label} dorm.` : ''}
@@ -1095,7 +1222,7 @@ export function StationDatos({
               setCotizarOpen(true)
             }}
           >
-            Cotizar tu selección →
+            Ver precio →
           </button>
           <CotizarModal
             open={cotizarOpen}
@@ -1103,10 +1230,15 @@ export function StationDatos({
             cotizador={cotizador}
             pricesUsd={pricesUsd}
             context={ctx}
+            offerForSC={() =>
+              currentSku?.is_offer && currentSku.offer_pct != null
+                ? { pct: currentSku.offer_pct, label: currentSku.offer_label?.trim() || 'Oferta' }
+                : null
+            }
           />
         </>
       ) : (
-        <button className="cf-wa-cta">Pedir Cotización →</button>
+        <button className="cf-wa-cta">Ver precio →</button>
       )}
     </div>
   )

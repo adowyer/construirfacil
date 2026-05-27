@@ -12,6 +12,11 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  displayModelTitle,
+  DEFAULT_NAMING_STRATEGY,
+  type NamingStrategy,
+} from '@/lib/content/model-naming'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -36,6 +41,12 @@ export type ModelVariant = {
   precio_contado_usd: number | null
   precio_pozo_usd: number | null
   featured_rank: number | null
+  /** Delta vs variante base ("+ baño + lavadero ext."). NULL para variante base. */
+  feature_delta: string | null
+  /** Oferta activa (resolución posterior a expiración): is_offer && (sin fecha o vigente). */
+  is_offer: boolean
+  offer_pct: number | null
+  offer_label: string | null
 }
 
 export type CatalogModel = {
@@ -44,9 +55,16 @@ export type CatalogModel = {
   linea: string                          // BOSQUE / ATLAS / TERRA
   segmento: string | null                // PREMIUM / ESTÁNDAR
   style_name: string                     // AMBAY
-  display_name: string                   // Amba'y (con tildes y apóstrofes)
+  display_name: string                   // "CASA NODO Estilo PAMPA" (post-0046) o "Casa Pampa" si la línea no tiene tipologia_code_new aún
   estilo: string                         // Moderno / Campestre / etc
-  tipologia_code: string                 // 1 / 2 / TU / TO / TZ
+  tipologia_code: string                 // legacy: 1 / 2 / TU / TO / TZ
+  tipologia_code_new: string | null      // canónico nuevo: EJE/NODO/ZETA/DECK (0046)
+  /** Estrategia de naming heredada de la línea (default si la línea no la tiene). */
+  naming_strategy: NamingStrategy
+  /** Mapping variante base → label, heredado de la línea. */
+  variante_labels: Record<string, string> | null
+  /** Concepto de la línea (banner en la ficha). */
+  concept_blurb: string | null
 
   // Rangos del grupo
   area_min: number | null
@@ -138,6 +156,52 @@ export function lineaTitleCase(linea: string | null | undefined): string {
 // Slug del grupo
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Resuelve la oferta efectiva de un SKU: respeta `is_offer` + expiración por
+// `offer_until` (si la fecha pasó, deactivamos sin tocar el flag).
+//
+// Comparación de fechas: usamos la fecha del calendario (YYYY-MM-DD) en lugar
+// de timestamps. `offer_until` representa el ÚLTIMO día válido de la promo
+// inclusive. Comparamos contra la fecha de "hoy" en zona Argentina (UTC-3)
+// para evitar el bug del UTC midnight (una promo que "expira el 27/05" no
+// debe apagarse a las 21:00 AR del 26/05 cuando UTC ya cruzó al 27).
+function todayYYYYMMDDInAR(): string {
+  // Intl con timezone resuelve el día actual en AR sin depender del server TZ.
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  // 'en-CA' devuelve 2026-05-26 (formato ISO). Si por alguna razón el ICU
+  // no devuelve eso, parseamos las parts.
+  const parts = fmt.formatToParts(new Date())
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+function resolveOffer(row: {
+  is_offer?: boolean | null
+  offer_pct?: number | null
+  offer_label?: string | null
+  offer_until?: string | null
+}): { is_offer: boolean; offer_pct: number | null; offer_label: string | null } {
+  if (!row.is_offer) return { is_offer: false, offer_pct: null, offer_label: null }
+  if (row.offer_until) {
+    // offer_until viene como "YYYY-MM-DD". Comparación lexicográfica = comparación
+    // de fechas (ISO format). Activa si offer_until >= hoy_AR.
+    const todayAR = todayYYYYMMDDInAR()
+    const until = String(row.offer_until).slice(0, 10)
+    if (until < todayAR) {
+      return { is_offer: false, offer_pct: null, offer_label: null }
+    }
+  }
+  return {
+    is_offer: true,
+    offer_pct: row.offer_pct ?? null,
+    offer_label: row.offer_label ?? null,
+  }
+}
+
 function lineaToken(linea: string): string {
   // Quita prefijo 'LÍNEA '/'LINEA ' y strip-ea diacríticos para que el slug
   // sobreviva al cambio de canónico 'BOSQUE' → 'LÍNEA BOSQUE'.
@@ -184,7 +248,7 @@ export async function getGroupedCatalog(
 
   // 2) Agrupar por (linea, style_name, tipologia_code)
   const groupMap = new Map<string, ModelVariant[]>()
-  const groupMeta = new Map<string, { linea: string; segmento: string | null; style_name: string; estilo: string; tipologia_code: string; marca_id: string | null }>()
+  const groupMeta = new Map<string, { linea: string; segmento: string | null; style_name: string; estilo: string; tipologia_code: string; tipologia_code_new: string | null; marca_id: string | null }>()
 
   for (const row of (rows ?? [])) {
     const key = groupSlug(row.linea, row.style_name, row.tipologia_code)
@@ -196,6 +260,7 @@ export async function getGroupedCatalog(
         style_name: row.style_name,
         estilo: row.estilo,
         tipologia_code: row.tipologia_code,
+        tipologia_code_new: row.tipologia_code_new ?? null,
         marca_id: row.marca_id ?? null,
       })
     }
@@ -218,7 +283,46 @@ export async function getGroupedCatalog(
       precio_contado_usd: row.precio_contado_usd,
       precio_pozo_usd: row.precio_pozo_usd,
       featured_rank: row.featured_rank ?? null,
+      feature_delta: row.feature_delta ?? null,
+      ...resolveOffer(row),
     })
+  }
+
+  // 2.5) Traer naming_strategy / variante_labels / concept_blurb por línea.
+  // Index por nombre normalizado de la línea (sin "LÍNEA " prefix).
+  function normLineaName(s: string): string {
+    return (s ?? '').replace(/^\s*L[ÍI]NEA\s+/i, '').toUpperCase().trim()
+  }
+  const lineaMetaByName = new Map<string, {
+    naming_strategy: NamingStrategy
+    variante_labels: Record<string, string> | null
+    concept_blurb: string | null
+  }>()
+  {
+    const { data: lineasRows, error: lineasErr } = await supabase
+      .from('lineas')
+      .select('name, concept_blurb, naming_strategy, variante_labels')
+    if (lineasErr) {
+      console.error('[getGroupedCatalog] lineas:', lineasErr.message)
+    }
+    for (const l of (lineasRows ?? []) as Array<{
+      name: string
+      concept_blurb: string | null
+      naming_strategy: unknown
+      variante_labels: unknown
+    }>) {
+      const strategy = (l.naming_strategy && typeof l.naming_strategy === 'object'
+        ? (l.naming_strategy as NamingStrategy)
+        : DEFAULT_NAMING_STRATEGY)
+      const labels = (l.variante_labels && typeof l.variante_labels === 'object'
+        ? (l.variante_labels as Record<string, string>)
+        : null)
+      lineaMetaByName.set(normLineaName(l.name), {
+        naming_strategy: strategy,
+        variante_labels: labels,
+        concept_blurb: l.concept_blurb ?? null,
+      })
+    }
   }
 
   // 3) Cover por grupo: linkear via model_image_skus → model_images.
@@ -383,14 +487,30 @@ export async function getGroupedCatalog(
     const cover = coversByGroup.get(key)
     const ranks = skus.map(s => s.featured_rank).filter(v => v != null) as number[]
 
+    const lineaMeta = lineaMetaByName.get(normLineaName(meta.linea))
+    const strategy = lineaMeta?.naming_strategy ?? DEFAULT_NAMING_STRATEGY
+    // Display name: si la línea ya migró (tipologia_code_new !== null) usamos
+    // el helper canónico "CASA NODO Estilo PAMPA". Si no, fallback al legacy.
+    const displayNameComposed = meta.tipologia_code_new
+      ? displayModelTitle({
+          style_name: meta.style_name,
+          tipologia_code_new: meta.tipologia_code_new,
+          strategy,
+        })
+      : displayName(meta.style_name)
+
     models.push({
       group_slug: key,
       linea: meta.linea,
       segmento: meta.segmento,
       style_name: meta.style_name,
-      display_name: displayName(meta.style_name),
+      display_name: displayNameComposed,
       estilo: meta.estilo,
       tipologia_code: meta.tipologia_code,
+      tipologia_code_new: meta.tipologia_code_new,
+      naming_strategy: strategy,
+      variante_labels: lineaMeta?.variante_labels ?? null,
+      concept_blurb: lineaMeta?.concept_blurb ?? null,
       area_min: areas.length ? Math.min(...areas) : null,
       area_max: areas.length ? Math.max(...areas) : null,
       beds_min: beds_min_all.length ? Math.min(...beds_min_all) : null,

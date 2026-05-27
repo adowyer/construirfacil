@@ -216,6 +216,103 @@ export function LineaForm({
         </div>
       </fieldset>
 
+      {/* ── Naming ────────────────────────────────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Naming y concepto
+        </legend>
+
+        <div className="mb-4">
+          <Label
+            htmlFor="concept_blurb"
+            hint="banner en la ficha de cada casa"
+          >
+            Concepto de la línea
+          </Label>
+          <textarea
+            id="concept_blurb"
+            name="concept_blurb"
+            defaultValue={defaultLinea?.concept_blurb ?? ''}
+            rows={3}
+            placeholder="Ej. Estilos heterogéneos pensados para atender la amplia gama cultural de Argentina."
+            className={`${inputClass} resize-none`}
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            1-2 oraciones que aparecen como bajada del concepto de la línea en
+            la ficha de cualquier casa de esta línea.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <Label
+              htmlFor="naming_order"
+              hint="orden de tipología vs estilo"
+            >
+              Orden del nombre
+            </Label>
+            <select
+              id="naming_order"
+              name="naming_order"
+              defaultValue={defaultLinea?.naming_strategy?.order ?? 'tipologia-first'}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="tipologia-first">
+                Tipología primero — CASA NODO Estilo PAMPA
+              </option>
+              <option value="style-first">
+                Estilo primero — CASA PAMPA NODO
+              </option>
+            </select>
+          </div>
+          <div>
+            <Label
+              htmlFor="naming_suffix_source"
+              hint="qué entra entre CASA y el estilo"
+            >
+              Sufijo del nombre
+            </Label>
+            <select
+              id="naming_suffix_source"
+              name="naming_suffix_source"
+              defaultValue={defaultLinea?.naming_strategy?.suffix_source ?? 'tipologia'}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="tipologia">Tipología (EJE/NODO/...)</option>
+              <option value="variante">Variante (BASE/PLUS/...)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <Label
+            htmlFor="variante_labels_json"
+            hint="JSON: {variante_base: label}"
+          >
+            Labels de variantes
+          </Label>
+          <textarea
+            id="variante_labels_json"
+            name="variante_labels_json"
+            defaultValue={
+              defaultLinea?.variante_labels
+                ? JSON.stringify(defaultLinea.variante_labels, null, 2)
+                : ''
+            }
+            rows={6}
+            placeholder={
+              '{\n  "0": "Compacta",\n  "1": "1 Dormitorio",\n  "2": "2 Dormitorios",\n  "3": "3 Dormitorios"\n}'
+            }
+            className={`${inputClass} font-mono text-xs resize-none`}
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Keys = variante base ("0", "1", "2"…). Values = lo que se muestra
+            al usuario. Ejemplos: Atlas/Terra usan dormitorios; Bosque usa
+            plantas. JSON inválido → se ignora y queda el valor anterior.
+          </p>
+        </div>
+      </fieldset>
+
       {/* ── Visibilidad y orden ───────────────────────────────────── */}
       <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
         <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">

@@ -14,6 +14,8 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
+import type { EffectiveZoneRule } from '@/lib/content/zones'
+import { splitModelTitle } from '@/lib/content/model-naming'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import {
   type CatalogImage,
@@ -86,6 +88,10 @@ interface ModelRowProps {
   /** Cotizador Uber resuelto (tramos + cuota + slot base). Lo consume el
    *  panel Comparativo (cuota por variante + selector). null → "Cotizar". */
   cotizador?: CotizadorData | null
+  /** Regla zonal efectiva resuelta para (marca, provincia). null = sin
+   *  provincia elegida o sin reglas. Aplica modifier+extra_charge al precio
+   *  mostrado y muestra badges (promo/contacto/exclusión). */
+  zoneRule?: EffectiveZoneRule | null
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -112,7 +118,7 @@ function bedroomsFromSkus(skus: CatalogModel['skus']): number[] {
   return [...set].sort((a, b) => a - b)
 }
 
-// "Variantes con 1, 2, 3 o 4 dormitorios" — el copy completo, listo para
+// "Variantes con 1, 2 o 3 dormitorios" — el copy completo, listo para
 // uso standalone (sin label "Dormitorios:" arriba).
 function fmtBedroomsLabeled(skus: CatalogModel['skus']): string {
   const beds = bedroomsFromSkus(skus)
@@ -153,14 +159,85 @@ function fmtAreasList(skus: CatalogModel['skus']): string {
   return `${rest} y ${last} m²`
 }
 
-// Precio mostrado en la ficha: si la marca no publica precios (Hausind),
-// muestra "Cotizar". Si publica y hay min, muestra "desde USD X".
-function fmtPrecioFicha(model: CatalogModel): string {
-  if (!model.show_prices) return 'Cotizar'
-  if (model.price_from && model.price_from > 0) {
-    return `desde USD ${Math.round(model.price_from).toLocaleString('es-AR')}`
+// Calcula el precio efectivo de un SKU aplicando oferta + regla zonal.
+// Orden: oferta primero (descuento sobre el base), después la zona modifica +
+// agrega transporte.
+function effectiveSkuPrice(
+  basePrice: number,
+  sku: CatalogModel['skus'][number],
+  zoneRule?: EffectiveZoneRule | null,
+): number {
+  const offerFactor =
+    sku.is_offer && sku.offer_pct != null ? 1 - sku.offer_pct / 100 : 1
+  const zoneFactor = 1 + (zoneRule?.price_modifier_pct ?? 0) / 100
+  const extra = zoneRule?.extra_charge_amount ?? 0
+  return basePrice * offerFactor * zoneFactor + extra
+}
+
+// Resuelve precio + oferta para mostrar en la ficha. Considera:
+//   - Sin show_prices o sin precio → "Cotizar"
+//   - Zona contact_only/excluded → "Cotizar"
+//   - Si algún SKU tiene oferta vigente → muestra "desde USD <descontado>" +
+//     el precio original tachado.
+//   - Sin oferta → "desde USD <ajustado por zona>".
+type FichaPrice =
+  | { kind: 'cotizar'; offerBadge?: string }
+  | { kind: 'normal'; text: string }
+  | { kind: 'offer'; text: string; original: string; label: string }
+
+function anyOfferLabel(model: CatalogModel): string | null {
+  const skuWithOffer = model.skus.find((s) => s.is_offer)
+  if (!skuWithOffer) return null
+  return skuWithOffer.offer_label?.trim() || 'Oferta'
+}
+
+function resolveFichaPrice(
+  model: CatalogModel,
+  zoneRule?: EffectiveZoneRule | null,
+): FichaPrice {
+  if (zoneRule?.contact_only || zoneRule?.excluded) {
+    return { kind: 'cotizar', offerBadge: anyOfferLabel(model) ?? undefined }
   }
-  return 'Cotizar'
+  if (!model.show_prices) {
+    // Marca esconde precios pero hay oferta activa → al menos mostramos el
+    // badge para que la promo se vea; el precio descontado se ve al abrir
+    // el cotizador.
+    return { kind: 'cotizar', offerBadge: anyOfferLabel(model) ?? undefined }
+  }
+  const priced = model.skus.filter(
+    (s) => s.precio_lista_usd != null && (s.precio_lista_usd as number) > 0,
+  )
+  if (priced.length === 0) {
+    return { kind: 'cotizar', offerBadge: anyOfferLabel(model) ?? undefined }
+  }
+
+  // Min effective price across SKUs (puede o no incluir oferta).
+  let bestSku = priced[0]
+  let bestPrice = effectiveSkuPrice(bestSku.precio_lista_usd as number, bestSku, zoneRule)
+  for (const s of priced.slice(1)) {
+    const p = effectiveSkuPrice(s.precio_lista_usd as number, s, zoneRule)
+    if (p < bestPrice) {
+      bestSku = s
+      bestPrice = p
+    }
+  }
+  const fmt = (n: number) =>
+    `desde USD ${Math.round(n).toLocaleString('es-AR')}`
+
+  if (bestSku.is_offer && bestSku.offer_pct != null) {
+    // Original = sin oferta pero con zona (para que el tachado tenga el mismo
+    // peso del precio "real" que pagarías sin la promo).
+    const noOfferFactor = 1 + (zoneRule?.price_modifier_pct ?? 0) / 100
+    const extra = zoneRule?.extra_charge_amount ?? 0
+    const original = (bestSku.precio_lista_usd as number) * noOfferFactor + extra
+    return {
+      kind: 'offer',
+      text: fmt(bestPrice),
+      original: fmt(original),
+      label: bestSku.offer_label?.trim() || 'Oferta',
+    }
+  }
+  return { kind: 'normal', text: fmt(bestPrice) }
 }
 
 // Render del valor de precio en la ficha: cuando es "Cotizar", abre la modal
@@ -171,56 +248,108 @@ function PrecioOrCotizar({
   className,
   style,
   onCotizarClick,
+  zoneRule,
 }: {
   model: CatalogModel
   className?: string
   style?: React.CSSProperties
   /** Si está, "Cotizar" abre la modal centrada en lugar del mailto. */
   onCotizarClick?: () => void
+  zoneRule?: EffectiveZoneRule | null
 }) {
-  const value = fmtPrecioFicha(model)
-  if (value === 'Cotizar') {
+  const resolved = resolveFichaPrice(model, zoneRule)
+  const offerBadge = resolved.kind === 'cotizar' ? resolved.offerBadge : null
+  const renderBadge = () => offerBadge ? (
+    <span style={{
+      display: 'inline-block',
+      fontSize: '0.78em',
+      padding: '1px 6px',
+      borderRadius: 4,
+      background: '#ff003d',
+      color: '#fff',
+      fontWeight: 600,
+      letterSpacing: '0.04em',
+      textTransform: 'uppercase' as const,
+      verticalAlign: 'middle',
+    }}>
+      {offerBadge}
+    </span>
+  ) : null
+  if (resolved.kind === 'cotizar') {
     // Con cotizador → modal con los 3 precios + disclaimer.
     // Sin cotizador (marca sin Uber configurado) → fallback al mailto.
     if (onCotizarClick) {
       return (
-        <button
-          type="button"
-          className={className}
-          style={style}
-          onClick={(e) => {
-            e.stopPropagation()
-            track('cotizar_open', {
-              source: 'ficha_listado',
-              model: model.display_name,
-            })
-            onCotizarClick()
-          }}
-        >
-          Cotizar
-        </button>
+        <span className={className} style={style}>
+          {renderBadge()}
+          <button
+            type="button"
+            style={{ background: 'transparent', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit', textDecoration: 'inherit' }}
+            onClick={(e) => {
+              e.stopPropagation()
+              track('cotizar_open', {
+                source: 'ficha_listado',
+                model: model.display_name,
+              })
+              onCotizarClick()
+            }}
+          >
+            Ver precio
+          </button>
+        </span>
       )
     }
     return (
-      <a
-        href={buildCotizarMailto({
-          modelName: model.display_name,
-          linea: displayLinea(model.linea),
-        })}
-        className={className}
-        style={style}
-        onClick={(e) => {
-          e.stopPropagation()
-          track('cotizar_open', { source: 'ficha_listado_mailto', model: model.display_name })
-        }}
-      >
-        Cotizar
-      </a>
+      <span className={className} style={style}>
+        {renderBadge()}
+        <a
+          href={buildCotizarMailto({
+            modelName: model.display_name,
+            linea: displayLinea(model.linea),
+          })}
+          style={{ color: 'inherit', textDecoration: 'inherit' }}
+          onClick={(e) => {
+            e.stopPropagation()
+            track('cotizar_open', { source: 'ficha_listado_mailto', model: model.display_name })
+          }}
+        >
+          Ver precio
+        </a>
+      </span>
+    )
+  }
+  if (resolved.kind === 'offer') {
+    return (
+      <span className={className} style={style}>
+        <span style={{
+          display: 'inline-block',
+          fontSize: '0.78em',
+          padding: '1px 6px',
+          borderRadius: 4,
+          background: '#ff003d',
+          color: '#fff',
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase' as const,
+          verticalAlign: 'middle',
+        }}>
+          {resolved.label}
+        </span>
+        <span style={{
+          textDecoration: 'line-through',
+          opacity: 0.45,
+          marginRight: 6,
+          fontWeight: 400,
+        }}>
+          {resolved.original}
+        </span>
+        <span style={{ fontWeight: 600 }}>{resolved.text}</span>
+      </span>
     )
   }
   return (
     <span className={className} style={style}>
-      {value}
+      {resolved.text}
     </span>
   )
 }
@@ -270,6 +399,7 @@ export default function ModelRow({
   lineaIconUrl = null,
   deliveryConditionsHtml = null,
   cotizador = null,
+  zoneRule = null,
 }: ModelRowProps) {
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
   // fallback al cover default del modelo.
@@ -756,10 +886,43 @@ export default function ModelRow({
                 />
               )}
               <p className="cf-row-tag">{displayLinea(model.linea)}</p>
-              {model.tipologia_code && (
-                <p className="cf-row-tipologia">Tipología {model.tipologia_code}</p>
-              )}
-              <h3 className="cf-row-name cf-row-name-collapsed">{model.display_name}</h3>
+              {(() => {
+                const split = splitModelTitle({
+                  style_name: model.style_name,
+                  tipologia_code_new: model.tipologia_code_new,
+                  strategy: model.naming_strategy,
+                })
+                return (
+                  <h3 className="cf-row-name cf-row-name-collapsed">
+                    {split.eyebrow && (
+                      <span
+                        className="cf-row-name-eyebrow"
+                        style={{
+                          display: 'block',
+                          fontSize: '0.85em',
+                          fontWeight: 500,
+                          letterSpacing: 'normal',
+                          color: '#666',
+                          lineHeight: 1.1,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {split.eyebrow}
+                      </span>
+                    )}
+                    <span
+                      className="cf-row-name-hero"
+                      style={{
+                        display: 'block',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {split.hero}
+                    </span>
+                  </h3>
+                )
+              })()}
               <p className="cf-row-bedrooms">
                 {fmtBedroomsLabeled(activeSkus ?? model.skus)}
               </p>
@@ -769,8 +932,27 @@ export default function ModelRow({
                   model={model}
                   className="cf-row-precio-val"
                   onCotizarClick={hasCotizador ? openCotizar : undefined}
+                  zoneRule={zoneRule}
                 />
               </p>
+              {zoneRule && (zoneRule.promo_label || zoneRule.excluded || zoneRule.contact_only) && (
+                <p className="cf-row-zone-badge" style={{
+                  fontSize: 11,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  marginTop: 4,
+                  color: zoneRule.excluded ? '#9a3b00' : zoneRule.contact_only ? '#0a5570' : '#1a5e2c',
+                  fontWeight: 600,
+                }}>
+                  {zoneRule.excluded
+                    ? '⚠ Consultar disponibilidad'
+                    : zoneRule.contact_only
+                      ? '☎ Cotización personal'
+                      : zoneRule.promo_label
+                        ? `🏷 ${zoneRule.promo_label}`
+                        : ''}
+                </p>
+              )}
             </div>
 
             {/* Logo de marca — hermano directo de .cf-row-info (no hijo del
@@ -802,10 +984,8 @@ export default function ModelRow({
             <h3 className="cf-row-name" style={{ fontSize: 22, marginBottom: 28, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{model.display_name}</h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 32, width: '100%' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Tipología</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{model.tipologia_code}</span>
-              </div>
+              {/* Bloque "Tipología" removido: la tipología ya está en el nombre
+                  (display_name = "CASA NODO Estilo PAMPA"). */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Superficie</span>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#0a0a0a' }}>{fmtAreasList(activeSkus ?? model.skus)}</span>
@@ -839,6 +1019,7 @@ export default function ModelRow({
                   className="cf-row-precio-val"
                   style={{ fontSize: 13 }}
                   onCotizarClick={hasCotizador ? openCotizar : undefined}
+                  zoneRule={zoneRule}
                 />
               </div>
             </div>

@@ -18,6 +18,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadCotizadorData } from '@/lib/content/cotizador-data'
+import { getAllProvincias, getActiveMarcaZonas } from '@/lib/supabase/queries/zones'
 import { getGroupedCatalog } from '@/lib/supabase/queries/catalog_grouped'
 import { getInstitutionalFooterCards } from '@/lib/supabase/queries/footer'
 import { getAllLineas } from '@/lib/supabase/queries/lineas'
@@ -123,6 +124,8 @@ export default async function CatalogoPage({ params }: PageProps) {
     deliveryConditions,
     cotizador,
     institutionalFooterCards,
+    provincias,
+    marcaZonas,
   ] = await Promise.all([
     getGroupedCatalog(
       supabase,
@@ -145,6 +148,8 @@ export default async function CatalogoPage({ params }: PageProps) {
     getDeliveryConditions(supabase, resolveMarcaId),
     loadCotizadorData(supabase),
     getInstitutionalFooterCards(supabase),
+    getAllProvincias(supabase),
+    getActiveMarcaZonas(supabase),
   ])
 
   const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
@@ -193,6 +198,8 @@ export default async function CatalogoPage({ params }: PageProps) {
       selectedMarca={selectedMarca}
       cotizador={cotizador}
       institutionalFooterCards={institutionalFooterCards}
+      provincias={provincias}
+      marcaZonas={marcaZonas}
     />
   )
 }

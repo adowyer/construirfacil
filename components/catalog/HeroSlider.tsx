@@ -399,7 +399,7 @@ function SlideConcepto({ concept }: { concept: BrandContent }) {
             <div className="cf-edu-card-plain">
               <span className="cf-edu-card-code">{v}</span>
               <span className="cf-edu-card-plain-meta">
-                {v === 'V0' ? '40 m² · 1 dorm.' : v === 'V2' ? '75 m² · 2 dorm.' : '86 m² · 4 dorm.'}
+                {v === 'V0' ? '40 m² · compacta' : v === 'V2' ? '75 m² · 2 dorm.' : '86 m² · 3 dorm.'}
               </span>
             </div>
           </div>

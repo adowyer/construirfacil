@@ -25,6 +25,7 @@ import {
   FileText,
   Activity,
   Save,
+  Tag,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -169,7 +170,14 @@ function Checkbox({
   )
 }
 
-const SISTEMAS_CONSTRUCTIVOS = ['SF', 'WF', 'STEEL FRAME', 'WOOD FRAME', 'MAMPOSTERIA'] as const
+// Lista canónica de SCs del catálogo (matchea house_catalog.sistema_constructivo).
+// Si un modelo trae un valor distinto, lo merge dinámicamente más abajo para
+// no perder el value al re-guardar.
+const SISTEMAS_CONSTRUCTIVOS = [
+  'WOOD PLUS',
+  'STEEL PLUS',
+  'STONE PLUS',
+] as const
 const ESTILOS = ['', 'Moderno', 'Campestre', 'Nórdico', 'Industrial', 'Chalet', 'Mediterráneo', 'Clásico'] as const
 
 // ---------------------------------------------------------------------------
@@ -335,11 +343,19 @@ export function ModelForm({
               className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors bg-white"
             >
               <option value="">— sin sistema —</option>
-              {SISTEMAS_CONSTRUCTIVOS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
+              {(() => {
+                const current = defaultValues?.sistema_constructivo ?? ''
+                const known = new Set<string>(SISTEMAS_CONSTRUCTIVOS as readonly string[])
+                const all = [...SISTEMAS_CONSTRUCTIVOS as readonly string[]]
+                // Si el modelo trae un SC que no está en la lista canónica,
+                // lo agregamos para no perderlo al guardar.
+                if (current && !known.has(current)) all.push(current)
+                return all.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))
+              })()}
             </select>
           </div>
           <div>
@@ -527,6 +543,61 @@ export function ModelForm({
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Oferta ──────────────────────────────────────────────────── */}
+      <section className="bg-white border border-[#E8E8E5] rounded-2xl p-7 shadow-sm">
+        <SectionHeader icon={Tag} title="Oferta" />
+        <div className="space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="is_offer"
+              defaultChecked={defaultValues?.is_offer ?? false}
+              className="mt-0.5"
+            />
+            <span className="text-sm">
+              <strong>Activar oferta</strong> — el catálogo muestra badge,
+              precio con descuento y permite filtrar por "Ofertas".
+            </span>
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="offer_pct">Descuento (%)</Label>
+              <NumberInput
+                id="offer_pct"
+                name="offer_pct"
+                defaultValue={defaultValues?.offer_pct}
+                step="0.01"
+                min="0"
+                placeholder="10"
+              />
+            </div>
+            <div>
+              <Label htmlFor="offer_label">Etiqueta del badge</Label>
+              <TextInput
+                id="offer_label"
+                name="offer_label"
+                defaultValue={defaultValues?.offer_label}
+                placeholder="Oferta · Liquidación · Lanzamiento"
+              />
+            </div>
+            <div>
+              <Label htmlFor="offer_until">Expira el</Label>
+              <input
+                id="offer_until"
+                name="offer_until"
+                type="date"
+                defaultValue={defaultValues?.offer_until ?? ''}
+                className="w-full border border-[#E8E8E5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/10 transition-colors"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Si la fecha de expiración pasó, el catálogo público ignora la
+            oferta automáticamente (no hace falta apagar el toggle a mano).
+          </p>
         </div>
       </section>
 

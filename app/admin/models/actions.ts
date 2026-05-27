@@ -129,6 +129,10 @@ type CatalogPayload = {
   pdf_url: string | null
   status: string
   featured_rank: number | null
+  is_offer: boolean
+  offer_pct: number | null
+  offer_label: string | null
+  offer_until: string | null
 }
 
 function buildPayload(formData: FormData): CatalogPayload {
@@ -161,6 +165,10 @@ function buildPayload(formData: FormData): CatalogPayload {
     pdf_url: parseOptionalText(formData.get('pdf_url')),
     status: parseRequiredText(formData.get('status')) || 'active',
     featured_rank: parseOptionalInt(formData.get('featured_rank')),
+    is_offer: parseCheckbox(formData.get('is_offer')),
+    offer_pct: parseOptionalNumber(formData.get('offer_pct')),
+    offer_label: parseOptionalText(formData.get('offer_label')),
+    offer_until: parseOptionalText(formData.get('offer_until')),
   }
 }
 
