@@ -269,6 +269,8 @@ async function loadSkuIndex(supabase) {
   //   - strip de tildes (LANÍN ≡ LANIN, CAMBOATÁ ≡ CAMBOATA)
   //   - apóstrofos curly → ASCII (AMBA’Y ≡ AMBA'Y)
   //   - UPPERCASE + trim
+  //   - strip prefijo "LINEA " (DB guarda "LÍNEA TERRA"; folderToLinea extrae
+  //     "TERRA"). Se aplica acá para que ambos lados converjan.
   // El style_name original (con/sin acento) se conserva en los rows de DB; esto
   // es solo la KEY del index para que el folder del Drive matchee con DB sin
   // depender de la consistencia exacta de acentos.
@@ -280,6 +282,7 @@ async function loadSkuIndex(supabase) {
       .replace(/[’‘`´]/g, "'")
       .trim()
       .toUpperCase()
+      .replace(/^LINEA\s+/, '')
   }
 
   for (const r of data || []) {

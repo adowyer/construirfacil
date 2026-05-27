@@ -560,10 +560,8 @@ body:has(.cf-row.cf-expanded) {
    depender de display:flex en el padre (otras reglas pueden pisarlo). */
 .cf-row-name-eyebrow {
   display: block;
-  font-size: 0.85em;
   font-weight: 500;
   letter-spacing: normal;
-  color: #666;
   line-height: 1.1;
   margin-bottom: 2px;
 }
@@ -625,26 +623,33 @@ body:has(.cf-row.cf-expanded) {
   font-weight: 600;
 }
 
-/* Cuando el valor es "Cotizar", lo mostramos como link discreto: subrayado
-   fino y color CF. Aplica tanto al <a> legacy (sin cotizador → mailto) como
-   al <button> nuevo (con cotizador → abre modal). */
-a.cf-row-precio-val,
-button.cf-row-precio-val {
+/* Cuando el valor es "Cotizar"/"Ver precio", lo mostramos como link discreto:
+   subrayado fino y color CF. El className `cf-row-precio-val` va en el <span>
+   exterior; los selectores apuntan al <a>/<button> que está dentro. */
+.cf-row-precio-val a,
+.cf-row-precio-val button {
   color: #ff003d;
-  text-decoration: underline;
-  text-decoration-color: rgba(255, 0, 61, 0.35);
-  text-underline-offset: 2px;
-  transition: text-decoration-color 0.15s ease;
+  text-decoration: none;
+  text-transform: uppercase !important;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+  transition: opacity 0.15s ease;
   background: transparent;
   border: 0;
   padding: 0;
-  font: inherit;
+  font-family: inherit;
   cursor: pointer;
 }
 
-a.cf-row-precio-val:hover,
-button.cf-row-precio-val:hover {
-  text-decoration-color: #ff003d;
+.cf-row-precio-val a strong,
+.cf-row-precio-val button strong {
+  font-weight: 700;
+}
+
+.cf-row-precio-val a:hover,
+.cf-row-precio-val button:hover {
+  opacity: 0.75;
 }
 
 .cf-row-name {
@@ -876,7 +881,7 @@ button.cf-row-precio-val:hover {
   object-fit: cover;
   pointer-events: none;
   z-index: 1;
-  transition: transform 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cf-row.cf-expanded .cf-row-img {
@@ -885,8 +890,11 @@ button.cf-row-precio-val:hover {
   object-fit: cover;
 }
 
+/* Zoom claro al hover para señalar que la foto es clickeable y abre más
+   info (afford). Transition rápida (0.6s) para que se sienta interactivo
+   en vez de "ambiental". */
 .cf-row:not(.cf-expanded):hover .cf-row-img {
-  transform: scale(1.025);
+  transform: scale(1.06);
 }
 
 /* ── RIGHT: Detail column (visible only when expanded) ── */
@@ -931,14 +939,14 @@ button.cf-row-precio-val:hover {
 }
 
 .cf-row-overlay-name {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.025em;
   margin: 0 0 4px;
 }
 
 .cf-row-overlay-sub {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.85;
   margin: 0;
 }
@@ -2134,7 +2142,7 @@ button.cf-row-precio-val:hover {
 }
 
 .cf-pn-title {
-  font-size: clamp(28px, 3vw, 44px);
+  font-size: clamp(24px, 2.7vw, 40px);
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.1;
@@ -2732,12 +2740,6 @@ button.cf-row-precio-val:hover {
   display: flex;
   flex-direction: column;
   padding: 28px 28px 0;
-  /* Capa gris semi-opaca. El aside vive sobre fotos editables (cliente sube
-     lo que quiera): en Atlas las fachadas son oscuras → la caja se veía negra,
-     en Bosque hay más cielo → blanca. Subimos la opacidad a 0.55 (vs los 0.28
-     de `.cf-glass-card` del HeroRow, que tiene fotos curadas) para que el
-     fondo nunca domine, sin importar la foto. Sigue siendo translúcida y
-     mantiene el blur. */
   background: rgba(30, 30, 30, 0.55);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -2752,8 +2754,9 @@ button.cf-row-precio-val:hover {
 }
 
 .cf-pn-estilos-aside-title {
-  font-size: clamp(28px, 3vw, 38px);
-  font-weight: 800;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1 !important;
   letter-spacing: -0.02em;
   margin: 0 0 4px;
   color: #fff;
@@ -2772,6 +2775,7 @@ button.cf-row-precio-val:hover {
   flex: 1 1 auto;
   overflow-y: auto;
   padding-bottom: 28px;
+  padding-top: 10px;
   /* Máscara sutil para indicar scroll arriba/abajo. */
   -webkit-mask-image: linear-gradient(to bottom,
       transparent 0,
@@ -4198,7 +4202,7 @@ button.cf-row-precio-val:hover {
 .cf-sticky-filters-inner {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 26px;
   padding: 14px 20px;
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -4414,6 +4418,45 @@ button.cf-row-precio-val:hover {
 
 .cf-stf-pill-dark {
   background: #fff;
+}
+
+/* "Sólo Ofertas" — verde para destacarse del rojo de la barra y los pills
+   blancos de filtros. Activo = verde más oscuro. Compound selector para
+   ganarle a .cf-stf-pill:hover (que también es 0,2,0). */
+.cf-stf-pill.cf-stf-pill-ofertas {
+  background: #00b070;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 6px 16px;
+}
+
+.cf-stf-pill.cf-stf-pill-ofertas:hover {
+  background: #009060;
+  color: #fff;
+}
+
+.cf-stf-pill.cf-stf-pill-ofertas.active {
+  background: #006e4a;
+  color: #fff;
+}
+
+/* "Ver →" — CTA al final que hace scroll suave a la grilla del listado.
+   Blanco con texto rojo para destacar de los pills (todos blancos con texto
+   negro) y de la barra (roja). */
+.cf-stf-pill.cf-stf-pill-ver {
+  background: #fff;
+  color: #ff003d;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 18px;
+}
+
+.cf-stf-pill.cf-stf-pill-ver:hover {
+  background: #fff;
+  color: #d80035;
+  transform: translateY(-1px);
 }
 
 /* Disabled: combinaciones que vaciarían el listado. No clickeable. */
@@ -6635,7 +6678,7 @@ button.cf-row-precio-val:hover {
   background: #ff003d;
   color: #fff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 11px 20px;

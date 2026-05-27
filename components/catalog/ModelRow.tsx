@@ -264,6 +264,7 @@ function PrecioOrCotizar({
       display: 'inline-block',
       fontSize: '0.78em',
       padding: '1px 6px',
+      margin: '7px 0', 
       borderRadius: 4,
       background: '#ff003d',
       color: '#fff',
@@ -284,7 +285,19 @@ function PrecioOrCotizar({
           {renderBadge()}
           <button
             type="button"
-            style={{ background: 'transparent', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit', textDecoration: 'inherit' }}
+            style={{
+              background: 'transparent',
+              border: 0,
+              padding: 0,
+              fontFamily: 'inherit',
+              fontSize: 14,
+              fontWeight: 500,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: '#ff003d',
+              textDecoration: 'none',
+              cursor: 'pointer',
+            }}
             onClick={(e) => {
               e.stopPropagation()
               track('cotizar_open', {
@@ -294,7 +307,7 @@ function PrecioOrCotizar({
               onCotizarClick()
             }}
           >
-            Ver precio
+            Ver <strong style={{ fontWeight: 700 }}>precio</strong>
           </button>
         </span>
       )
@@ -307,13 +320,20 @@ function PrecioOrCotizar({
             modelName: model.display_name,
             linea: displayLinea(model.linea),
           })}
-          style={{ color: 'inherit', textDecoration: 'inherit' }}
+          style={{
+            fontSize: 14,
+            fontWeight: 500,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: '#ff003d',
+            textDecoration: 'none',
+          }}
           onClick={(e) => {
             e.stopPropagation()
             track('cotizar_open', { source: 'ficha_listado_mailto', model: model.display_name })
           }}
         >
-          Ver precio
+          Ver <strong style={{ fontWeight: 700 }}>precio</strong>
         </a>
       </span>
     )
@@ -899,10 +919,8 @@ export default function ModelRow({
                         className="cf-row-name-eyebrow"
                         style={{
                           display: 'block',
-                          fontSize: '0.85em',
                           fontWeight: 500,
                           letterSpacing: 'normal',
-                          color: '#666',
                           lineHeight: 1.1,
                           marginBottom: 2,
                         }}
@@ -914,7 +932,7 @@ export default function ModelRow({
                       className="cf-row-name-hero"
                       style={{
                         display: 'block',
-                        fontWeight: 800,
+                        fontWeight: 700,
                         lineHeight: 1,
                       }}
                     >
@@ -927,7 +945,7 @@ export default function ModelRow({
                 {fmtBedroomsLabeled(activeSkus ?? model.skus)}
               </p>
               <p className="cf-row-precio">
-                <span className="cf-row-precio-lbl">Precio:</span>{' '}
+                <span className="cf-row-precio-lbl"></span>{' '}
                 <PrecioOrCotizar
                   model={model}
                   className="cf-row-precio-val"
@@ -981,7 +999,25 @@ export default function ModelRow({
               />
             )}
             <p className="cf-row-tag" style={{ marginBottom: 12 }}>{displayLinea(model.linea)}</p>
-            <h3 className="cf-row-name" style={{ fontSize: 22, marginBottom: 28, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{model.display_name}</h3>
+            {(() => {
+              const split = splitModelTitle({
+                style_name: model.style_name,
+                tipologia_code_new: model.tipologia_code_new,
+                strategy: model.naming_strategy,
+              })
+              return (
+                <h3 className="cf-row-name" style={{ marginBottom: 28, textTransform: 'uppercase', letterSpacing: '-0.01em', color: '#0a0a0a', lineHeight: 1.05 }}>
+                  {split.eyebrow && (
+                    <span style={{ display: 'block', fontSize: 22, fontWeight: 500, marginBottom: 2 }}>
+                      {split.eyebrow}
+                    </span>
+                  )}
+                  <span style={{ display: 'block', fontSize: 22, fontWeight: 700 }}>
+                    {split.hero}
+                  </span>
+                </h3>
+              )
+            })()}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 32, width: '100%' }}>
               {/* Bloque "Tipología" removido: la tipología ya está en el nombre
@@ -1013,11 +1049,11 @@ export default function ModelRow({
                 })()}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}>Precio</span>
+                <span style={{ fontSize: '9.5px', fontWeight: 500, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#aaa', marginBottom: 4 }}></span>
                 <PrecioOrCotizar
                   model={model}
                   className="cf-row-precio-val"
-                  style={{ fontSize: 13 }}
+                  style={{ fontSize: 14 }}
                   onCotizarClick={hasCotizador ? openCotizar : undefined}
                   zoneRule={zoneRule}
                 />
@@ -1060,7 +1096,21 @@ export default function ModelRow({
               {!isExpanded && (
                 <div className="cf-row-overlay" style={{ opacity: hovered ? 1 : 0 }}>
                   <div className="cf-row-overlay-content">
-                    <p className="cf-row-overlay-name">{model.display_name}</p>
+                    {(() => {
+                      const split = splitModelTitle({
+                        style_name: model.style_name,
+                        tipologia_code_new: model.tipologia_code_new,
+                        strategy: model.naming_strategy,
+                      })
+                      return (
+                        <p className="cf-row-overlay-name">
+                          {split.eyebrow && (
+                            <span style={{ fontWeight: 500 }}>{split.eyebrow} </span>
+                          )}
+                          <span style={{ fontWeight: 700 }}>{split.hero}</span>
+                        </p>
+                      )
+                    })()}
                     <p className="cf-row-overlay-sub">{fmtAreasList(activeSkus ?? model.skus)}</p>
                   </div>
                 </div>
@@ -1134,7 +1184,21 @@ export default function ModelRow({
                 Estás viendo la
               </span>
               <span className="cf-row-sticky-cta-name">
-                {model.display_name}
+                {(() => {
+                  const split = splitModelTitle({
+                    style_name: model.style_name,
+                    tipologia_code_new: model.tipologia_code_new,
+                    strategy: model.naming_strategy,
+                  })
+                  return (
+                    <>
+                      {split.eyebrow && (
+                        <span style={{ fontWeight: 500 }}>{split.eyebrow} </span>
+                      )}
+                      <span style={{ fontWeight: 700 }}>{split.hero}</span>
+                    </>
+                  )
+                })()}
               </span>
               <span className="cf-row-sticky-cta-linea">
                 {model.marca_name ? `${model.marca_name} · ` : ''}
@@ -1149,7 +1213,7 @@ export default function ModelRow({
               <button
                 type="button"
                 className="cf-row-sticky-cta-btn"
-                aria-label="Cotizar"
+                aria-label="Ver precio"
                 onClick={(e) => {
                   e.stopPropagation()
                   track('cotizar_open', {
@@ -1160,7 +1224,7 @@ export default function ModelRow({
                 }}
               >
                 <span className="cf-row-sticky-cta-btn-full">
-                  Cotizar
+                  Ver <strong style={{ fontWeight: 700 }}>precio</strong>
                   <span aria-hidden>→</span>
                 </span>
                 <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
@@ -1170,14 +1234,14 @@ export default function ModelRow({
             ) : (
               <a
                 className="cf-row-sticky-cta-btn"
-                aria-label="Cotizar"
+                aria-label="Ver precio"
                 href={buildCotizarMailto({
                   modelName: model.display_name,
                   linea: displayLinea(model.linea),
                 })}
               >
                 <span className="cf-row-sticky-cta-btn-full">
-                  Cotizar
+                  Ver <strong style={{ fontWeight: 700 }}>precio</strong>
                   <span aria-hidden>→</span>
                 </span>
                 <span className="cf-row-sticky-cta-btn-mini" aria-hidden>

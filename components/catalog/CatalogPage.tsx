@@ -229,7 +229,7 @@ export default function CatalogPage({
   // Multi-select: arrays. '' inicial sería un valor inválido, así que arrays vacíos.
   const [bedFilters, setBedFilters] = useState<string[]>([])
   const [sizeFilters, setSizeFilters] = useState<string[]>([])
-  const [priceFilters, setPriceFilters] = useState<string[]>([])
+  const [priceFilter, setPriceFilter] = useState<string | null>(null)
   const [provinciaId, setProvinciaId] = useState<string | null>(null)
   const [onlyOffers, setOnlyOffers] = useState<boolean>(false)
   // Orden fijo a "recommended" — sacamos el selector del UI (decisión del cliente).
@@ -260,8 +260,6 @@ export default function CatalogPage({
     setBedFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
   const toggleSize = (v: string) =>
     setSizeFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
-  const togglePrice = (v: string) =>
-    setPriceFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
   const toggleOffers = () => setOnlyOffers((v) => !v)
 
 
@@ -346,7 +344,7 @@ export default function CatalogPage({
   const skuMatchesFilters = (sku: CatalogModel['skus'][number]): boolean => {
     if (bedFilters.length > 0 && !bedFilters.some((b) => skuMatchesBed(sku, b))) return false
     if (sizeFilters.length > 0 && !sizeFilters.some((s) => skuMatchesSize(sku, s))) return false
-    if (priceFilters.length > 0 && !priceFilters.some((p) => skuMatchesPrice(sku, p))) return false
+    if (priceFilter && !skuMatchesPrice(sku, priceFilter)) return false
     return true
   }
 
@@ -356,7 +354,7 @@ export default function CatalogPage({
   const filtered = models.filter(m => {
     // Ofertas (oculta modelos sin ningún SKU en oferta activa).
     if (onlyOffers && !m.skus.some((s) => s.is_offer)) return false
-    if (bedFilters.length === 0 && sizeFilters.length === 0 && priceFilters.length === 0) return true
+    if (bedFilters.length === 0 && sizeFilters.length === 0 && !priceFilter) return true
     return m.skus.some(skuMatchesFilters)
   }).sort((a, b) => {
     // Solo "recommended" en el UI público. featured_rank asc, NULL al final.
@@ -378,13 +376,13 @@ export default function CatalogPage({
   // ¿Hay al menos 1 modelo que pase (beds[], sizes[], prices[])?
   // Misma lógica OR-dentro/AND-entre que skuMatchesFilters, pero con arrays
   // que el caller controla.
-  const hasResultsFor = (beds: string[], sizes: string[], prices: string[] = priceFilters): boolean =>
+  const hasResultsFor = (beds: string[], sizes: string[], price: string | null = priceFilter): boolean =>
     models.some((m) => {
-      if (beds.length === 0 && sizes.length === 0 && prices.length === 0) return true
+      if (beds.length === 0 && sizes.length === 0 && !price) return true
       return m.skus.some((s) => {
         if (beds.length > 0 && !beds.some((b) => skuMatchesBed(s, b))) return false
         if (sizes.length > 0 && !sizes.some((sz) => skuMatchesSize(s, sz))) return false
-        if (prices.length > 0 && !prices.some((pp) => skuMatchesPrice(s, pp))) return false
+        if (price && !skuMatchesPrice(s, price)) return false
         return true
       })
     })
@@ -395,17 +393,17 @@ export default function CatalogPage({
   // por sí sola haya match — se va a unir vía OR con las ya activas.
   const enabledBeds = new Set(
     BED_OPTIONS.filter(
-      (b) => bedFilters.includes(b) || hasResultsFor([b], sizeFilters, priceFilters),
+      (b) => bedFilters.includes(b) || hasResultsFor([b], sizeFilters, priceFilter),
     ),
   )
   const enabledSizes = new Set(
     SIZE_OPTIONS.filter(
-      (s) => sizeFilters.includes(s) || hasResultsFor(bedFilters, [s], priceFilters),
+      (s) => sizeFilters.includes(s) || hasResultsFor(bedFilters, [s], priceFilter),
     ),
   )
   const enabledPrices = new Set(
     PRICE_OPTIONS.filter(
-      (p) => priceFilters.includes(p) || hasResultsFor(bedFilters, sizeFilters, [p]),
+      (p) => priceFilter === p || hasResultsFor(bedFilters, sizeFilters, p),
     ),
   )
 
@@ -702,7 +700,7 @@ export default function CatalogPage({
           <StickyFilters
             bedFilters={bedFilters}
             sizeFilters={sizeFilters}
-            priceFilters={priceFilters}
+            priceFilter={priceFilter}
             provinciaId={provinciaId}
             onlyOffers={onlyOffers}
             enabledBeds={enabledBeds}
@@ -711,7 +709,7 @@ export default function CatalogPage({
             provincias={provincias}
             onBedToggle={toggleBed}
             onSizeToggle={toggleSize}
-            onPriceToggle={togglePrice}
+            onPriceChange={setPriceFilter}
             onProvinciaChange={setProvinciaId}
             onOffersToggle={toggleOffers}
           />

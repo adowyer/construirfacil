@@ -30,7 +30,7 @@ import {
   type SkuPrices,
 } from '@/lib/content/cotizador-data'
 import { variantLabel } from '@/lib/format/variant'
-import { styleDisplayName } from '@/lib/content/model-naming'
+import { splitModelTitle, styleDisplayName } from '@/lib/content/model-naming'
 import { ensureHtml } from '@/lib/content/rich'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import {
@@ -297,7 +297,21 @@ export function Panel1Description({
             {model.marca_name ? `${model.marca_name} · ` : ''}
             {displayLinea(model.linea)} · {estilo}
           </p>
-          <h2 className="cf-pn-title">{model.display_name}</h2>
+          {(() => {
+            const split = splitModelTitle({
+              style_name: model.style_name,
+              tipologia_code_new: model.tipologia_code_new,
+              strategy: model.naming_strategy,
+            })
+            return (
+              <h2 className="cf-pn-title">
+                {split.eyebrow && (
+                  <span style={{ fontWeight: 500 }}>{split.eyebrow} </span>
+                )}
+                <span style={{ fontWeight: 700 }}>{split.hero}</span>
+              </h2>
+            )
+          })()}
 
           <div className="cf-pn-stats">
             <div>
@@ -363,6 +377,15 @@ export function Panel1Description({
 // ─────────────────────────────────────────────────────────────────────────────
 // Panel galería genérico — base para Exteriores, Interiores, Planos, Axos
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Limpia el view_label: quita el sufijo de variante ("V3", "V1-V2", "V3-V4")
+// que algunos labels traen pegado del proceso de import. Devuelve null si el
+// label limpio queda vacío para que caiga al pillFallback.
+function cleanViewLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const cleaned = raw.replace(/\s*V\d+(?:[-–]V\d+)?\s*$/i, '').trim()
+  return cleaned.length > 0 ? cleaned : null
+}
 
 /**
  * Slider de imágenes con:
@@ -572,7 +595,7 @@ function PanelImageSlider({
             >
               {ignoreViewLabel
                 ? pillFallback(i)
-                : (img.view_label ?? pillFallback(i))}
+                : (cleanViewLabel(img.view_label) ?? pillFallback(i))}
             </button>
           ))}
         </div>
@@ -617,7 +640,7 @@ export function PanelExteriores({
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
       deliveryHtml={deliveryHtml}
-      varianteLabels={varianteLabels}
+      hideTodasTab
     />
   )
 }
@@ -638,7 +661,7 @@ export function PanelInteriores({
       label="Interiores"
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
-      varianteLabels={varianteLabels}
+      hideTodasTab
     />
   )
 }
@@ -668,7 +691,6 @@ export function PanelPlanos({
       pillFallback={(i) => `Plano ${i + 1}`}
       deliveryHtml={deliveryHtml}
       hideTodasTab
-      varianteLabels={varianteLabels}
     />
   )
 }
@@ -696,7 +718,6 @@ export function PanelAxos({
       deliveryHtml={deliveryHtml}
       labelClassName="cf-pn-gallery-label--axos"
       hideTodasTab
-      varianteLabels={varianteLabels}
     />
   )
 }
@@ -720,12 +741,24 @@ export function Panel3Tipologia({
       String(lc.tipologia_code).toUpperCase() === String(model.tipologia_code).toUpperCase(),
   )
 
+  const tipoCode = model.tipologia_code_new ?? model.tipologia_code ?? ''
   return (
     <div className="cf-pn cf-pn-text">
       <div className="cf-pn-text-inner">
-        <p className="cf-pn-eyebrow">Distribución arquitectónica</p>
-        {/* "Tipología X" removida: el code ya está en el display_name de
-            la card y la ficha (CASA NODO Estilo PAMPA). */}
+        <p
+          className="cf-pn-eyebrow"
+          style={{
+            fontSize: 17,
+            letterSpacing: '0.05em',
+            color: '#555',
+            marginBottom: 10,
+          }}
+        >
+          Qué ofrece la Tipología{' '}
+          {tipoCode && (
+            <strong style={{ fontWeight: 700, color: '#0a0a0a' }}>{tipoCode}</strong>
+          )}
+        </p>
         <h2 className="cf-pn-title">
           {row?.subtitle ?? 'Una tipología que integra distintos espacios'}
         </h2>
@@ -845,7 +878,21 @@ export function PanelEstilosCompare({
         </div>
         <aside className="cf-pn-estilos-aside">
           <p className="cf-pn-eyebrow">Estilo {current.estilo}</p>
-          <h3 className="cf-pn-estilos-aside-title">{styleDisplayName(current.style_name).toUpperCase()}</h3>
+          {(() => {
+            const split = splitModelTitle({
+              style_name: current.style_name,
+              tipologia_code_new: current.tipologia_code_new,
+              strategy: current.naming_strategy,
+            })
+            return (
+              <h3 className="cf-pn-estilos-aside-title">
+                {split.eyebrow && (
+                  <span style={{ display: 'block', fontWeight: 500 }}>{split.eyebrow}</span>
+                )}
+                <span style={{ display: 'block', fontWeight: 700 }}>{split.hero}</span>
+              </h3>
+            )
+          })()}
           <p className="cf-pn-body-empty">
             Esta tipología solo se ofrece en este estilo.
           </p>
@@ -870,8 +917,21 @@ export function PanelEstilosCompare({
       {/* Columna lateral con texto del estilo seleccionado, scrolleable */}
       <aside className="cf-pn-estilos-aside">
         <p className="cf-pn-eyebrow">{displayLinea(current.linea)} · Estilo {current.estilo}</p>
-        <h3 className="cf-pn-estilos-aside-title">{styleDisplayName(current.style_name).toUpperCase()}</h3>
-        <p className="cf-pn-estilos-aside-sub">{current.display_name}</p>
+        {(() => {
+          const split = splitModelTitle({
+            style_name: current.style_name,
+            tipologia_code_new: current.tipologia_code_new,
+            strategy: current.naming_strategy,
+          })
+          return (
+            <h3 className="cf-pn-estilos-aside-title">
+              {split.eyebrow && (
+                <span style={{ display: 'block', fontWeight: 500 }}>{split.eyebrow}</span>
+              )}
+              <span style={{ display: 'block', fontWeight: 700 }}>{split.hero}</span>
+            </h3>
+          )
+        })()}
         <div className="cf-pn-estilos-aside-body">
           {currentContent?.body ? (
             <div
@@ -1775,9 +1835,22 @@ function PanelRelated({
         <div className="cf-pn-related-feature">
           <header className="cf-pn-related-header">
             <p className="cf-pn-eyebrow">Más opciones</p>
-            <h3 className="cf-pn-related-title">
-              Casas similares a {model.display_name}
-            </h3>
+            {(() => {
+              const split = splitModelTitle({
+                style_name: model.style_name,
+                tipologia_code_new: model.tipologia_code_new,
+                strategy: model.naming_strategy,
+              })
+              return (
+                <h3 className="cf-pn-related-title">
+                  Casas similares a{' '}
+                  {split.eyebrow && (
+                    <span style={{ fontWeight: 500 }}>{split.eyebrow} </span>
+                  )}
+                  <span style={{ fontWeight: 700 }}>{split.hero}</span>
+                </h3>
+              )
+            })()}
           </header>
           <div className="cf-pn-related-grid-wrap">
             <div className="cf-pn-related-grid">
@@ -1811,9 +1884,21 @@ function PanelRelated({
                       <span className="cf-pn-related-card-linea">
                         {displayLinea(r.linea)} · {r.estilo}
                       </span>
-                      <span className="cf-pn-related-card-name">
-                        {r.display_name}
-                      </span>
+                      {(() => {
+                        const rSplit = splitModelTitle({
+                          style_name: r.style_name,
+                          tipologia_code_new: r.tipologia_code_new,
+                          strategy: r.naming_strategy,
+                        })
+                        return (
+                          <span className="cf-pn-related-card-name">
+                            {rSplit.eyebrow && (
+                              <span style={{ fontWeight: 500 }}>{rSplit.eyebrow} </span>
+                            )}
+                            <span style={{ fontWeight: 700 }}>{rSplit.hero}</span>
+                          </span>
+                        )
+                      })()}
                     </div>
                   </a>
                 ) : (

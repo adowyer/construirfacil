@@ -22,7 +22,7 @@ interface StickyFiltersProps {
   /** Multi-select: arrays de valores activos. Click en pill → toggle. */
   bedFilters: string[]
   sizeFilters: string[]
-  priceFilters: string[]
+  priceFilter: string | null
   provinciaId: string | null
   onlyOffers: boolean
   /** Sets de opciones que SÍ tienen resultados con los otros filtros activos. */
@@ -32,7 +32,7 @@ interface StickyFiltersProps {
   provincias: ProvinciaRow[]
   onBedToggle: (v: string) => void
   onSizeToggle: (v: string) => void
-  onPriceToggle: (v: string) => void
+  onPriceChange: (v: string | null) => void
   onProvinciaChange: (id: string | null) => void
   onOffersToggle: () => void
 }
@@ -50,17 +50,18 @@ const SIZE_OPTIONS: { value: string; label: string }[] = [
 
 // 4 bandas de precio (USD lista). Cubren la distribución real:
 //   ~30% catálogo < 100k, ~30% en 100-150k, ~30% en 150-300k, ~10% > 300k.
+// Labels en "mil" (no "k") — la mayoría del público no lee abreviaturas anglo.
 const PRICE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'lt100', label: '< 100k' },
-  { value: '100-150', label: '100–150k' },
-  { value: '150-300', label: '150–300k' },
-  { value: 'gt300', label: '+ 300k' },
+  { value: 'lt100', label: '-100mil' },
+  { value: '100-150', label: '100-150mil' },
+  { value: '150-300', label: '150-300mil' },
+  { value: 'gt300', label: '+300mil' },
 ]
 
 export default function StickyFilters({
   bedFilters,
   sizeFilters,
-  priceFilters,
+  priceFilter,
   provinciaId,
   onlyOffers,
   enabledBeds,
@@ -69,7 +70,7 @@ export default function StickyFilters({
   provincias,
   onBedToggle,
   onSizeToggle,
-  onPriceToggle,
+  onPriceChange,
   onProvinciaChange,
   onOffersToggle,
 }: StickyFiltersProps) {
@@ -78,7 +79,7 @@ export default function StickyFilters({
   const isSizeEnabled = (v: string) =>
     !enabledSizes || enabledSizes.has(v) || sizeFilters.includes(v)
   const isPriceEnabled = (v: string) =>
-    !enabledPrices || enabledPrices.has(v) || priceFilters.includes(v)
+    !enabledPrices || enabledPrices.has(v) || priceFilter === v
 
   // Mobile: la barra se reduce a una hamburguesa que abre los filtros en
   // un overlay translúcido desde arriba. Portal a <body> porque el shell
@@ -141,7 +142,7 @@ export default function StickyFilters({
   const activeCount =
     bedFilters.length +
     sizeFilters.length +
-    priceFilters.length +
+    (priceFilter ? 1 : 0) +
     (provinciaId ? 1 : 0) +
     (onlyOffers ? 1 : 0)
 
@@ -152,7 +153,7 @@ export default function StickyFilters({
 
       {/* DORMITORIOS — pills (multi-select) */}
       <div className="cf-stf-group">
-        <span className="cf-stf-lbl">Dorm.</span>
+        <span className="cf-stf-lbl">Dormitorios</span>
         {BED_OPTIONS.map((v) => {
           const enabled = isBedEnabled(v)
           const active = bedFilters.includes(v)
@@ -194,26 +195,21 @@ export default function StickyFilters({
         })}
       </div>
 
-      {/* PRECIO — pills (multi-select) */}
+      {/* PRECIO — single-select (compacto, ocupa menos espacio que 4 pills) */}
       <div className="cf-stf-group">
         <span className="cf-stf-lbl">USD</span>
-        {PRICE_OPTIONS.map((p) => {
-          const enabled = isPriceEnabled(p.value)
-          const active = priceFilters.includes(p.value)
-          return (
-            <button
-              key={p.value}
-              type="button"
-              className={`cf-stf-pill ${active ? 'active' : ''} ${
-                enabled ? '' : 'cf-stf-pill-disabled'
-              }`}
-              disabled={!enabled}
-              onClick={() => onPriceToggle(p.value)}
-            >
+        <select
+          className={`cf-stf-select ${priceFilter ? 'active' : ''}`}
+          value={priceFilter ?? ''}
+          onChange={(e) => onPriceChange(e.target.value || null)}
+        >
+          <option value="">Todos</option>
+          {PRICE_OPTIONS.map((p) => (
+            <option key={p.value} value={p.value} disabled={!isPriceEnabled(p.value)}>
               {p.label}
-            </button>
-          )
-        })}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* UBICACIÓN — select de provincia */}
@@ -233,15 +229,29 @@ export default function StickyFilters({
         </select>
       </div>
 
-      {/* OFERTAS — pill toggle. Inline (sin spacer) para no romper la barra
-          en desktops chicos. */}
+      {/* OFERTAS — toggle destacado en verde. Inline (sin spacer) para no
+          romper la barra en desktops chicos. */}
       <button
         type="button"
-        className={`cf-stf-pill cf-stf-pill-dark ${onlyOffers ? 'active' : ''}`}
+        className={`cf-stf-pill cf-stf-pill-ofertas ${onlyOffers ? 'active' : ''}`}
         onClick={onOffersToggle}
         aria-pressed={onlyOffers}
       >
-        Ofertas
+        Sólo Ofertas
+      </button>
+
+      {/* VER — CTA al final. Scroll smooth a la grilla del listado: si el
+          usuario está arriba, baja al primer modelo; si está en el medio,
+          el scrollIntoView del top de la grilla lo sube al inicio. */}
+      <button
+        type="button"
+        className="cf-stf-pill cf-stf-pill-ver"
+        onClick={() => {
+          const grid = document.querySelector('.cf-grid')
+          if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
+      >
+        Ver →
       </button>
     </>
   )
