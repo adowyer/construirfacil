@@ -770,14 +770,19 @@ export default function CatalogPage({
                 ? pickThumb(dynamicCoverImg)
                 : model.cover_url
 
-              // Otros modelos en la misma (linea, tipologia_code) — para panel 5.
+              // Otros modelos en la misma (linea, tipologia_code_new) — panel 5.
               // Usa `models` raw (no `filtered`) porque el panel Estilos quiere
               // mostrar SIEMPRE toda la oferta de estilos de la tipología, sin
               // que el filtro de estilo activo lo deje vacío.
+              //
+              // Importante: usamos `tipologia_code_new` (NODO/DECK/ZETA), no la
+              // legacy `tipologia_code` (O/U/Z). El mapeo legacy → new no es 1:1
+              // (un mismo "O" puede ser NODO o DECK según el SKU), así que filtrar
+              // por la legacy mezcla tipologías distintas en el panel.
               const otherStyles = models.filter(
                 (m) =>
                   m.linea === model.linea &&
-                  m.tipologia_code === model.tipologia_code &&
+                  m.tipologia_code_new === model.tipologia_code_new &&
                   m.group_slug !== model.group_slug,
               )
 
