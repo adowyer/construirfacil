@@ -39,6 +39,17 @@ type MarcaPayload = {
   city: string | null
   province: string | null
   show_prices: boolean
+  whatsapp_number: string | null
+  lead_notification_email: string | null
+}
+
+// WhatsApp: el storage guarda sólo dígitos (compatible con wa.me y con
+// `buildWhatsappUrl` que también sanitiza). Si el admin pega
+// "+54 9 11 3333-4444", queda como "5491133334444".
+function sanitizeWhatsapp(value: FormDataEntryValue | null): string | null {
+  if (value === null) return null
+  const digits = String(value).replace(/[^0-9]/g, '')
+  return digits === '' ? null : digits
 }
 
 // NOTA: `logo_url` NO se incluye acá. Lo gestiona el uploader dedicado
@@ -57,6 +68,8 @@ function buildPayload(formData: FormData): MarcaPayload {
     city: parseOptionalText(formData.get('city')),
     province: parseOptionalText(formData.get('province')),
     show_prices: formData.get('show_prices') === 'on',
+    whatsapp_number: sanitizeWhatsapp(formData.get('whatsapp_number')),
+    lead_notification_email: parseOptionalText(formData.get('lead_notification_email')),
   }
 }
 

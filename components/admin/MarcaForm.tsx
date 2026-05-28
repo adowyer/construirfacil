@@ -177,6 +177,50 @@ export function MarcaForm({
         </div>
       </fieldset>
 
+      {/* ── Notificación de leads ─────────────────────────────────── */}
+      <fieldset className="bg-white border border-[#E8E8E5] rounded-xl p-6">
+        <legend className="text-[11px] uppercase tracking-widest text-neutral-400 px-2 -ml-2 mb-4">
+          Notificación de leads
+        </legend>
+        <p className="text-xs text-neutral-500 mb-4">
+          Cuando alguien envía el form de &ldquo;Quiero esta casa&rdquo;, el
+          lead va al email de abajo y el botón post-success de WhatsApp usa
+          este número. Si quedan vacíos, se usa el WA por defecto y no se
+          envía email a la marca.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label
+              htmlFor="whatsapp_number"
+              hint="solo dígitos con código de país"
+            >
+              WhatsApp
+            </Label>
+            <input
+              type="tel"
+              id="whatsapp_number"
+              name="whatsapp_number"
+              defaultValue={defaultValues?.whatsapp_number ?? ''}
+              placeholder="ej. 5491133334444"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <Label htmlFor="lead_notification_email">
+              Email para nuevos leads
+            </Label>
+            <input
+              type="email"
+              id="lead_notification_email"
+              name="lead_notification_email"
+              defaultValue={defaultValues?.lead_notification_email ?? ''}
+              placeholder="ventas@marca.com"
+              className={inputClass}
+            />
+          </div>
+        </div>
+      </fieldset>
+
       <fieldset className="border border-[#E8E8E5] rounded-xl p-6 bg-white">
         <legend className="text-[11px] uppercase tracking-widest text-neutral-500 px-2">
           Catálogo público
