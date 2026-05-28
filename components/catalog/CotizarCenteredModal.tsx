@@ -46,6 +46,13 @@ export default function CotizarCenteredModal({
     sistema?: string | null
     marca?: string | null
     linea?: string | null
+    /** Datos extra para persistir el lead + email + WA per-marca. */
+    marca_id?: string | null
+    marca_whatsapp?: string | null
+    model_slug?: string | null
+    style_name?: string | null
+    tipologia_code_new?: string | null
+    provincia_id?: string | null
   }
   /** Si está, se muestra el link "Ver comparativo" — el callback debería
    *  cerrar la modal y expandir/scrollear al cuadro comparativo del modelo. */
@@ -90,6 +97,13 @@ export default function CotizarCenteredModal({
     sistema: context.sistema,
     tier: selectedTier?.label ?? null,
     priceUsd: selectedTier?.priceUsd ?? pricesUsd.lista ?? null,
+    marca_id: context.marca_id ?? null,
+    marca_name: context.marca ?? null,
+    marca_whatsapp: context.marca_whatsapp ?? null,
+    model_slug: context.model_slug ?? null,
+    style_name: context.style_name ?? null,
+    tipologia_code_new: context.tipologia_code_new ?? null,
+    provincia_id: context.provincia_id ?? null,
   }
 
   return (
@@ -131,7 +145,7 @@ export default function CotizarCenteredModal({
 
           <div className="cf-cotizar-modal-disclaimer">
             <p>
-              <strong>El precio es orientativo y flexible.</strong> Nuestras casas no
+              <strong>El precio es orientativo y dinámico.</strong> Nuestras casas no
               tienen un precio &ldquo;de catálogo&rdquo; porque cada cliente las configura
               a su preferencia. El valor final depende de la{' '}
               <strong>variante</strong> —superficie y distribución—, el{' '}

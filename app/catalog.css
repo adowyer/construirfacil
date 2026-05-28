@@ -891,9 +891,11 @@ body:has(.cf-row.cf-expanded) {
 }
 
 /* Zoom claro al hover para señalar que la foto es clickeable y abre más
-   info (afford). Transition rápida (0.6s) para que se sienta interactivo
-   en vez de "ambiental". */
-.cf-row:not(.cf-expanded):hover .cf-row-img {
+   info (afford). Trigger en .cf-row-img-wrap (no en .cf-row): así el zoom
+   sólo activa cuando el cursor está SOBRE la foto, y se sale al pasar por
+   la columna de info. Transition rápida (0.6s) para que se sienta
+   interactivo en vez de "ambiental". */
+.cf-row:not(.cf-expanded) .cf-row-img-wrap:hover .cf-row-img {
   transform: scale(1.06);
 }
 
@@ -3029,16 +3031,17 @@ body:has(.cf-row.cf-expanded) {
   background: rgba(0, 0, 0, 0.7);
 }
 
-/* Header de columna (Sup., Plantas, Dorm., ...). */
+/* Header de columna (Sup., Plantas, Dorm., ...). Alineado a la izquierda
+   para acompañar la alineación de las celdas. */
 .cf-pn-compare-th {
   background: rgba(0, 0, 0, 0.7);
-  padding: 10px 14px;
+  padding: 10px 18px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #fff;
-  text-align: center;
+  text-align: left;
 }
 
 /* Label de fila (V1, V2, ...). */
@@ -3055,39 +3058,36 @@ body:has(.cf-row.cf-expanded) {
   gap: 10px;
 }
 
-/* Checkbox visual al inicio de cada fila — pista visual estándar de
-   "elegí". Empty cuando no seleccionada, filled red con check al estarlo.
-   El comportamiento real lo maneja el button click (selectVariant). */
+/* Radio circular al inicio de cada fila — más moderno que el viejo
+   cuadradito. Empty con borde sutil, filled con dot rojo cuando seleccionada. */
 .cf-pn-compare-radio {
   display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   border: 2px solid currentColor;
-  opacity: 0.5;
+  opacity: 0.4;
   position: relative;
   flex-shrink: 0;
-  transition: opacity 0.15s ease, border-color 0.15s ease,
-    background-color 0.15s ease;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
 }
 
 .cf-pn-compare-row-lbl.selected .cf-pn-compare-radio {
   opacity: 1;
   border-color: #ff003d;
-  background: #ff003d;
 }
 
-/* Tilde del checkbox cuando está seleccionado. */
+/* Dot interno del radio cuando está seleccionado. */
 .cf-pn-compare-row-lbl.selected .cf-pn-compare-radio::after {
   content: '';
   position: absolute;
-  left: 3px;
-  top: 0px;
-  width: 4px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
   height: 8px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  border-radius: 50%;
+  background: #ff003d;
 }
 
 /* Celdas con valores — solo el dato, sin label inline. */
@@ -3117,14 +3117,17 @@ body:has(.cf-row.cf-expanded) {
   position: relative;
 }
 
+/* Overlay sutil sobre la textura de hormigón — solo para suavizar el
+   contraste con el header blanco y dar respiro visual. Mucho más liviano
+   que cuando había una foto a color detrás. */
 .cf-pn-compare-light::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(to bottom,
-      rgba(0, 0, 0, 0.45) 0%,
-      rgba(0, 0, 0, 0.3) 50%,
-      rgba(0, 0, 0, 0.55) 100%);
+      rgba(40, 40, 40, 0.35) 0%,
+      rgba(40, 40, 40, 0.22) 50%,
+      rgba(40, 40, 40, 0.42) 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -3254,8 +3257,8 @@ body:has(.cf-row.cf-expanded) {
   color: #999;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 10px 14px;
+  justify-content: flex-start;
+  padding: 10px 22px;
 }
 
 .cf-pn-compare-light .cf-pn-compare-row-lbl {
@@ -3264,27 +3267,32 @@ body:has(.cf-row.cf-expanded) {
   border: 0;
   font-family: inherit;
   cursor: pointer;
+  justify-content: flex-start;
+  text-align: left;
+  padding-left: 22px;
   transition: background-color 0.15s ease;
 }
 
 .cf-pn-compare-light .cf-pn-compare-row-lbl:hover {
-  background: rgba(232, 227, 208, 0.6);
+  background: rgba(60, 60, 60, 0.07);
 }
 
-/* Línea seleccionada: beige más oscuro (en lugar del rojo) — el rojo se
-   reserva ahora para el SC seleccionado, que es la decisión más visible. */
+/* Fila seleccionada: gris oscuro arquitectónico (era beige #a89e83). */
 .cf-pn-compare-light .cf-pn-compare-row-lbl.selected {
-  background: #a89e83;
+  background: #3a3a3a;
   color: #fff;
 }
 
 .cf-pn-compare-light .cf-pn-compare-cell {
   background: transparent;
   color: #0a0a0a;
+  justify-content: flex-start;
+  text-align: left;
+  padding-left: 18px;
 }
 
 .cf-pn-compare-light .cf-pn-compare-cell.selected {
-  background: #a89e83;
+  background: #3a3a3a;
   color: #fff;
 }
 
@@ -3313,7 +3321,8 @@ body:has(.cf-row.cf-expanded) {
   color: #fff !important;
 }
 
-/* Cotización inline al pie del cuadro. */
+/* Cotización inline al pie del cuadro. Gris claro arquitectónico
+   (antes beige #f0eee6). */
 .cf-pn-compare-inline-cotizar {
   display: flex;
   flex-wrap: wrap;
@@ -3322,7 +3331,7 @@ body:has(.cf-row.cf-expanded) {
   gap: 18px;
   padding: 22px 24px;
   margin-top: 4px;
-  background: #f0eee6;
+  background: #f5f5f5;
   border-radius: 14px;
 }
 

@@ -92,6 +92,13 @@ interface ModelRowProps {
    *  provincia elegida o sin reglas. Aplica modifier+extra_charge al precio
    *  mostrado y muestra badges (promo/contacto/exclusión). */
   zoneRule?: EffectiveZoneRule | null
+  /** ID de provincia activa (si la hay) — se persiste con el lead para que
+   *  ventas sepa de qué jurisdicción viene la consulta. */
+  provinciaId?: string | null
+  /** Número de WhatsApp de la marca dueña del modelo, sanitizado. Sobre-
+   *  escribe el fallback global `NEXT_PUBLIC_WHATSAPP_NUMBER` en la pantalla
+   *  post-success del LeadForm. NULL → usa el fallback. */
+  marcaWhatsapp?: string | null
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -420,6 +427,8 @@ export default function ModelRow({
   deliveryConditionsHtml = null,
   cotizador = null,
   zoneRule = null,
+  provinciaId = null,
+  marcaWhatsapp = null,
 }: ModelRowProps) {
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
   // fallback al cover default del modelo.
@@ -1157,6 +1166,8 @@ export default function ModelRow({
               allModels={allModels}
               deliveryConditionsHtml={deliveryConditionsHtml}
               cotizador={cotizador}
+              provinciaId={provinciaId}
+              marcaWhatsapp={marcaWhatsapp}
               onComparativoSelect={setComparativoSel}
             />
           )}
@@ -1224,7 +1235,7 @@ export default function ModelRow({
                 }}
               >
                 <span className="cf-row-sticky-cta-btn-full">
-                  Ver <strong style={{ fontWeight: 700 }}>precio</strong>
+                  Quiero <strong style={{ fontWeight: 700 }}>esta casa</strong>
                   <span aria-hidden>→</span>
                 </span>
                 <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
@@ -1241,7 +1252,7 @@ export default function ModelRow({
                 })}
               >
                 <span className="cf-row-sticky-cta-btn-full">
-                  Ver <strong style={{ fontWeight: 700 }}>precio</strong>
+                  Quiero <strong style={{ fontWeight: 700 }}>esta casa</strong>
                   <span aria-hidden>→</span>
                 </span>
                 <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
@@ -1335,6 +1346,12 @@ export default function ModelRow({
             sistema: null,
             marca: model.marca_name,
             linea: displayLinea(model.linea),
+            marca_id: model.marca_id ?? null,
+            marca_whatsapp: marcaWhatsapp,
+            model_slug: model.group_slug,
+            style_name: model.style_name,
+            tipologia_code_new: model.tipologia_code_new,
+            provincia_id: provinciaId,
           }}
           onOpenComparativo={goToComparativo}
         />

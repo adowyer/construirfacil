@@ -237,7 +237,7 @@ export default function StickyFilters({
         onClick={onOffersToggle}
         aria-pressed={onlyOffers}
       >
-        Sólo Ofertas
+        Ofertas
       </button>
 
       {/* VER — CTA al final. Scroll smooth a la grilla del listado: si el

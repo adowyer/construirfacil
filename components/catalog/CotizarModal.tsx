@@ -46,7 +46,20 @@ export default function CotizarModal({
   cotizador: CotizadorData
   /** Los 3 precios del SKU de la variante elegida (SC del contexto). */
   pricesUsd: SkuPrices
-  context: { model?: string; variante?: string | null; sistema?: string | null }
+  context: {
+    model?: string
+    variante?: string | null
+    sistema?: string | null
+    /** Datos extra para que el lead que el usuario eventualmente envíe desde
+     *  el "Quiero esta casa" final llegue con marca, modelo, provincia, etc. */
+    marca?: string | null
+    marca_id?: string | null
+    marca_whatsapp?: string | null
+    model_slug?: string | null
+    style_name?: string | null
+    tipologia_code_new?: string | null
+    provincia_id?: string | null
+  }
   /** Sistemas constructivos disponibles para esta variante. Si llega vacío
    *  o con 1 solo elemento, no se muestra el selector (siguen pasando
    *  `pricesUsd` y `context.sistema` originales sin cambios). */
@@ -120,6 +133,13 @@ export default function CotizarModal({
     sistema: selectedSC,
     tier: selectedTier?.label ?? null,
     priceUsd: selectedTier?.priceUsd ?? effectivePrices.lista ?? null,
+    marca_id: context.marca_id ?? null,
+    marca_name: context.marca ?? null,
+    marca_whatsapp: context.marca_whatsapp ?? null,
+    model_slug: context.model_slug ?? null,
+    style_name: context.style_name ?? null,
+    tipologia_code_new: context.tipologia_code_new ?? null,
+    provincia_id: context.provincia_id ?? null,
   }
 
   return (

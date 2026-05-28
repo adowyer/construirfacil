@@ -807,6 +807,12 @@ export default function CatalogPage({
                   deliveryConditionsHtml={deliveryConditionsHtml}
                   cotizador={cotizador}
                   zoneRule={zoneByModel.get(model.group_slug) ?? null}
+                  provinciaId={provinciaId}
+                  marcaWhatsapp={
+                    model.marca_id
+                      ? marcas.find((mm) => mm.id === model.marca_id)?.whatsapp_number ?? null
+                      : null
+                  }
                 />
               )
             })}

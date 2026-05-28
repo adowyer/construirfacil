@@ -36,7 +36,6 @@ import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModa
 import {
   type CatalogImage,
   type CatalogAttributeRow,
-  imagesForSkus,
   groupAttributesByType,
   pickFull,
 } from '@/lib/supabase/queries/catalog_panels'
@@ -102,6 +101,11 @@ interface PanelsProps {
     variante: string | null
     pricesUsd: SkuPrices
   }) => void
+  /** Provincia activa + WhatsApp de la marca — se threadean al
+   *  CotizarModal del Comparativo para que el lead "Quiero esta casa"
+   *  llegue con la geo + WA correctos. */
+  provinciaId?: string | null
+  marcaWhatsapp?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1036,10 +1040,11 @@ export function Panel6CasaQueCrece({
 // Lavadero formatter: la DB tiene 'INTERIOR' | 'EXTERIOR' | null | otra string.
 function fmtLavadero(l: string | null | undefined): string {
   if (!l) return '—'
-  const u = l.toUpperCase().trim()
-  if (u === 'NO' || u === '-' || u === '—') return '—'
-  if (u === 'INTERIOR' || u === 'INT') return '✓ Interior'
-  if (u === 'EXTERIOR' || u === 'EXT') return '✓ Exterior'
+  // Strip trailing dot ("Ext." → "Ext") para que matchee con las claves.
+  const u = l.toUpperCase().trim().replace(/\.$/, '')
+  if (u === 'NO' || u === '0' || u === '-' || u === '—') return '—'
+  if (u === 'INTERIOR' || u === 'INT') return 'Interior'
+  if (u === 'EXTERIOR' || u === 'EXT') return 'Exterior'
   // String custom (ej. "Cubierto").
   return l
 }
@@ -1049,12 +1054,16 @@ export function Panel7Comparativo({
   images,
   activeSkus,
   cotizador = null,
+  provinciaId = null,
+  marcaWhatsapp = null,
   onSelect,
 }: {
   model: CatalogModel
   images: CatalogImage[]
   activeSkus: CatalogModel['skus']
   cotizador?: CotizadorData | null
+  provinciaId?: string | null
+  marcaWhatsapp?: string | null
   /** Notifica al ModelRow la variante elegida (nombre + precios) para que
    *  el CTA flotante cotice ESA selección y no el precio "desde". */
   onSelect?: (sel: { variante: string | null; pricesUsd: SkuPrices }) => void
@@ -1118,28 +1127,13 @@ export function Panel7Comparativo({
     ? skuPrices(skuForVarSC(selectedVar))
     : {}
 
-  // Foto de fondo del panel (item 14: la foto está bien, solo el CUADRO
-  // interno va blanco). Preferimos la variante más grande con floors=2,
-  // sino la mayor; fallback a cualquier exterior render del modelo.
-  const sortedByArea = [...uniqueVars].sort(
-    (a, b) => (b.area_m2 ?? 0) - (a.area_m2 ?? 0),
-  )
-  const preferred = sortedByArea.find((v) => v.floors === 2) ?? sortedByArea[0]
-  const heroImg =
-    (preferred &&
-      imagesForSkus(images, [preferred.id]).find(
-        (img) => img.is_exterior === true && img.image_type === 'render',
-      )) ??
-    images.find(
-      (img) => img.is_exterior === true && img.image_type === 'render',
-    )
-
+  // Fondo: textura de hormigón (más neutra y arquitectónica que la foto
+  // del modelo, que competía con el cuadro del comparativo). Static asset.
   return (
     <div
       className="cf-pn cf-pn-compare cf-pn-compare-light"
       style={{
-        backgroundImage: heroImg ? `url('${pickFull(heroImg)}')` : undefined,
-        backgroundColor: heroImg ? undefined : model.lqip_color,
+        backgroundImage: "url('/Fondo-hormig%C3%B3n.jpg')",
       }}
     >
       <div className="cf-pn-compare-feature">
@@ -1290,6 +1284,13 @@ export function Panel7Comparativo({
             model: model.display_name,
             variante: selectedVar?.variante ?? null,
             sistema: currentSC,
+            marca: model.marca_name,
+            marca_id: model.marca_id ?? null,
+            marca_whatsapp: marcaWhatsapp,
+            model_slug: model.group_slug,
+            style_name: model.style_name,
+            tipologia_code_new: model.tipologia_code_new,
+            provincia_id: provinciaId,
           }}
           systems={model.systems}
           pricesForSC={(sc) => {
@@ -2028,6 +2029,8 @@ export default function ExpandedPanels(props: PanelsProps) {
           images={props.images}
           activeSkus={props.activeSkus}
           cotizador={props.cotizador ?? null}
+          provinciaId={props.provinciaId ?? null}
+          marcaWhatsapp={props.marcaWhatsapp ?? null}
           onSelect={props.onComparativoSelect}
         />
       </div>

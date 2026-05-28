@@ -19,13 +19,16 @@ export const WHATSAPP_NUMBER = (
 export function buildWhatsappUrl(opts: {
   localidad?: string | null
   modelName?: string | null
+  /** Número per-marca (sobre-escribe el default de env). Se sanitiza igual
+   *  que WHATSAPP_NUMBER: solo dígitos. */
+  marcaWhatsapp?: string | null
 }): string | null {
-  if (!WHATSAPP_NUMBER) return null
+  const sanitized = (opts.marcaWhatsapp ?? '').replace(/[^0-9]/g, '')
+  const number = sanitized || WHATSAPP_NUMBER
+  if (!number) return null
   const lines = ['Hola, vengo de ConstruirFácil.']
   if (opts.modelName) lines.push(`Me interesa: ${opts.modelName}.`)
   if (opts.localidad) lines.push(`Localidad: ${opts.localidad}.`)
   lines.push('Quiero más información para construir mi casa.')
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    lines.join('\n'),
-  )}`
+  return `https://wa.me/${number}?text=${encodeURIComponent(lines.join('\n'))}`
 }

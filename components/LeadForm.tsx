@@ -24,11 +24,30 @@ const LBL = {
   light: 'block text-[11px] uppercase tracking-widest text-neutral-400 mb-1.5',
 }
 
+export interface LeadFormCatalogContext {
+  /** Marca (FK marcas) — para que el lead llegue al email correcto y la
+   *  pantalla post-success ofrezca WA con el número per-marca. */
+  marca_id?: string | null
+  marca_name?: string | null
+  /** Número de WhatsApp de la marca (sin "+" ni espacios). Si no se pasa,
+   *  cae al fallback `NEXT_PUBLIC_WHATSAPP_NUMBER`. */
+  marca_whatsapp?: string | null
+  model_slug?: string | null
+  style_name?: string | null
+  tipologia_code_new?: string | null
+  variante?: string | null
+  sistema_constructivo?: string | null
+  provincia_id?: string | null
+  precio_desde_usd?: number | null
+  cuota_ars?: number | null
+}
+
 export function LeadForm({
   defaultLocalidad,
   defaultMessage,
   variant = 'dark',
   submitLabel = 'Quiero que me contacten',
+  catalog,
 }: {
   defaultLocalidad?: string | null
   /** Prefilla el campo "Contanos qué buscás" — útil cuando el form se abre
@@ -40,6 +59,10 @@ export function LeadForm({
    *  (ReservarModal) usa "Quiero esta casa →" porque ya hay un modelo
    *  concreto y suena a cierre, no a "dejá tus datos". */
   submitLabel?: string
+  /** Contexto del catálogo cuando el form se abre desde "Quiero esta casa"
+   *  — se materializa en hidden inputs para que el server action lo
+   *  persista en `leads` y lo use para el email a la marca. */
+  catalog?: LeadFormCatalogContext
 }) {
   const field = FIELD[variant]
   const lbl = LBL[variant]
@@ -53,8 +76,14 @@ export function LeadForm({
 
   useEffect(() => {
     if (pathRef.current) pathRef.current.value = window.location.pathname
-    setWaUrl(buildWhatsappUrl({ localidad: defaultLocalidad ?? null }))
-  }, [defaultLocalidad])
+    setWaUrl(
+      buildWhatsappUrl({
+        localidad: defaultLocalidad ?? null,
+        modelName: catalog?.style_name ?? null,
+        marcaWhatsapp: catalog?.marca_whatsapp ?? null,
+      }),
+    )
+  }, [defaultLocalidad, catalog?.style_name, catalog?.marca_whatsapp])
 
   useEffect(() => {
     if (state.ok) track('lead')
@@ -96,6 +125,48 @@ export function LeadForm({
   return (
     <form action={formAction} className="space-y-5">
       <input type="hidden" name="path" ref={pathRef} />
+      {/* Contexto del catálogo — hidden inputs que el action lee + persiste
+          en columnas de `leads`. Solo se renderizan los valores presentes;
+          el form genérico /cotizar (sin catalog) los omite todos. */}
+      {catalog?.marca_id && (
+        <input type="hidden" name="marca_id" value={catalog.marca_id} />
+      )}
+      {catalog?.model_slug && (
+        <input type="hidden" name="model_slug" value={catalog.model_slug} />
+      )}
+      {catalog?.style_name && (
+        <input type="hidden" name="style_name" value={catalog.style_name} />
+      )}
+      {catalog?.tipologia_code_new && (
+        <input
+          type="hidden"
+          name="tipologia_code_new"
+          value={catalog.tipologia_code_new}
+        />
+      )}
+      {catalog?.variante && (
+        <input type="hidden" name="variante" value={catalog.variante} />
+      )}
+      {catalog?.sistema_constructivo && (
+        <input
+          type="hidden"
+          name="sistema_constructivo"
+          value={catalog.sistema_constructivo}
+        />
+      )}
+      {catalog?.provincia_id && (
+        <input type="hidden" name="provincia_id" value={catalog.provincia_id} />
+      )}
+      {catalog?.precio_desde_usd != null && (
+        <input
+          type="hidden"
+          name="precio_desde_usd"
+          value={String(catalog.precio_desde_usd)}
+        />
+      )}
+      {catalog?.cuota_ars != null && (
+        <input type="hidden" name="cuota_ars" value={String(catalog.cuota_ars)} />
+      )}
 
       {state.error && (
         <div

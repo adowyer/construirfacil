@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { LeadForm } from '@/components/LeadForm'
+import { LeadForm, type LeadFormCatalogContext } from '@/components/LeadForm'
 
 export interface ReservarContext {
   model?: string
@@ -26,6 +26,32 @@ export interface ReservarContext {
   sistema?: string | null
   tier?: string | null
   priceUsd?: number | null
+  /** Datos extra para persistir en `leads` + armar el email a la marca y
+   *  el link de WA per-marca en la pantalla post-success. */
+  marca_id?: string | null
+  marca_name?: string | null
+  marca_whatsapp?: string | null
+  model_slug?: string | null
+  style_name?: string | null
+  tipologia_code_new?: string | null
+  provincia_id?: string | null
+  cuotaArs?: number | null
+}
+
+function contextToCatalog(ctx: ReservarContext): LeadFormCatalogContext {
+  return {
+    marca_id: ctx.marca_id,
+    marca_name: ctx.marca_name,
+    marca_whatsapp: ctx.marca_whatsapp,
+    model_slug: ctx.model_slug,
+    style_name: ctx.style_name,
+    tipologia_code_new: ctx.tipologia_code_new,
+    variante: ctx.variante,
+    sistema_constructivo: ctx.sistema,
+    provincia_id: ctx.provincia_id,
+    precio_desde_usd: ctx.priceUsd ?? null,
+    cuota_ars: ctx.cuotaArs ?? null,
+  }
 }
 
 function buildPrefilledMessage(ctx: ReservarContext): string {
@@ -125,6 +151,7 @@ export default function ReservarModal({
           defaultMessage={message}
           variant="light"
           submitLabel={resolvedSubmitLabel}
+          catalog={contextToCatalog(context)}
         />
       </div>
     </dialog>

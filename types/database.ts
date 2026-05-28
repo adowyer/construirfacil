@@ -46,6 +46,13 @@ export interface Marca {
   approved_at: string | null
   approved_by: string | null
   show_prices: boolean
+  /** Número de WhatsApp para el CTA "Hablá ahora" en el post-success del
+   *  lead (sin "+" ni espacios, formato internacional). NULL → fallback al
+   *  NEXT_PUBLIC_WHATSAPP_NUMBER global. */
+  whatsapp_number: string | null
+  /** Email al que se envía el lead "Quiero esta casa" para esta marca.
+   *  NULL → no se manda mail a la marca (solo confirmación al cliente). */
+  lead_notification_email: string | null
   created_at: string
   updated_at: string
 }
