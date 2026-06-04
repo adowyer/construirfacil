@@ -61,6 +61,12 @@ interface HeroRowProps {
   /** Map de nombre de línea (UPPERCASE) → modelos únicos por style_name de
    *  esa línea. Usado por LineaModal para mostrar la grid de modelos. */
   modelosByLineaName?: Record<string, LineaModelo[]>
+  /** Si está definida, hace clickable el slide Principal (slide 3) — al
+   *  hacer click se dispara este callback. Pensado para que, cuando la home
+   *  está en modo `home` (catálogo cerrado), el slide actúe como "Ver
+   *  catálogo". En modo catálogo se deja undefined → slide no clickable
+   *  (cero regresión). */
+  onVerCatalogo?: () => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,8 +233,18 @@ function SlidePasos({ s }: { s?: HeaderSlide }) {
   )
 }
 
+// Si el admin configuró `cta_url` apuntando al catálogo interno
+// (`/catalogo*`), preferimos desplegarlo inline cuando estamos en la home
+// (`onVerCatalogo` disponible) en vez de navegar — sino el slide hace una
+// nav de página completa, perdiendo la sensación de catálogo siempre presente.
+function isInternalCatalogUrl(url: string | null | undefined): boolean {
+  return !!url && (url === '/catalogo' || url.startsWith('/catalogo/'))
+}
+
 // Slide 2: Crece (Split Left)
-function SlideCrece({ growthPairs, onOpenModal, s }: { growthPairs: GrowthPair[], onOpenModal: () => void, s?: HeaderSlide }) {
+function SlideCrece({ growthPairs, onOpenModal, onVerCatalogo, s }: { growthPairs: GrowthPair[], onOpenModal: () => void, onVerCatalogo?: () => void, s?: HeaderSlide }) {
+  const ctaLabel = s?.cta_label?.trim() || 'Ver más'
+  const ctaToCatalog = isInternalCatalogUrl(s?.cta_url) && !!onVerCatalogo
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split">
       <div
@@ -249,10 +265,12 @@ function SlideCrece({ growthPairs, onOpenModal, s }: { growthPairs: GrowthPair[]
               __html: s?.body || HEADER_DEFAULTS.crece?.body || '',
             }}
           />
-          {s?.cta_url ? (
-            <a href={s.cta_url} className="cf-hero-more-btn" style={{ marginTop: 'auto' }}>{s.cta_label?.trim() || 'Ver más'} →</a>
+          {ctaToCatalog ? (
+            <button className="cf-hero-more-btn" onClick={onVerCatalogo} style={{ marginTop: 'auto' }}>{ctaLabel} →</button>
+          ) : s?.cta_url ? (
+            <a href={s.cta_url} className="cf-hero-more-btn" style={{ marginTop: 'auto' }}>{ctaLabel} →</a>
           ) : s?.long_body && (
-            <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{s?.cta_label?.trim() || 'Ver más'} →</button>
+            <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{ctaLabel} →</button>
           )}
         </div>
       </div>
@@ -307,7 +325,9 @@ function SlidePrincipal({ s }: { s?: HeaderSlide }) {
 }
 
 // Slide 4: Flex Build Suit (Split Right)
-function SlideFlex({ onOpenModal, s }: { onOpenModal: () => void, s?: HeaderSlide }) {
+function SlideFlex({ onOpenModal, onVerCatalogo, s }: { onOpenModal: () => void, onVerCatalogo?: () => void, s?: HeaderSlide }) {
+  const ctaLabel = s?.cta_label?.trim() || 'Ver más'
+  const ctaToCatalog = isInternalCatalogUrl(s?.cta_url) && !!onVerCatalogo
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-split cf-slide-split-right">
       <div className="cf-slide-split-panel" style={{ justifyContent: 'flex-end', paddingBottom: '30px' }}>
@@ -323,10 +343,12 @@ function SlideFlex({ onOpenModal, s }: { onOpenModal: () => void, s?: HeaderSlid
               __html: s?.body || HEADER_DEFAULTS.flex?.body || '',
             }}
           />
-          {s?.cta_url ? (
-            <a href={s.cta_url} className="cf-hero-more-btn" style={{ marginTop: 'auto' }}>{s.cta_label?.trim() || 'Ver más'} →</a>
+          {ctaToCatalog ? (
+            <button className="cf-hero-more-btn" onClick={onVerCatalogo} style={{ marginTop: 'auto' }}>{ctaLabel} →</button>
+          ) : s?.cta_url ? (
+            <a href={s.cta_url} className="cf-hero-more-btn" style={{ marginTop: 'auto' }}>{ctaLabel} →</a>
           ) : s?.long_body && (
-            <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{s?.cta_label?.trim() || 'Ver más'} →</button>
+            <button className="cf-hero-more-btn" onClick={onOpenModal} style={{ marginTop: 'auto' }}>{ctaLabel} →</button>
           )}
         </div>
       </div>
@@ -627,6 +649,7 @@ export default function HeroRow({
   growthPairs = [],
   lineaPhotosByName = {},
   modelosByLineaName = {},
+  onVerCatalogo,
 }: HeroRowProps) {
   // Resolver el "sub" (tagline) de cada línea contra el admin (lineas.tagline).
   // Si la DB tiene tagline, override el hardcoded de LINEAS; sino, fallback.
@@ -847,13 +870,30 @@ export default function HeroRow({
         <SlidePasos s={sPasos} />
       </div>
       <div key={`${keyPrefix}-crece`} className="cf-hero-row-slide cf-hero-row-slide-split">
-        <SlideCrece growthPairs={growthPairs} s={sCrece} onOpenModal={() => { if (creceSection) setModalSection(creceSection) }} />
+        <SlideCrece growthPairs={growthPairs} s={sCrece} onOpenModal={() => { if (creceSection) setModalSection(creceSection) }} onVerCatalogo={onVerCatalogo} />
       </div>
-      <div key={`${keyPrefix}-principal`} className="cf-hero-row-slide cf-hero-row-slide-principal">
+      <div
+        key={`${keyPrefix}-principal`}
+        className="cf-hero-row-slide cf-hero-row-slide-principal"
+        onClick={onVerCatalogo}
+        role={onVerCatalogo ? 'button' : undefined}
+        tabIndex={onVerCatalogo ? 0 : undefined}
+        onKeyDown={
+          onVerCatalogo
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onVerCatalogo()
+                }
+              }
+            : undefined
+        }
+        style={onVerCatalogo ? { cursor: 'pointer' } : undefined}
+      >
         <SlidePrincipal s={sPrincipal} />
       </div>
       <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
-        <SlideFlex s={sFlex} onOpenModal={() => { if (flexSection) setModalSection(flexSection) }} />
+        <SlideFlex s={sFlex} onOpenModal={() => { if (flexSection) setModalSection(flexSection) }} onVerCatalogo={onVerCatalogo} />
       </div>
       <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
         <SlideLineasIntro s={sLineasIntro} />

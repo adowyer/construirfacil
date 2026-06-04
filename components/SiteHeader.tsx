@@ -39,11 +39,19 @@ interface SiteHeaderProps {
    *  cuando está en modo catálogo abierto, para volver al modo home sin
    *  recargar la página. */
   onInicioClick?: () => void
+  /** Si está, muestra un botón destacado en el header para abrir el catálogo */
+  onVerCatalogo?: () => void
+  /** Modo home: oculta el breadcrumb y muestra el botón "Ver Catálogo" como
+   *  acción primaria del header. Cuando el catálogo está abierto, el header
+   *  vuelve al breadcrumb (que SÍ es útil para navegar entre marcas). */
+  homeMode?: boolean
 }
 
 export default function SiteHeader({
   marcaContext,
   onInicioClick,
+  onVerCatalogo,
+  homeMode = false,
 }: SiteHeaderProps = {}) {
   const router = useRouter()
 
@@ -121,65 +129,86 @@ export default function SiteHeader({
           </Link>
         )}
 
-        <nav className="cf-crumb" aria-label="Navegación de catálogo">
-          {onInicioClick ? (
-            <button
-              type="button"
-              className="cf-crumb-link cf-crumb-link--btn"
-              onClick={onInicioClick}
-            >
-              Inicio
-            </button>
-          ) : (
-            <Link href="/" className="cf-crumb-link">
-              Inicio
-            </Link>
-          )}
-          <span className="cf-crumb-sep" aria-hidden="true">
-            ›
-          </span>
-
-          {/* "Todas las marcas" siempre presente — actúa como link al
-              agregador y como trigger del dropdown. Si estamos en el
-              agregador, va destacado (naranja+bold); en modo marca, queda
-              en color neutral y el destacado pasa al nombre de la marca. */}
-          <div
-            className={`cf-crumb-select-wrap${
-              isAggregator ? ' cf-crumb-select-wrap--active' : ''
-            }`}
+        {/* Modo home: CTA primario "Ver Catálogo" en el lugar del breadcrumb.
+            Testeos con usuarios mostraron que el acceso al catálogo se perdía
+            cuando solo vivía en los CTAs de los sliders. El breadcrumb sí es
+            útil DENTRO del catálogo, así que ahí vuelve. */}
+        {homeMode && onVerCatalogo && (
+          <button
+            type="button"
+            onClick={onVerCatalogo}
+            className="cf-header-catalog-btn cf-header-catalog-btn--home"
           >
-            <span className="cf-crumb-select-value">Todas las marcas</span>
-            <span className="cf-crumb-select-chevron" aria-hidden="true">
-              ▾
-            </span>
-            <select
-              className="cf-crumb-select cf-crumb-select--invisible"
-              value={isAggregator ? '__all' : selectedMarca!.slug}
-              onChange={handleMarcaChange}
-              aria-label="Cambiar marca"
-            >
-              <option value="__all">Todas las marcas</option>
-              {availableMarcas.map((m) => (
-                <option key={m.slug} value={m.slug}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            Ver Catálogo
+          </button>
+        )}
 
-          {!isAggregator && (
-            <>
-              <span className="cf-crumb-sep" aria-hidden="true">
-                ›
+        {!homeMode && (
+          <nav className="cf-crumb" aria-label="Navegación de catálogo">
+            {onInicioClick ? (
+              <button
+                type="button"
+                className="cf-crumb-link cf-crumb-link--btn"
+                onClick={onInicioClick}
+              >
+                Inicio
+              </button>
+            ) : (
+              <Link href="/" className="cf-crumb-link">
+                Inicio
+              </Link>
+            )}
+            <span className="cf-crumb-sep" aria-hidden="true">
+              ›
+            </span>
+
+            {/* "Todas las marcas" siempre presente — actúa como link al
+                agregador y como trigger del dropdown. Si estamos en el
+                agregador, va destacado (naranja+bold); en modo marca, queda
+                en color neutral y el destacado pasa al nombre de la marca. */}
+            <div
+              className={`cf-crumb-select-wrap${
+                isAggregator ? ' cf-crumb-select-wrap--active' : ''
+              }`}
+            >
+              <span className="cf-crumb-select-value">Todas las marcas</span>
+              <span className="cf-crumb-select-chevron" aria-hidden="true">
+                ▾
               </span>
-              <span className="cf-crumb-current">{selectedMarca!.name}</span>
-            </>
-          )}
-        </nav>
+              <select
+                className="cf-crumb-select cf-crumb-select--invisible"
+                value={isAggregator ? '__all' : selectedMarca!.slug}
+                onChange={handleMarcaChange}
+                aria-label="Cambiar marca"
+              >
+                <option value="__all">Todas las marcas</option>
+                {availableMarcas.map((m) => (
+                  <option key={m.slug} value={m.slug}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!isAggregator && (
+              <>
+                <span className="cf-crumb-sep" aria-hidden="true">
+                  ›
+                </span>
+                <span className="cf-crumb-current">{selectedMarca!.name}</span>
+              </>
+            )}
+          </nav>
+        )}
       </div>
 
-      {/* ── Lado derecho: sello CF → siempre link a la home. ───────── */}
-      <Link
+      {/* ── Lado derecho: sello CF.
+          Plain <a> (no Next Link) intencional: el click client-side a "/"
+          desde /catalogo no funcionaba en algunos browsers — sospechamos un
+          quirk de Next 16 al re-renderizar CatalogPage con un selectedMarca
+          distinto. Plain anchor fuerza full nav del browser, que para
+          volver a la home (contenido completamente distinto) está bien. */}
+      <a
         href="/"
         aria-label="ConstruirFácil — inicio"
         className="cf-site-header-cf-link"
@@ -191,7 +220,7 @@ export default function SiteHeader({
           alt="ConstruirFácil"
           className="cf-site-header-cf"
         />
-      </Link>
+      </a>
     </header>
   )
 }
