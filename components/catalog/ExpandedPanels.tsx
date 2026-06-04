@@ -859,6 +859,7 @@ export function PanelExteriores({
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
       deliveryHtml={deliveryHtml}
+      varianteLabels={varianteLabels}
       hideTodasTab
     />
   )
@@ -880,6 +881,7 @@ export function PanelInteriores({
       label="Interiores"
       bgSize="cover"
       pillFallback={(i) => `Foto ${i + 1}`}
+      varianteLabels={varianteLabels}
       hideTodasTab
     />
   )
@@ -909,6 +911,7 @@ export function PanelPlanos({
       bgSizeCss="auto 70%"
       pillFallback={(i) => `Plano ${i + 1}`}
       deliveryHtml={deliveryHtml}
+      varianteLabels={varianteLabels}
       hideTodasTab
     />
   )
@@ -936,6 +939,7 @@ export function PanelAxos({
       ignoreViewLabel
       deliveryHtml={deliveryHtml}
       labelClassName="cf-pn-gallery-label--axos"
+      varianteLabels={varianteLabels}
       hideTodasTab
     />
   )
