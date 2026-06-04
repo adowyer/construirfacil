@@ -17,6 +17,13 @@
  *           INTERIORES/
  *             Casa <NOMBRE>/        scoped a casa, O
  *             <file directo>        scoped a tipología (caso BOSQUE: interior común)
+ *     BARRIO <X>/                   X = ATLAS | BOSQUE | TERRA
+ *       <file directo>              scoped a TODA la línea (image_type='barrio')
+ *
+ * BARRIO: fotos del lote/predio aplicables a todos los modelos de la línea.
+ *   Hoy las 3 carpetas existen pero solo TERRA tiene fotos cargadas; cuando
+ *   ATLAS/BOSQUE tengan sus fotos, las pisamos en el folder y el sync
+ *   actualiza solo (por drive_file_id).
  *
  * Filename:  ^(\d+)\s+(.+?)(?:\s+V([\d.\-]+))?\.(png|jpg|jpeg|pdf)$
  *
@@ -132,6 +139,13 @@ function folderToLinea(folderName) {
   return m ? m[1].toUpperCase() : null
 }
 
+/** "BARRIO TERRA" → "TERRA" (sino null). Carpeta de fotos comunes del barrio
+ *  aplicables a TODOS los modelos de la línea. */
+function folderToBarrioLinea(folderName) {
+  const m = String(folderName).match(/^barrio\s+(\w+)/i)
+  return m ? m[1].toUpperCase() : null
+}
+
 /** "V2-3-4" → ["V2","V3","V4"]   |   "V3.1" → ["V3.1"]   |   null → null */
 function parseVariantTag(tag) {
   if (!tag) return null
@@ -170,16 +184,50 @@ function slug(s) {
  * Returns null si el path no matchea la estructura esperada (skip).
  */
 function inferContext(pathParts, fileName) {
-  // Esperamos al mínimo: LINEA X / Tipologia N / <section> / ...
-  if (pathParts.length < 3) return null
+  if (pathParts.length < 1) return null
 
-  const linea = folderToLinea(pathParts[0])
-  const tipologia_code = folderToTipologiaCode(pathParts[1])
-  if (!linea || !tipologia_code) return null
+  // ── Caso especial: BARRIO <X>/ ───────────────────────────────────────
+  // Carpeta al mismo nivel que LINEA <X>/, contiene fotos comunes del
+  // predio/barrio aplicables a TODOS los SKUs de la línea. Son fotos
+  // sueltas sin estructura de variantes — relax el parser de filename:
+  // intentamos primero el regex estricto (NN Nombre V<x>.ext); si falla,
+  // aceptamos cualquier nombre y derivamos sort_order del primer número
+  // que aparezca en el filename (default 99 si no hay número).
+  // Ejemplos válidos: "01 Vista 1.png", "Vista 1.png", "IMG_3421.jpg".
+  const barrioLinea = folderToBarrioLinea(pathParts[0])
+  if (barrioLinea) {
+    const m = fileName.match(FILENAME_RE)
+    let sort_order, view_label, ext
+    if (m) {
+      sort_order = parseInt(m[1], 10)
+      view_label = m[2].trim()
+      ext = m[4].toLowerCase()
+    } else {
+      const extMatch = fileName.match(/\.(png|jpg|jpeg|pdf)$/i)
+      if (!extMatch) return null
+      ext = extMatch[1].toLowerCase()
+      const stem = fileName.slice(0, fileName.length - ext.length - 1).trim()
+      // El primer número del filename manda el orden: "Vista 1" → 1,
+      // "Vista 10" → 10. Sin número, 99 → al final pero estable.
+      const numMatch = stem.match(/(\d+)/)
+      sort_order = numMatch ? parseInt(numMatch[1], 10) : 99
+      view_label = stem
+    }
+    return {
+      linea: barrioLinea,
+      tipologia_code: null,      // barrio NO tiene tipología
+      image_type: 'barrio',
+      is_exterior: true,          // se filtra junto con exteriores en el panel
+      style_name: null,
+      casa_folder: null,
+      sort_order,
+      view_label,
+      variants: null,              // siempre aplica a TODOS los SKUs de la línea
+      ext,
+    }
+  }
 
-  const section = pathParts[2] // AXONOMETRIAS | Planos | Renders
-
-  // Parse filename
+  // Resto del flujo: necesita filename con formato estricto.
   const m = fileName.match(FILENAME_RE)
   if (!m) return null
 
@@ -188,6 +236,15 @@ function inferContext(pathParts, fileName) {
   const variant_tag = m[3] || null
   const ext = m[4].toLowerCase()
   const variants = parseVariantTag(variant_tag) // null si no hay tag
+
+  // Esperamos al mínimo: LINEA X / Tipologia N / <section> / ...
+  if (pathParts.length < 3) return null
+
+  const linea = folderToLinea(pathParts[0])
+  const tipologia_code = folderToTipologiaCode(pathParts[1])
+  if (!linea || !tipologia_code) return null
+
+  const section = pathParts[2] // AXONOMETRIAS | Planos | Renders
 
   let image_type = 'render'
   let is_exterior = false
@@ -324,6 +381,20 @@ async function loadSkuIndex(supabase) {
  */
 function resolveSkus(idx, ctx) {
   const linea = idx.norm(ctx.linea)
+
+  // ── Caso BARRIO: aplica a TODOS los SKUs de la línea ────────────────
+  // No filtra por tipología ni style — recorre las claves byTipologia que
+  // empiezan con `linea::` y junta todos los SKUs.
+  if (ctx.image_type === 'barrio') {
+    const out = []
+    for (const [key, skus] of idx.byTipologia.entries()) {
+      if (key.startsWith(`${linea}::`)) {
+        for (const s of skus) out.push(s.id)
+      }
+    }
+    return out
+  }
+
   const tip = idx.norm(ctx.tipologia_code)
   const style = ctx.style_name ? idx.norm(ctx.style_name) : null
 
@@ -410,6 +481,10 @@ async function downloadFile(drive, fileId) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function storagePathFor(ctx, fileName) {
+  // BARRIO: no tiene tipologia, va a `<linea>/barrio/<file>`
+  if (ctx.image_type === 'barrio') {
+    return [ctx.linea.toLowerCase(), 'barrio', slug(fileName)].join('/')
+  }
   const parts = [ctx.linea.toLowerCase()]
   parts.push(`t${ctx.tipologia_code.toLowerCase()}`)
   if (ctx.image_type === 'plano') {
@@ -549,8 +624,19 @@ async function main() {
       counters.processed++
       if (VERBOSE || counters.processed <= 15) {
         const variantStr = ctx.variants ? `[${ctx.variants.join(',')}]` : '[*]'
+        const slot =
+          ctx.image_type === 'barrio'
+            ? 'BARRIO'
+            : ctx.image_type === 'plano'
+            ? 'PLANOS'
+            : ctx.image_type === 'axo'
+            ? 'AXOS'
+            : ctx.is_exterior
+            ? 'EXT'
+            : 'INT'
+        const tipStr = ctx.tipologia_code ? `T${ctx.tipologia_code}` : '-'
         console.log(
-          `  → ${ctx.linea}/T${ctx.tipologia_code}/${ctx.image_type === 'plano' ? 'PLANOS' : ctx.is_exterior ? 'EXT' : 'INT'}/${ctx.style_name || '(tipología)'} V${variantStr}  ${file.name}  →  ${skuIds.length} SKUs`,
+          `  → ${ctx.linea}/${tipStr}/${slot}/${ctx.style_name || '(línea)'} V${variantStr}  ${file.name}  →  ${skuIds.length} SKUs`,
         )
       }
       continue

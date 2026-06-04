@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, Fragment, type ReactNode } from 'react'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
+import type { EffectiveZoneRule } from '@/lib/content/zones'
 import { buildCotizarMailto, getAsesorHref } from '@/lib/cta/mailto'
 import CotizarModal from './CotizarModal'
 import { track } from '@/lib/track/client'
@@ -106,6 +107,10 @@ interface PanelsProps {
    *  llegue con la geo + WA correctos. */
   provinciaId?: string | null
   marcaWhatsapp?: string | null
+  /** Regla zonal efectiva para (modelo, provincia). Si `excluded`, el panel
+   *  Comparativo esconde el cotizador y el CTA "Ver precio" — la marca no
+   *  opera en la zona del usuario, no tiene sentido cotizar. */
+  zoneRule?: EffectiveZoneRule | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,6 +156,25 @@ function fmtAreasList(skus: CatalogModel['skus']): string {
   const last = areas[areas.length - 1]
   const rest = areas.slice(0, -1).join(', ')
   return `${rest} y ${last} m²`
+}
+
+function bathroomsFromSkus(skus: CatalogModel['skus']): number[] {
+  const set = new Set<number>()
+  for (const sku of skus) {
+    const b = sku.bathrooms
+    if (b == null) continue
+    set.add(b)
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+function fmtBathroomsList(skus: CatalogModel['skus']): string {
+  const baths = bathroomsFromSkus(skus)
+  if (baths.length === 0) return '—'
+  if (baths.length === 1) return String(baths[0])
+  const last = baths[baths.length - 1]
+  const rest = baths.slice(0, -1).join(', ')
+  return `${rest} o ${last}`
 }
 
 /**
@@ -291,6 +315,9 @@ export function Panel1Description({
   const bedsList = bedroomsFromSkus(activeSkus)
   const dormLbl =
     bedsList.length === 1 && bedsList[0] === 1 ? 'dormitorio' : 'dormitorios'
+  const bathsList = bathroomsFromSkus(activeSkus)
+  const bathLbl =
+    bathsList.length === 1 && bathsList[0] === 1 ? 'baño' : 'baños'
   const varLbl = filteredVariantesCount === 1 ? 'variante' : 'variantes'
 
   return (
@@ -319,14 +346,98 @@ export function Panel1Description({
 
           <div className="cf-pn-stats">
             <div>
+              <span
+                aria-hidden
+                style={{ display: 'block', marginBottom: 4, color: '#666' }}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" x2="14" y1="3" y2="10" />
+                  <line x1="3" x2="10" y1="21" y2="14" />
+                </svg>
+              </span>
               <p className="cf-pn-stat-num">{fmtAreasList(activeSkus)}</p>
               <p className="cf-pn-stat-lbl">superficie</p>
             </div>
             <div>
+              <span
+                aria-hidden
+                style={{ display: 'block', marginBottom: 4, color: '#666' }}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2 4v16" />
+                  <path d="M2 8h18a2 2 0 0 1 2 2v10" />
+                  <path d="M2 17h20" />
+                  <path d="M6 8v9" />
+                </svg>
+              </span>
               <p className="cf-pn-stat-num">{fmtBedroomsList(activeSkus)}</p>
               <p className="cf-pn-stat-lbl">{dormLbl}</p>
             </div>
             <div>
+              <span
+                aria-hidden
+                style={{ display: 'block', marginBottom: 4, color: '#666' }}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2H4" />
+                  <line x1="10" x2="8" y1="5" y2="7" />
+                  <line x1="2" x2="22" y1="12" y2="12" />
+                  <line x1="7" x2="7" y1="19" y2="21" />
+                  <line x1="17" x2="17" y1="19" y2="21" />
+                </svg>
+              </span>
+              <p className="cf-pn-stat-num">{fmtBathroomsList(activeSkus)}</p>
+              <p className="cf-pn-stat-lbl">{bathLbl}</p>
+            </div>
+            <div>
+              <span
+                aria-hidden
+                style={{ display: 'block', marginBottom: 4, color: '#666' }}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+                  <path d="m2 17 10 5 10-5" />
+                  <path d="m2 12 10 5 10-5" />
+                </svg>
+              </span>
               <p className="cf-pn-stat-num">{filteredVariantesCount}</p>
               <p className="cf-pn-stat-lbl">{varLbl}</p>
             </div>
@@ -403,6 +514,7 @@ function cleanViewLabel(raw: string | null | undefined): string | null {
  */
 function PanelImageSlider({
   images,
+  barrioImages = [],
   activeSkus,
   label,
   bgSize = 'cover',
@@ -415,6 +527,12 @@ function PanelImageSlider({
   varianteLabels = null,
 }: {
   images: CatalogImage[]
+  /** Fotos del BARRIO (image_type='barrio'). Solo PanelExteriores las pasa.
+   *  Si hay barrioImages, el slider muestra un pill extra "Barrio" al final
+   *  de los pills de fotos casa. Click → sub-modo barrio (los pills cambian
+   *  a las fotos del barrio + un pill "Casa" para volver). Vacío = no se
+   *  muestra el pill (cero regresión en panels que no pasan esta prop). */
+  barrioImages?: CatalogImage[]
   activeSkus: CatalogModel['skus']
   label: string
   bgSize?: 'cover' | 'contain'
@@ -434,6 +552,11 @@ function PanelImageSlider({
   /** Mapping variante base → label user-facing (de la línea). NULL = fallback "Variante N". */
   varianteLabels?: Record<string, string> | null
 }) {
+  // Sub-modo del slider: 'casa' (fotos del modelo, default) o 'barrio'
+  // (fotos comunes del predio aplicables a toda la línea). Solo activa si
+  // barrioImages.length > 0.
+  const [activeMode, setActiveMode] = useState<'casa' | 'barrio'>('casa')
+  const hasBarrio = barrioImages.length > 0
   // Agrupamos variantes por su parte mayor (ignorando .1 .2): V1 incluye V1.1
   // y V1.2 (subversiones que solo cambian detalles internos). V3 incluye V3.1.
   // El tab muestra solo el major; click en V1 filtra fotos de cualquier sku
@@ -458,7 +581,7 @@ function PanelImageSlider({
   )
   const [activePillIdx, setActivePillIdx] = useState(0)
 
-  const filtered = images.filter((img) => {
+  const filteredCasa = images.filter((img) => {
     if (activeMajor === null) return true
     // Imagen aplica al major si linkea a algún sku con variante del grupo (1, 1.1, …)
     const minors = variantsByMajor.get(activeMajor) ?? new Set<string>()
@@ -467,6 +590,9 @@ function PanelImageSlider({
       .map((s) => s.id)
     return img.sku_ids.some((id) => variantSkuIds.includes(id))
   })
+  // En modo barrio mostramos TODAS las fotos del barrio (no se filtran por
+  // variante — el barrio es común a toda la línea).
+  const filtered = activeMode === 'barrio' ? barrioImages : filteredCasa
 
   if (filtered.length === 0) {
     // Edge case: el usuario seleccionó una variante que no tiene fotos en este
@@ -481,33 +607,72 @@ function PanelImageSlider({
           <div className="cf-pn-gallery-top">
             <span className={`cf-pn-gallery-label${labelClassName ? ' ' + labelClassName : ''}`}>{label}</span>
           </div>
-          {hasVariantTabs && (
+          {(hasVariantTabs || hasBarrio) && (
             <div className="cf-pn-variant-tabs">
-              {!hideTodasTab && (
+              {hasVariantTabs ? (
+                <>
+                  {!hideTodasTab && (
+                    <button
+                      type="button"
+                      className={`cf-pn-variant-tab ${
+                        activeMode === 'casa' && activeMajor === null ? 'active' : ''
+                      }`}
+                      onClick={() => {
+                        setActiveMode('casa')
+                        setActiveMajor(null)
+                        setActivePillIdx(0)
+                      }}
+                    >
+                      Todas
+                    </button>
+                  )}
+                  {majorVariants.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`cf-pn-variant-tab ${
+                        activeMode === 'casa' && activeMajor === v ? 'active' : ''
+                      }`}
+                      onClick={() => {
+                        setActiveMode('casa')
+                        setActiveMajor(v)
+                        setActivePillIdx(0)
+                      }}
+                    >
+                      {variantLabel(v, { variante_labels: varianteLabels })}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                hasBarrio && (
+                  <button
+                    type="button"
+                    className={`cf-pn-variant-tab ${
+                      activeMode === 'casa' ? 'active' : ''
+                    }`}
+                    onClick={() => {
+                      setActiveMode('casa')
+                      setActivePillIdx(0)
+                    }}
+                  >
+                    Casa
+                  </button>
+                )
+              )}
+              {hasBarrio && (
                 <button
                   type="button"
-                  className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
+                  className={`cf-pn-variant-tab ${
+                    activeMode === 'barrio' ? 'active' : ''
+                  }`}
                   onClick={() => {
-                    setActiveMajor(null)
+                    setActiveMode('barrio')
                     setActivePillIdx(0)
                   }}
                 >
-                  Todas
+                  Barrio
                 </button>
               )}
-              {majorVariants.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  className={`cf-pn-variant-tab ${activeMajor === v ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveMajor(v)
-                    setActivePillIdx(0)
-                  }}
-                >
-                  {variantLabel(v, { variante_labels: varianteLabels })}
-                </button>
-              ))}
             </div>
           )}
           <div className="cf-pn-empty-msg">Sin fotos para esta variante.</div>
@@ -558,34 +723,79 @@ function PanelImageSlider({
           )}
         </div>
 
-        {/* Tabs verticales por variante (solo si hay 2+) */}
-        {hasVariantTabs && (
+        {/* Tabs verticales: variantes (V1/V2/Todas) + tab "Barrio" si la
+            línea tiene fotos del predio. El barrio NO es una variante: es
+            un set de fotos común a toda la línea. Lo metemos en la misma
+            columna porque conceptualmente es otra "vista" del catálogo,
+            no otra dimensión.
+            Edge case: si no hay multi-variantes pero sí barrio, mostramos
+            "Casa" + "Barrio" como toggle minimalista. */}
+        {(hasVariantTabs || hasBarrio) && (
           <div className="cf-pn-variant-tabs">
-            {!hideTodasTab && (
+            {hasVariantTabs ? (
+              <>
+                {!hideTodasTab && (
+                  <button
+                    type="button"
+                    className={`cf-pn-variant-tab ${
+                      activeMode === 'casa' && activeMajor === null ? 'active' : ''
+                    }`}
+                    onClick={() => {
+                      setActiveMode('casa')
+                      setActiveMajor(null)
+                      setActivePillIdx(0)
+                    }}
+                  >
+                    Todas
+                  </button>
+                )}
+                {majorVariants.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={`cf-pn-variant-tab ${
+                      activeMode === 'casa' && activeMajor === v ? 'active' : ''
+                    }`}
+                    onClick={() => {
+                      setActiveMode('casa')
+                      setActiveMajor(v)
+                      setActivePillIdx(0)
+                    }}
+                  >
+                    {variantLabel(v, { variante_labels: varianteLabels })}
+                  </button>
+                ))}
+              </>
+            ) : (
+              hasBarrio && (
+                <button
+                  type="button"
+                  className={`cf-pn-variant-tab ${
+                    activeMode === 'casa' ? 'active' : ''
+                  }`}
+                  onClick={() => {
+                    setActiveMode('casa')
+                    setActivePillIdx(0)
+                  }}
+                >
+                  Casa
+                </button>
+              )
+            )}
+            {hasBarrio && (
               <button
                 type="button"
-                className={`cf-pn-variant-tab ${activeMajor === null ? 'active' : ''}`}
+                className={`cf-pn-variant-tab ${
+                  activeMode === 'barrio' ? 'active' : ''
+                }`}
                 onClick={() => {
-                  setActiveMajor(null)
+                  setActiveMode('barrio')
                   setActivePillIdx(0)
                 }}
               >
-                Todas
+                Barrio
               </button>
             )}
-            {majorVariants.map((v) => (
-              <button
-                key={v}
-                type="button"
-                className={`cf-pn-variant-tab ${activeMajor === v ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveMajor(v)
-                  setActivePillIdx(0)
-                }}
-              >
-                {variantLabel(v, { variante_labels: varianteLabels })}
-              </button>
-            ))}
           </div>
         )}
 
@@ -619,8 +829,12 @@ const isInteriorRender = (img: CatalogImage) =>
   img.is_exterior === false && img.image_type === 'render'
 const isPlano = (img: CatalogImage) => img.image_type === 'plano'
 const isAxo = (img: CatalogImage) => img.image_type === 'axo'
+const isBarrio = (img: CatalogImage) => img.image_type === 'barrio'
 
-export const hasExterioresImages = (imgs: CatalogImage[]) => imgs.some(isExteriorRender)
+// Exteriores cubre AMBOS: fotos exteriores del modelo (renders) + fotos del
+// barrio común a la línea. El panel se renderea si tiene alguna.
+export const hasExterioresImages = (imgs: CatalogImage[]) =>
+  imgs.some((i) => isExteriorRender(i) || isBarrio(i))
 export const hasInterioresImages = (imgs: CatalogImage[]) => imgs.some(isInteriorRender)
 export const hasPlanosImages = (imgs: CatalogImage[]) => imgs.some(isPlano)
 export const hasAxosImages = (imgs: CatalogImage[]) => imgs.some(isAxo)
@@ -639,6 +853,7 @@ export function PanelExteriores({
   return (
     <PanelImageSlider
       images={images.filter(isExteriorRender)}
+      barrioImages={images.filter(isBarrio)}
       activeSkus={activeSkus}
       label="Exteriores"
       bgSize="cover"
@@ -1056,6 +1271,7 @@ export function Panel7Comparativo({
   cotizador = null,
   provinciaId = null,
   marcaWhatsapp = null,
+  zoneRule = null,
   onSelect,
 }: {
   model: CatalogModel
@@ -1064,10 +1280,15 @@ export function Panel7Comparativo({
   cotizador?: CotizadorData | null
   provinciaId?: string | null
   marcaWhatsapp?: string | null
+  /** Si `excluded`, el cotizador (botón "Ver precio" + modal) se esconde y
+   *  solo queda visible "Conversar con Ximia" como CTA. La marca no opera
+   *  en la provincia del usuario, no tiene sentido cotizar. */
+  zoneRule?: EffectiveZoneRule | null
   /** Notifica al ModelRow la variante elegida (nombre + precios) para que
    *  el CTA flotante cotice ESA selección y no el precio "desde". */
   onSelect?: (sel: { variante: string | null; pricesUsd: SkuPrices }) => void
 }) {
+  const excluded = !!zoneRule?.excluded
   // Una variante única por (variante × sistema). La elección de SC se
   // hace DENTRO del modal de cotización (no acá) — el comparativo es solo
   // para elegir la variante. Acá usamos el primer SC del modelo como
@@ -1218,51 +1439,62 @@ export function Panel7Comparativo({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="cf-pn-compare-inline-info">
-            <span className="cf-pn-compare-inline-eyebrow">Tu selección</span>
+            <span className="cf-pn-compare-inline-eyebrow">
+              {excluded ? 'Disponibilidad' : 'Tu selección'}
+            </span>
             <span className="cf-pn-compare-inline-detail">
-              {selectedVar
-                ? variantLabel(selectedVar.variante, {
-                    variante_labels: model.variante_labels,
-                    feature_delta: selectedVar.feature_delta,
-                  })
-                : ''}
-              {currentSC ? ` · ${displaySC(currentSC)}` : ''}
+              {excluded ? (
+                'Esta línea aún no opera en tu provincia'
+              ) : (
+                <>
+                  {selectedVar
+                    ? variantLabel(selectedVar.variante, {
+                        variante_labels: model.variante_labels,
+                        feature_delta: selectedVar.feature_delta,
+                      })
+                    : ''}
+                  {currentSC ? ` · ${displaySC(currentSC)}` : ''}
+                </>
+              )}
             </span>
           </div>
           <div className="cf-pn-cta-row">
-            {hasUber ? (
-              <button
-                type="button"
-                className="cf-pn-cta-primary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  track('cotizar_open', {
-                    source: 'comparativo',
-                    model: model.display_name,
-                    variante: selectedVar?.variante ?? null,
-                    sistema: currentSC,
-                  })
-                  setCotizarOpen(true)
-                }}
-              >
-                Ver precio →
-              </button>
-            ) : (
-              <a
-                className="cf-pn-cta-primary"
-                href={buildCotizarMailto({
-                  modelName: model.display_name,
-                  variante: selectedVar?.variante,
-                  sistema: currentSC ?? undefined,
-                  linea: displayLinea(model.linea),
-                })}
-                onClick={(e) => e.stopPropagation()}
-              >
-                Ver precio →
-              </a>
-            )}
+            {!excluded &&
+              (hasUber ? (
+                <button
+                  type="button"
+                  className="cf-pn-cta-primary"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    track('cotizar_open', {
+                      source: 'comparativo',
+                      model: model.display_name,
+                      variante: selectedVar?.variante ?? null,
+                      sistema: currentSC,
+                    })
+                    setCotizarOpen(true)
+                  }}
+                >
+                  Ver precio →
+                </button>
+              ) : (
+                <a
+                  className="cf-pn-cta-primary"
+                  href={buildCotizarMailto({
+                    modelName: model.display_name,
+                    variante: selectedVar?.variante,
+                    sistema: currentSC ?? undefined,
+                    linea: displayLinea(model.linea),
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Ver precio →
+                </a>
+              ))}
             <a
-              className="cf-pn-cta-secondary"
+              className={
+                excluded ? 'cf-pn-cta-primary' : 'cf-pn-cta-secondary'
+              }
               href={getAsesorHref()}
               target="_blank"
               rel="noopener noreferrer"
@@ -1274,7 +1506,7 @@ export function Panel7Comparativo({
         </div>
       </div>
 
-      {hasUber && cotizador && (
+      {!excluded && hasUber && cotizador && (
         <CotizarModal
           open={cotizarOpen}
           onClose={() => setCotizarOpen(false)}
@@ -1873,11 +2105,11 @@ function PanelRelated({
                       const id = `row-${r.group_slug}`
                       const el = document.getElementById(id)
                       if (!el) return
-                      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                       window.setTimeout(() => {
                         document
                           .getElementById(id)
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                       }, 1300)
                     }}
                   >
@@ -2031,6 +2263,7 @@ export default function ExpandedPanels(props: PanelsProps) {
           cotizador={props.cotizador ?? null}
           provinciaId={props.provinciaId ?? null}
           marcaWhatsapp={props.marcaWhatsapp ?? null}
+          zoneRule={props.zoneRule ?? null}
           onSelect={props.onComparativoSelect}
         />
       </div>
