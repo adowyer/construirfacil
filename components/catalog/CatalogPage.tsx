@@ -845,36 +845,10 @@ export default function CatalogPage({
             onTieneLoteChange={setTieneLote}
           />
 
-          {/* Hero banner Casa + Lote — diferenciador estructural del
-              producto. Reemplaza al filtro Lote que estaba en StickyFilters
-              (rompía el ancho de la barra). Estados:
-                • null  → hero verde con dos CTAs (setean tieneLote)
-                • 'si'  → strip inline verde, confirmación + cambiar respuesta
-                • 'no'  → strip inline cyan, CTA "Quiero que me contacten"
-                          (abre ReservarModal genérico). Cuando Ximia esté
-                          live, el destino del CTA se flippea. */}
-          {tieneLote === null && (
-            <CatalogPromoBanner
-              color="green"
-              variant="hero"
-              eyebrow="Casa + Lote"
-              body="Tu casa, financiada — con o sin terreno propio."
-              actions={[
-                {
-                  label: 'Tengo terreno',
-                  onClick: () => setTieneLote('si'),
-                },
-                {
-                  label: 'Necesito terreno',
-                  onClick: () => setTieneLote('no'),
-                },
-              ]}
-            />
-          )}
-          {/* Strips cohorte ('si' / 'no') retirados: el refuerzo de
-              contexto vive en CatalogGridPromoCard al inicio del grid
-              (card editorial grande). El sticky tiene el select Terreno
-              para cambiar respuesta. */}
+          {/* Banners Casa+Lote retirados de aquí. La propuesta vive 100%
+              en las cards editoriales del inicio del grid
+              (CatalogGridPromoCard, ver abajo gi===0). El select "¿Tenés
+              terreno?" del sticky controla cuál se muestra. */}
 
           {/* Hero promos admin-driven — DEBAJO del cohorte hero. Decisión
               firme: cohorte siempre primero (es el banner estructural del
@@ -906,10 +880,11 @@ export default function CatalogPage({
         {Object.entries(grouped).map(([line, items], gi) => (
           <div key={line}>
             {/* Cards editoriales Casa+Lote / Financiación al inicio del
-                primer grupo (gi===0 = LÍNEA TERRA). Una por cohorte. El
-                null state (sin elegir) no muestra card — el hero verde
-                con CTAs Tengo/Necesito terreno cumple esa función. */}
-            {gi === 0 && tieneLote === 'no' && (
+                primer grupo (gi===0). Sin elegir terreno asumimos "no"
+                (hipótesis: la mayoría que busca casa modular pre-fabricada
+                aún no tiene lote) — el select "¿Tenés terreno?" del sticky
+                permite cambiar a la card 'si'. */}
+            {gi === 0 && (tieneLote === 'no' || tieneLote === null) && (
               <CatalogGridPromoCard
                 eyebrow="Casa + Lote + financiación"
                 title="¿No tenés terreno?"
