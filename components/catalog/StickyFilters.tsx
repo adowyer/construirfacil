@@ -25,6 +25,11 @@ interface StickyFiltersProps {
   priceFilter: string | null
   provinciaId: string | null
   onlyOffers: boolean
+  /** Contexto Lote del usuario (diferenciador del producto). Sincronizado
+   *  bidireccional con los CTAs del hero banner — cualquiera de los dos
+   *  cambia el mismo state. Select compacto (labels cortos) para no
+   *  inflar la barra. */
+  tieneLote: 'si' | 'no' | null
   /** Sets de opciones que SÍ tienen resultados con los otros filtros activos. */
   enabledBeds?: Set<string>
   enabledSizes?: Set<string>
@@ -35,6 +40,7 @@ interface StickyFiltersProps {
   onPriceChange: (v: string | null) => void
   onProvinciaChange: (id: string | null) => void
   onOffersToggle: () => void
+  onTieneLoteChange: (v: 'si' | 'no' | null) => void
 }
 
 const BED_OPTIONS = ['1', '2', '3', '4+'] as const
@@ -64,6 +70,7 @@ export default function StickyFilters({
   priceFilter,
   provinciaId,
   onlyOffers,
+  tieneLote,
   enabledBeds,
   enabledSizes,
   enabledPrices,
@@ -73,6 +80,7 @@ export default function StickyFilters({
   onPriceChange,
   onProvinciaChange,
   onOffersToggle,
+  onTieneLoteChange,
 }: StickyFiltersProps) {
   const isBedEnabled = (v: string) =>
     !enabledBeds || enabledBeds.has(v) || bedFilters.includes(v)
@@ -144,7 +152,8 @@ export default function StickyFilters({
     sizeFilters.length +
     (priceFilter ? 1 : 0) +
     (provinciaId ? 1 : 0) +
-    (onlyOffers ? 1 : 0)
+    (onlyOffers ? 1 : 0) +
+    (tieneLote ? 1 : 0)
 
   const groups = (
     <>
@@ -175,7 +184,7 @@ export default function StickyFilters({
 
       {/* SUPERFICIE — pills (multi-select) */}
       <div className="cf-stf-group">
-        <span className="cf-stf-lbl">m²</span>
+        <span className="cf-stf-lbl">Superficie</span>
         {SIZE_OPTIONS.map((s) => {
           const enabled = isSizeEnabled(s.value)
           const active = sizeFilters.includes(s.value)
@@ -195,22 +204,11 @@ export default function StickyFilters({
         })}
       </div>
 
-      {/* PRECIO — single-select (compacto, ocupa menos espacio que 4 pills) */}
-      <div className="cf-stf-group">
-        <span className="cf-stf-lbl">USD</span>
-        <select
-          className={`cf-stf-select ${priceFilter ? 'active' : ''}`}
-          value={priceFilter ?? ''}
-          onChange={(e) => onPriceChange(e.target.value || null)}
-        >
-          <option value="">Todos</option>
-          {PRICE_OPTIONS.map((p) => (
-            <option key={p.value} value={p.value} disabled={!isPriceEnabled(p.value)}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* PRECIO removido: si el cliente necesita financiación y aún no
+          sabe cuánto le aprueba el banco, filtrar por rango de precio
+          absoluto choca con la propuesta y agrega friction sin valor.
+          La lógica de filtrado (skuMatchesPrice) queda inactiva porque
+          el state siempre es null; cleanup futuro. */}
 
       {/* UBICACIÓN — select de provincia */}
       <div className="cf-stf-group">
@@ -229,16 +227,26 @@ export default function StickyFilters({
         </select>
       </div>
 
-      {/* OFERTAS — toggle destacado en verde. Inline (sin spacer) para no
-          romper la barra en desktops chicos. */}
-      <button
-        type="button"
-        className={`cf-stf-pill cf-stf-pill-ofertas ${onlyOffers ? 'active' : ''}`}
-        onClick={onOffersToggle}
-        aria-pressed={onlyOffers}
-      >
-        Ofertas
-      </button>
+      {/* TERRENO — pregunta directa al cliente (en AR todos dicen "terreno",
+          no "lote"). El producto sigue siendo "Casa + Lote" en los banners,
+          pero al cliente se le pregunta en su voz. Sincronizado bidireccional
+          con los CTAs del hero banner. */}
+      <div className="cf-stf-group">
+        <span className="cf-stf-lbl">¿Tenés terreno?</span>
+        <select
+          className={`cf-stf-select ${tieneLote ? 'active' : ''}`}
+          value={tieneLote ?? ''}
+          onChange={(e) => {
+            const v = e.target.value
+            onTieneLoteChange(v === 'si' || v === 'no' ? v : null)
+          }}
+          style={{ minWidth: 0 }}
+        >
+          <option value="">—</option>
+          <option value="si">Sí</option>
+          <option value="no">No</option>
+        </select>
+      </div>
 
       {/* VER — CTA al final. Scroll smooth a la grilla del listado: si el
           usuario está arriba, baja al primer modelo; si está en el medio,

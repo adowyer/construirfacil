@@ -38,6 +38,9 @@ export interface LeadFormCatalogContext {
   variante?: string | null
   sistema_constructivo?: string | null
   provincia_id?: string | null
+  /** Contexto de lote del usuario (filtro Lote en StickyFilters). 'si'
+   *  (tiene lote), 'no' (busca casa+lote), null (no eligió). */
+  tiene_lote?: 'si' | 'no' | null
   precio_desde_usd?: number | null
   cuota_ars?: number | null
 }
@@ -156,6 +159,9 @@ export function LeadForm({
       )}
       {catalog?.provincia_id && (
         <input type="hidden" name="provincia_id" value={catalog.provincia_id} />
+      )}
+      {catalog?.tiene_lote && (
+        <input type="hidden" name="tiene_lote" value={catalog.tiene_lote} />
       )}
       {catalog?.precio_desde_usd != null && (
         <input

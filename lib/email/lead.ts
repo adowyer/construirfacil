@@ -19,6 +19,10 @@ import { Resend } from 'resend'
 const FROM_DEFAULT = 'ConstruirFácil <onboarding@resend.dev>'
 
 export interface LeadEmailPayload {
+  /** Tipo de lead — el copy de marca y cliente varía. Default mantiene compat
+   *  con callers viejos que no pasen este campo. */
+  leadType?: 'quiero_esta_casa' | 'waitlist_provincia'
+
   // Cliente
   clientName: string
   clientPhone: string
@@ -102,7 +106,45 @@ function summaryRows(p: LeadEmailPayload): string {
     .join('')
 }
 
+function emailToMarcaWaitlist(p: LeadEmailPayload): { subject: string; html: string } {
+  const prov = p.provinciaName ?? 'una provincia sin programa activo'
+  const subject = `Waitlist — ${esc(p.marcaName)} en ${esc(prov)}`
+  const phoneRow = p.clientPhone
+    ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">WhatsApp</td><td style="padding:6px 0;font-weight:600;font-size:14px;"><a href="https://wa.me/${esc(p.clientPhone.replace(/[^0-9]/g, ''))}" style="color:#0a0a0a;text-decoration:none;">${esc(p.clientPhone)}</a></td></tr>`
+    : ''
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f6f6f6;font-family:system-ui,-apple-system,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f6f6f6;padding:32px 0;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:560px;max-width:92%;background:#fff;border-radius:12px;overflow:hidden;">
+        <tr><td style="padding:28px 32px 16px;border-bottom:1px solid #eee;">
+          <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#ff003d;font-weight:700;">Waitlist — ConstruirFácil</p>
+          <h1 style="margin:0;font-size:22px;color:#0a0a0a;font-weight:700;">Interés en ${esc(p.marcaName)} desde ${esc(prov)}</h1>
+          <p style="margin:8px 0 0;font-size:14px;color:#555;line-height:1.5;">${esc(prov)} no tiene programa activo de ${esc(p.marcaName)} todavía. Esta persona dejó su contacto para ser notificada cuando abran cupo en su zona.</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px;">
+          <p style="margin:0 0 8px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#999;font-weight:600;">Contacto</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+            <tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Nombre</td><td style="padding:6px 0;font-weight:600;font-size:14px;">${esc(p.clientName)}</td></tr>
+            ${p.clientEmail ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Email</td><td style="padding:6px 0;font-weight:600;font-size:14px;"><a href="mailto:${esc(p.clientEmail)}" style="color:#0a0a0a;text-decoration:none;">${esc(p.clientEmail)}</a></td></tr>` : ''}
+            ${phoneRow}
+            ${p.provinciaName ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Provincia</td><td style="padding:6px 0;font-weight:600;font-size:14px;">${esc(p.provinciaName)}</td></tr>` : ''}
+            ${p.modelDisplayName && p.modelDisplayName !== 'CASA' ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Estaba viendo</td><td style="padding:6px 0;font-weight:600;font-size:14px;">${esc(p.modelDisplayName)}</td></tr>` : ''}
+          </table>
+          ${p.clientMessage ? `<p style="margin:0 0 8px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#999;font-weight:600;">Mensaje</p><p style="margin:0;padding:14px 16px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#0a0a0a;line-height:1.5;">${esc(p.clientMessage)}</p>` : ''}
+        </td></tr>
+        <tr><td style="padding:16px 32px;background:#f8f8f8;border-top:1px solid #eee;">
+          <p style="margin:0;font-size:12px;color:#888;">Esto es un lead de WAITLIST, no compra inmediata. Cuando se acumulen suficientes interesados en la misma provincia podría justificarse abrir cupo.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+  return { subject, html }
+}
+
 function emailToMarca(p: LeadEmailPayload): { subject: string; html: string } {
+  if (p.leadType === 'waitlist_provincia') return emailToMarcaWaitlist(p)
   const subject = `Nuevo lead — Quiero esta casa · ${p.modelDisplayName}`
   const html = `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f6f6f6;font-family:system-ui,-apple-system,sans-serif;">
@@ -134,7 +176,39 @@ function emailToMarca(p: LeadEmailPayload): { subject: string; html: string } {
   return { subject, html }
 }
 
+function emailToClientWaitlist(p: LeadEmailPayload): { subject: string; html: string } {
+  const prov = p.provinciaName ?? 'tu provincia'
+  const subject = `Te avisamos cuando ${p.marcaName} llegue a ${prov}`
+  const firstName = esc(p.clientName.split(' ')[0])
+  const phonePromise = p.clientPhone
+    ? `<p style="margin:0 0 14px;font-size:14px;color:#555;line-height:1.6;">También te vamos a avisar por WhatsApp cuando haya <strong>promociones de lanzamiento</strong> en ${esc(prov)}.</p>`
+    : ''
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f6f6f6;font-family:system-ui,-apple-system,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f6f6f6;padding:32px 0;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:560px;max-width:92%;background:#fff;border-radius:12px;overflow:hidden;">
+        <tr><td style="padding:28px 32px 8px;">
+          <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#ff003d;font-weight:700;">ConstruirFácil</p>
+          <h1 style="margin:0 0 10px;font-size:22px;color:#0a0a0a;font-weight:700;">¡Gracias ${firstName}!</h1>
+          <p style="margin:0 0 18px;font-size:15px;color:#444;line-height:1.55;">Anotamos tu interés en <strong>${esc(p.marcaName)}</strong>. Por ahora la marca no opera en ${esc(prov)}, pero <strong>te vamos a contactar apenas haya novedades</strong> sobre apertura de cupos en tu zona.</p>
+          ${phonePromise}
+        </td></tr>
+        <tr><td style="padding:0 32px 16px;">
+          <p style="margin:0;padding:14px 16px;background:#f5f5f5;border-radius:8px;font-size:13px;color:#555;line-height:1.5;">Mientras tanto, podés seguir explorando el catálogo y conversar con Ximia (nuestro asistente) por alternativas equivalentes en tu zona.</p>
+        </td></tr>
+        <tr><td style="padding:16px 32px 28px;background:#f8f8f8;border-top:1px solid #eee;">
+          <p style="margin:0;font-size:12px;color:#888;line-height:1.5;">Si no fuiste vos, podés ignorar este mail. Para cualquier consulta respondé a este mensaje.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+  return { subject, html }
+}
+
 function emailToClient(p: LeadEmailPayload): { subject: string; html: string } {
+  if (p.leadType === 'waitlist_provincia') return emailToClientWaitlist(p)
   const subject = `Recibimos tu interés en ${p.modelDisplayName}`
   const html = `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f6f6f6;font-family:system-ui,-apple-system,sans-serif;">

@@ -36,6 +36,7 @@ import {
 } from '@/lib/supabase/queries/content_resolve'
 import { getResolvedHeaderSlides } from '@/lib/supabase/queries/header_content'
 import type { FooterCardRow } from '@/lib/supabase/queries/footer'
+import type { PromoMessage } from '@/lib/supabase/queries/promos'
 import { getFooterContent } from '@/lib/supabase/queries/footer'
 import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
 import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
@@ -178,6 +179,22 @@ export default async function CatalogoPage({ params }: PageProps) {
     }
   }
 
+  // Promos admin-driven (banners del catálogo). Mismo criterio que footer:
+  // si hay marca activa solo las suyas, si no, las de todas las marcas
+  // aprobadas. El cliente filtra por provincia con filterPromosForProvincia.
+  let promos: PromoMessage[] = []
+  if (marcaIdsForFooter.length > 0) {
+    const { data: promoRows } = await supabase
+      .from('promo_messages')
+      .select(
+        'id, marca_id, provincia_id, scope, titulo, cuerpo, color, cta_label, cta_action, activo, sort_order, starts_at, ends_at',
+      )
+      .in('marca_id', marcaIdsForFooter)
+      .eq('activo', true)
+      .order('sort_order', { ascending: true })
+    promos = (promoRows ?? []) as PromoMessage[]
+  }
+
   return (
     <CatalogPage
       models={models}
@@ -200,6 +217,7 @@ export default async function CatalogoPage({ params }: PageProps) {
       institutionalFooterCards={institutionalFooterCards}
       provincias={provincias}
       marcaZonas={marcaZonas}
+      promos={promos}
     />
   )
 }

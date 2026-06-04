@@ -50,6 +50,13 @@ import HomeRow from './HomeRow'
 import type { HomeSlide } from '@/lib/supabase/queries/home_content'
 import CotizarModal from './CotizarModal'
 import ReservarModal from './ReservarModal'
+import CatalogPromoBanner from './CatalogPromoBanner'
+import CatalogGridPromoCard from './CatalogGridPromoCard'
+import {
+  filterPromosForProvincia,
+  type PromoMessage,
+} from '@/lib/supabase/queries/promos'
+import { logPromoEvent } from '@/app/_track/promo-events/actions'
 import { track } from '@/lib/track/client'
 import { skuPrices, type CotizadorData } from '@/lib/content/cotizador-data'
 
@@ -121,6 +128,11 @@ interface PageProps {
    *  /casa-financiada/[localidad] para que la página arranque con la
    *  provincia correcta sin que el visitante tenga que setearla. */
   initialProvinciaId?: string | null
+  /** Banners promocionales admin-driven (tabla `promo_messages`).
+   *  Se filtran en cliente por provincia activa con
+   *  `filterPromosForProvincia`. Vacío = catálogo cae a los banners
+   *  hardcoded por cohorte Lote (sin regresión). */
+  promos?: PromoMessage[]
 }
 
 type Station = 'portada' | 'exteriores' | 'interiores' | 'comparador' | 'datos'
@@ -133,7 +145,7 @@ const STATIONS: { id: Station; label: string }[] = [
   { id: 'datos', label: 'Datos' },
 ]
 
-const LINE_ORDER = ['LÍNEA ATLAS', 'LÍNEA BOSQUE', 'LÍNEA TERRA']
+const LINE_ORDER = ['LÍNEA TERRA', 'LÍNEA ATLAS', 'LÍNEA BOSQUE']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
@@ -164,6 +176,7 @@ export default function CatalogPage({
   provincias = [],
   marcaZonas = [],
   initialProvinciaId = null,
+  promos = [],
 }: PageProps) {
   const router = useRouter()
   // Máquina de estados de transición home ↔ catálogo.
@@ -232,6 +245,89 @@ export default function CatalogPage({
   const [priceFilter, setPriceFilter] = useState<string | null>(null)
   const [provinciaId, setProvinciaId] = useState<string | null>(null)
   const [onlyOffers, setOnlyOffers] = useState<boolean>(false)
+  // Filtro Lote — diferenciador estructural del producto. 'si' (tiene lote),
+  // 'no' (busca casa+lote), null (no eligió → hero banner activo).
+  // El estado se setea desde el CatalogPromoBanner hero (no desde
+  // StickyFilters — sacamos el filtro de ahí porque inflaba la barra).
+  // Persistido como provincia (ubicación + intención de compra son contexto
+  // del usuario, no estado efímero).
+  const [tieneLote, setTieneLote] = useState<'si' | 'no' | null>(null)
+
+  // Resolución de promos admin para la provincia activa. Cae a [] si
+  // no hay tabla cargada — los hero banners hardcoded por cohorte tieneLote
+  // siguen funcionando independientes (cero regresión).
+  const visiblePromos: PromoMessage[] = filterPromosForProvincia(
+    promos,
+    provinciaId,
+  )
+  const adminHeroPromos = visiblePromos.filter((p) => p.scope === 'hero')
+  const adminIntermediatePromos = visiblePromos.filter(
+    (p) => p.scope === 'intermediate',
+  )
+
+  // Tracking de impresiones de banners admin — UNA por session por banner
+  // visible (incluye provincia/cohorte como dimensiones del evento). El
+  // useRef evita duplicar si el componente re-renderiza por otros filtros.
+  const trackedImpressions = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ua = window.navigator.userAgent
+    for (const p of visiblePromos) {
+      const key = `${p.id}::${provinciaId ?? '_'}::${tieneLote ?? '_'}`
+      if (trackedImpressions.current.has(key)) continue
+      trackedImpressions.current.add(key)
+      void logPromoEvent({
+        promo_id: p.id,
+        event: 'impression',
+        provincia_id: provinciaId,
+        tiene_lote: tieneLote,
+        user_agent: ua,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visiblePromos.map((p) => p.id).join(','), provinciaId, tieneLote])
+
+  // Helper para wrap los onClick del CTA con tracking. El handler real
+  // sigue ejecutándose; el track es side-effect.
+  const trackedHandler = (promoId: string, handler: () => void) => () => {
+    void logPromoEvent({
+      promo_id: promoId,
+      event: 'click',
+      provincia_id: provinciaId,
+      tiene_lote: tieneLote,
+      user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : null,
+    })
+    handler()
+  }
+  // Map cta_action → handler. Cuando Ximia esté live, flippeamos
+  // XIMIA_LIVE a true y los CTAs action='ximia' abren el chat real.
+  // Mientras tanto los redirigimos al contacto genérico Y sobrescribimos
+  // el label del founder (ver promoCtaLabel) para no prometer una
+  // conversación con un agente que no responde.
+  const XIMIA_LIVE = false
+  const promoCtaHandler = (action: PromoMessage['cta_action']) => {
+    if (action === 'contactar') return () => setContactarOpen(true)
+    if (action === 'ximia') {
+      // TODO: cuando XIMIA_LIVE = true, abrir Ximia chat real
+      return () => setContactarOpen(true)
+    }
+    return () => {} // none / saber_mas → no-op (saber_mas se implementa cuando exista la modal)
+  }
+  /** Override del label del CTA para evitar promesas rotas. Si action es
+   *  'ximia' y Ximia no está live, mostramos copy honesto de contacto. */
+  const promoCtaLabel = (action: PromoMessage['cta_action'], label: string | null) => {
+    if (action === 'ximia' && !XIMIA_LIVE) return 'Quiero que me contacten'
+    return label
+  }
+
+  /** Helper para CTAs hardcoded "Conversar con Ximia": mientras XIMIA_LIVE
+   *  es false el label cae a "Quiero que me contacten" y la acción abre
+   *  el modal de contacto genérico. Cuando flipeemos XIMIA_LIVE a true,
+   *  el onClick debe abrir el chat de Ximia (TODO). */
+  const ximiaCta = (preferredLabel: string) => ({
+    label: XIMIA_LIVE ? preferredLabel : 'Quiero que me contacten',
+    onClick: () => setContactarOpen(true),
+  })
   // Orden fijo a "recommended" — sacamos el selector del UI (decisión del cliente).
   // El sort por featured_rank vive inline en el .sort() del listado.
 
@@ -251,15 +347,33 @@ export default function CatalogPage({
     if (provinciaId) window.localStorage.setItem('cf-provincia-id', provinciaId)
     else window.localStorage.removeItem('cf-provincia-id')
   }, [provinciaId])
+
+  // Persistencia del filtro Lote — mismo patrón que provincia. El valor sólo
+  // puede ser 'si' / 'no' / null, así que filtramos cualquier basura.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem('cf-tiene-lote')
+    if (stored === 'si' || stored === 'no') setTieneLote(stored)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (tieneLote) window.localStorage.setItem('cf-tiene-lote', tieneLote)
+    else window.localStorage.removeItem('cf-tiene-lote')
+  }, [tieneLote])
   // Modal de contacto genérico (mid-CTA "¿Te ayudo a elegir?"). Reemplaza el
   // mailto que rompía sin cliente de mail configurado.
   const [contactarOpen, setContactarOpen] = useState(false)
 
-  // Helpers de toggle: agregan o quitan un valor del array.
+  // Helpers de toggle — SINGLE-select. Clickear el pill activo lo
+  // deselecciona; clickear otro lo reemplaza. Patrón nuevo: no tiene
+  // sentido filtrar "2 dormitorios o 4 pero no 3" — el rango con huecos
+  // confunde más de lo que ayuda. Si en el futuro hay caso real de multi
+  // (ej. "1 ó 4+ con offer"), refactoreamos.
   const toggleBed = (v: string) =>
-    setBedFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
+    setBedFilters((cur) => (cur.includes(v) ? [] : [v]))
   const toggleSize = (v: string) =>
-    setSizeFilters((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
+    setSizeFilters((cur) => (cur.includes(v) ? [] : [v]))
   const toggleOffers = () => setOnlyOffers((v) => !v)
 
 
@@ -663,6 +777,14 @@ export default function CatalogPage({
             ? goToHome
             : undefined
         }
+        homeMode={phase === 'home'}
+        onVerCatalogo={
+          phase === 'home'
+            ? variant === 'b2b'
+              ? () => router.push('/catalogo')
+              : goToCatalog
+            : undefined
+        }
       />
 
       {/* ── Hero row: primera fila siempre desplegada ── */}
@@ -675,6 +797,13 @@ export default function CatalogPage({
         growthPairs={growthPairs}
         lineaPhotosByName={lineaPhotosByName}
         modelosByLineaName={modelosByLineaName}
+        onVerCatalogo={
+          phase === 'home'
+            ? variant === 'b2b'
+              ? () => router.push('/catalogo')
+              : goToCatalog
+            : undefined
+        }
       />
 
       {/* ── Catálogo en shell expandible, ARRIBA del HomeSlider.
@@ -703,6 +832,7 @@ export default function CatalogPage({
             priceFilter={priceFilter}
             provinciaId={provinciaId}
             onlyOffers={onlyOffers}
+            tieneLote={tieneLote}
             enabledBeds={enabledBeds}
             enabledSizes={enabledSizes}
             enabledPrices={enabledPrices}
@@ -712,11 +842,96 @@ export default function CatalogPage({
             onPriceChange={setPriceFilter}
             onProvinciaChange={setProvinciaId}
             onOffersToggle={toggleOffers}
+            onTieneLoteChange={setTieneLote}
           />
+
+          {/* Hero banner Casa + Lote — diferenciador estructural del
+              producto. Reemplaza al filtro Lote que estaba en StickyFilters
+              (rompía el ancho de la barra). Estados:
+                • null  → hero verde con dos CTAs (setean tieneLote)
+                • 'si'  → strip inline verde, confirmación + cambiar respuesta
+                • 'no'  → strip inline cyan, CTA "Quiero que me contacten"
+                          (abre ReservarModal genérico). Cuando Ximia esté
+                          live, el destino del CTA se flippea. */}
+          {tieneLote === null && (
+            <CatalogPromoBanner
+              color="green"
+              variant="hero"
+              eyebrow="Casa + Lote"
+              body="Tu casa, financiada — con o sin terreno propio."
+              actions={[
+                {
+                  label: 'Tengo terreno',
+                  onClick: () => setTieneLote('si'),
+                },
+                {
+                  label: 'Necesito terreno',
+                  onClick: () => setTieneLote('no'),
+                },
+              ]}
+            />
+          )}
+          {/* Strips cohorte ('si' / 'no') retirados: el refuerzo de
+              contexto vive en CatalogGridPromoCard al inicio del grid
+              (card editorial grande). El sticky tiene el select Terreno
+              para cambiar respuesta. */}
+
+          {/* Hero promos admin-driven — DEBAJO del cohorte hero. Decisión
+              firme: cohorte siempre primero (es el banner estructural del
+              producto), admin hero refuerza pero no compite. Si el founder
+              quiere dominar el slot superior, debería usar scope='hero'
+              + sort_order bajo (esto se refleja en el orden de map abajo). */}
+          {adminHeroPromos.map((p) => {
+            const ctaLabel = promoCtaLabel(p.cta_action, p.cta_label)
+            return (
+              <CatalogPromoBanner
+                key={p.id}
+                color={p.color}
+                variant="hero"
+                eyebrow={p.titulo}
+                body={p.cuerpo}
+                actions={
+                  p.cta_action !== 'none' && ctaLabel
+                    ? [{
+                        label: ctaLabel,
+                        onClick: trackedHandler(p.id, promoCtaHandler(p.cta_action)),
+                      }]
+                    : undefined
+                }
+              />
+            )
+          })}
 
           <div className="cf-grid">
         {Object.entries(grouped).map(([line, items], gi) => (
           <div key={line}>
+            {/* Cards editoriales Casa+Lote / Financiación al inicio del
+                primer grupo (gi===0 = LÍNEA TERRA). Una por cohorte. El
+                null state (sin elegir) no muestra card — el hero verde
+                con CTAs Tengo/Necesito terreno cumple esa función. */}
+            {gi === 0 && tieneLote === 'no' && (
+              <CatalogGridPromoCard
+                eyebrow="Casa + Lote + financiación"
+                title="¿No tenés terreno?"
+                body="Tenemos propuestas únicas de Casa + Lote con financiación. Contactanos o hacé el proceso de pre-calificación financiera con Ximia."
+                actions={[
+                  ximiaCta('Conversar con Ximia'),
+                  {
+                    label: 'Necesito Casa + Lote',
+                    onClick: () => setContactarOpen(true),
+                  },
+                ]}
+              />
+            )}
+            {gi === 0 && tieneLote === 'si' && (
+              <CatalogGridPromoCard
+                eyebrow="Financiación"
+                title="Armá tu plan de pagos"
+                body="Consultá por nuestros exclusivos planes de financiación hasta 30 años. Buscá en nuestro catálogo la casa perfecta para vos y hacé con Ximia la pre-calificación financiera para acceder a un crédito."
+                bgImage="/casas/1.jpg"
+                actions={[ximiaCta('Conversar con Ximia')]}
+              />
+            )}
             {/* Filas */}
             {items.map((model, i) => {
               const mcKey = `${model.linea}::${model.style_name}`
@@ -808,6 +1023,7 @@ export default function CatalogPage({
                   cotizador={cotizador}
                   zoneRule={zoneByModel.get(model.group_slug) ?? null}
                   provinciaId={provinciaId}
+                  tieneLote={tieneLote}
                   marcaWhatsapp={
                     model.marca_id
                       ? marcas.find((mm) => mm.id === model.marca_id)?.whatsapp_number ?? null
@@ -817,20 +1033,40 @@ export default function CatalogPage({
               )
             })}
 
-            {/* CTA entre Atlas y Bosque */}
-            {gi === 0 && (
-              <div className="cf-mid-cta">
-                <h3>¿Te ayudo a elegir?</h3>
-                <p>Pedí una cotización y te ayudamos a encontrar la casa que mejor se adapta a vos.</p>
-                <button
-                  type="button"
-                  className="cf-mid-cta-btn"
-                  onClick={() => setContactarOpen(true)}
-                >
-                  Cotizar
-                </button>
-              </div>
-            )}
+            {/* Banners intermedios entre líneas (variant='inline'). Solo
+                renderean si el founder agregó un admin promo para ese slot
+                desde /admin/promos. No hay fallback hardcoded — los inline
+                "flotaban" mal visualmente y los sacamos. El refuerzo de
+                contexto (Casa+Lote / financiación) vive en CatalogGridPromoCard
+                al inicio del grid según cohorte tieneLote. */}
+            {(() => {
+              const adminPromo = adminIntermediatePromos[gi]
+              if (!adminPromo) return null
+              const ctaLabel = promoCtaLabel(adminPromo.cta_action, adminPromo.cta_label)
+              return (
+                <div style={{ margin: '16px 0' }}>
+                  <CatalogPromoBanner
+                    color={adminPromo.color}
+                    variant="inline"
+                    eyebrow={adminPromo.titulo}
+                    body={adminPromo.cuerpo}
+                    actions={
+                      adminPromo.cta_action !== 'none' && ctaLabel
+                        ? [
+                            {
+                              label: ctaLabel,
+                              onClick: trackedHandler(
+                                adminPromo.id,
+                                promoCtaHandler(adminPromo.cta_action),
+                              ),
+                            },
+                          ]
+                        : undefined
+                    }
+                  />
+                </div>
+              )
+            })()}
           </div>
         ))}
               </div>
@@ -882,6 +1118,7 @@ export default function CatalogPage({
         onClose={() => setContactarOpen(false)}
         context={{}}
       />
+
 
       {/* ── Detail slider overlay ── */}
       <div

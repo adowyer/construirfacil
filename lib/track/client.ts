@@ -21,6 +21,8 @@ export type TrackEvent =
   | 'asesor_click'
   | 'whatsapp_click'
   | 'lead'
+  /** Lead waitlist enviado OK (zona excluded → form de "te avisamos"). */
+  | 'lead_waitlist_submit_ok'
 
 export function track(
   event: TrackEvent,

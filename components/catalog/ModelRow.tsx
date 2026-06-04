@@ -95,6 +95,10 @@ interface ModelRowProps {
   /** ID de provincia activa (si la hay) — se persiste con el lead para que
    *  ventas sepa de qué jurisdicción viene la consulta. */
   provinciaId?: string | null
+  /** Contexto de lote del usuario para enriquecer el lead. 'si' (tiene lote
+   *  propio) → financiar solo casa; 'no' (busca casa+lote) → matchear con
+   *  lots_inventory; null (no eligió) → desconocido. */
+  tieneLote?: 'si' | 'no' | null
   /** Número de WhatsApp de la marca dueña del modelo, sanitizado. Sobre-
    *  escribe el fallback global `NEXT_PUBLIC_WHATSAPP_NUMBER` en la pantalla
    *  post-success del LeadForm. NULL → usa el fallback. */
@@ -428,6 +432,7 @@ export default function ModelRow({
   cotizador = null,
   zoneRule = null,
   provinciaId = null,
+  tieneLote = null,
   marcaWhatsapp = null,
 }: ModelRowProps) {
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
@@ -1168,6 +1173,7 @@ export default function ModelRow({
               cotizador={cotizador}
               provinciaId={provinciaId}
               marcaWhatsapp={marcaWhatsapp}
+              zoneRule={zoneRule}
               onComparativoSelect={setComparativoSel}
             />
           )}
@@ -1340,6 +1346,10 @@ export default function ModelRow({
           // Si el usuario ya eligió variante en el comparativo, cotizamos esa
           // (precios + nombre); si no, el "desde" (variante más barata).
           pricesUsd={comparativoSel?.pricesUsd ?? defaultPricesUsd}
+          // Zona excluded: la modal renderiza un mensaje informativo en vez
+          // del cotizador (cotizar algo que no se ofrece en la provincia del
+          // usuario es engañoso). Misma decisión que `resolveFichaPrice`.
+          excluded={!!zoneRule?.excluded}
           context={{
             model: model.display_name,
             variante: comparativoSel?.variante ?? null,
@@ -1352,6 +1362,7 @@ export default function ModelRow({
             style_name: model.style_name,
             tipologia_code_new: model.tipologia_code_new,
             provincia_id: provinciaId,
+            tiene_lote: tieneLote,
           }}
           onOpenComparativo={goToComparativo}
         />

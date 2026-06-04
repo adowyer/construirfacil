@@ -984,8 +984,8 @@ body:has(.cf-row.cf-expanded) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   background: #ff003d;
   color: #fff;
@@ -9207,5 +9207,193 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
     left: 12px !important;
     width: calc(100% - 24px) !important;
     height: calc(100% - 140px) !important;
+  }
+}
+
+/* ── Fila Promocional Casa + Lote v2 (Editorial Overlay) ── */
+.cf-promo-card-wrapper {
+  max-width: 1540px;
+  margin: 0 auto 55px;
+}
+
+.cf-promo-card-container {
+  position: relative;
+  width: 672px;
+  height: 420px;
+  margin: 0 auto;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  background-image: url('/casa-lote-bg.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Glassmorphic Overlay */
+.cf-promo-glass-card {
+  position: absolute;
+  left: 34px;
+  right: 200px;
+  top: 34px;
+  bottom: 34px;
+  background: rgba(15, 15, 15, 0.10);
+  -webkit-backdrop-filter: blur(5px) saturate(110%);
+  backdrop-filter: blur(5px) saturate(110%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 32px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.cf-promo-glass-eyebrow {
+  align-self: flex-start;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #0c3e2e;
+  background: #26cf8c;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+
+.cf-promo-glass-title {
+  font-size: 50px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  margin: 0 0 14px;
+  letter-spacing: -0.02em;
+}
+
+.cf-promo-glass-body {
+  font-size: 15px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 28px;
+}
+
+/* Contenedor de CTAs — 1 o 2 botones en fila (gap 10px). En mobile cae
+   a columna para no romper el ancho del overlay. */
+.cf-promo-glass-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-self: flex-start;
+}
+
+.cf-promo-glass-btn {
+  align-self: flex-start;
+  background: #26cf8c;
+  color: #0a0a0a;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  transition: background 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.cf-promo-glass-btn:hover {
+  background: #1eb378;
+  transform: translateY(-1px);
+}
+
+/* CTA secundaria: outline blanco sobre el glass, sin fondo lleno — no
+   compite con la primaria verde pero queda clickeable. */
+.cf-promo-glass-btn-secondary {
+  background: transparent;
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+}
+.cf-promo-glass-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .cf-promo-card-container {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important; /* Cuadrado como el mockup */
+  }
+
+  .cf-promo-glass-card {
+    inset: 16px !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 24px 20px !important;
+  }
+
+  .cf-promo-glass-title {
+    font-size: 22px !important;
+  }
+
+  .cf-promo-glass-body {
+    font-size: 12px !important;
+    margin-bottom: 20px !important;
+  }
+}
+
+/* ── Botón Catálogo en Cabecera (Opción C) ── */
+.cf-header-catalog-btn {
+  background: #ff003d;
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 0, 61, 0.15);
+}
+
+.cf-header-catalog-btn:hover {
+  background: #d80035;
+  transform: translateY(-1px);
+}
+
+.cf-header-catalog-btn:active {
+  transform: translateY(0);
+}
+
+/* Modo home: CTA primario del header (reemplaza al breadcrumb).
+   Más grande y con sombra reforzada para no perderse en el ruido
+   visual de la home. Testeos con usuarios mostraron que el acceso
+   al catálogo escondido en los CTAs de los sliders se perdía. */
+.cf-header-catalog-btn--home {
+  padding: 14px 30px;
+  font-size: 14px;
+  letter-spacing: 0.09em;
+  box-shadow: 0 7px 20px rgba(255, 0, 61, 0.28);
+}
+
+@media (max-width: 480px) {
+  .cf-header-catalog-btn {
+    padding: 6px 12px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .cf-header-catalog-btn--home {
+    padding: 10px 20px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
   }
 }

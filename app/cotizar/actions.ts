@@ -40,13 +40,32 @@ export async function submitLead(
   _prev: LeadResult,
   formData: FormData,
 ): Promise<LeadResult> {
+  // Tipo de lead. Default mantiene compat con el form genérico /cotizar y con
+  // "Quiero esta casa" (que no manda el hidden input). 'waitlist_provincia'
+  // = usuario interesado en una marca que aún no opera en su provincia.
+  const rawLeadType = optText(formData.get('lead_type')) ?? 'quiero_esta_casa'
+  const lead_type =
+    rawLeadType === 'waitlist_provincia' ? 'waitlist_provincia' : 'quiero_esta_casa'
+
   const name = String(formData.get('name') ?? '').trim()
   const phone = String(formData.get('phone') ?? '').trim()
-  if (!name || !phone) {
-    return { ok: false, error: 'Tu nombre y teléfono son obligatorios.' }
+  const email = optText(formData.get('email'))
+
+  if (!name) {
+    return { ok: false, error: 'Necesitamos tu nombre para poder contactarte.' }
+  }
+  // Reglas distintas según el flujo:
+  //   - quiero_esta_casa: teléfono obligatorio (cierre rápido por WA/llamada).
+  //   - waitlist_provincia: email obligatorio (canal de aviso primario);
+  //     teléfono opcional. La promesa al cliente es "te avisamos por mail
+  //     cuando lleguemos", así que el mail es lo no-negociable.
+  if (lead_type === 'quiero_esta_casa' && !phone) {
+    return { ok: false, error: 'Tu teléfono es obligatorio para poder contactarte.' }
+  }
+  if (lead_type === 'waitlist_provincia' && !email) {
+    return { ok: false, error: 'Necesitamos tu email para avisarte cuando lleguemos.' }
   }
 
-  const email = optText(formData.get('email'))
   const localidad = optText(formData.get('localidad'))
   const message = optText(formData.get('message'))
   const path = optText(formData.get('path'))
@@ -60,6 +79,10 @@ export async function submitLead(
   const variante = optText(formData.get('variante'))
   const sistema_constructivo = optText(formData.get('sistema_constructivo'))
   const provincia_id = optText(formData.get('provincia_id'))
+  // Filtro Lote del StickyFilters (#78). Solo aceptamos 'si' / 'no' / null.
+  const rawTieneLote = optText(formData.get('tiene_lote'))
+  const tiene_lote =
+    rawTieneLote === 'si' || rawTieneLote === 'no' ? rawTieneLote : null
   const precio_desde_usd = optNumber(formData.get('precio_desde_usd'))
   const cuota_ars = optNumber(formData.get('cuota_ars'))
 
@@ -75,7 +98,7 @@ export async function submitLead(
     .from('leads')
     .insert({
       name,
-      phone,
+      phone: phone || null,
       email,
       localidad,
       message,
@@ -89,6 +112,8 @@ export async function submitLead(
       variante,
       sistema_constructivo,
       provincia_id,
+      tiene_lote,
+      lead_type,
     })
     .select('id')
     .single()
@@ -105,6 +130,7 @@ export async function submitLead(
   //    lead después; cualquier reintento de los failed lo hace un worker. ──
   void sendLeadEmailAsync({
     leadId: inserted.id,
+    leadType: lead_type,
     name,
     phone,
     email,
@@ -126,6 +152,7 @@ export async function submitLead(
 
 interface AsyncEmailArgs {
   leadId: string
+  leadType: 'quiero_esta_casa' | 'waitlist_provincia'
   name: string
   phone: string
   email: string | null
@@ -192,6 +219,7 @@ async function sendLeadEmailAsync(args: AsyncEmailArgs): Promise<void> {
   const modelDisplayName = heroBits.join(' ')
 
   const result = await sendLeadEmail({
+    leadType: args.leadType,
     clientName: args.name,
     clientPhone: args.phone,
     clientEmail: args.email,

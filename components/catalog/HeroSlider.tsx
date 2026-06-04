@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from 'react'
 import type { LineaRow } from '@/lib/supabase/queries/lineas'
 
-const LINE_OPTIONS = ['BOSQUE', 'ATLAS', 'TERRA']
+const LINE_OPTIONS = ['TERRA', 'ATLAS', 'BOSQUE']
 const BED_OPTIONS = ['1-2', '3', '4+']
 const SIZE_OPTIONS = [
   { v: 'S', l: '–80m²' },

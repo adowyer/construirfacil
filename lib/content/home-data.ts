@@ -33,6 +33,7 @@ import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_condition
 import { loadCotizadorData } from '@/lib/content/cotizador-data'
 import { getInstitutionalFooterCards } from '@/lib/supabase/queries/footer'
 import { getAllProvincias, getActiveMarcaZonas } from '@/lib/supabase/queries/zones'
+import type { PromoMessage } from '@/lib/supabase/queries/promos'
 
 export async function loadHomeData(supabase: SupabaseClient) {
   // Home = agregador sin marca activa → contenido GLOBAL (marca_id NULL),
@@ -80,6 +81,23 @@ export async function loadHomeData(supabase: SupabaseClient) {
   const deliveryConditionsHtml = deliveryConditions?.body?.trim() || null
   const approvedMarcas = marcas.filter((m) => m.status === 'approved')
 
+  // Promos (banners admin-driven). Cargamos los activos de TODAS las marcas
+  // aprobadas — el agregador muestra modelos de todas las marcas, los
+  // banners también. CatalogPage filtra en cliente por provincia activa.
+  const marcaIdsForPromos = approvedMarcas.map((m) => m.id)
+  let promos: PromoMessage[] = []
+  if (marcaIdsForPromos.length > 0) {
+    const { data: promoRows } = await supabase
+      .from('promo_messages')
+      .select(
+        'id, marca_id, provincia_id, scope, titulo, cuerpo, color, cta_label, cta_action, activo, sort_order, starts_at, ends_at',
+      )
+      .in('marca_id', marcaIdsForPromos)
+      .eq('activo', true)
+      .order('sort_order', { ascending: true })
+    promos = (promoRows ?? []) as PromoMessage[]
+  }
+
   // Footer cards de todas las marcas aprobadas (como en el agregador).
   const footerCardsByMarca: Record<string, FooterCardRow[]> = {}
   const marcaIdsForFooter = approvedMarcas.map((m) => m.id)
@@ -119,6 +137,7 @@ export async function loadHomeData(supabase: SupabaseClient) {
     institutionalFooterCards,
     provincias,
     marcaZonas,
+    promos,
   }
 }
 

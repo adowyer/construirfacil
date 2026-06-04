@@ -35,6 +35,9 @@ export interface ReservarContext {
   style_name?: string | null
   tipologia_code_new?: string | null
   provincia_id?: string | null
+  /** Contexto de lote del usuario (filtro StickyFilters). Se persiste con
+   *  el lead para que ventas sepa si necesita ofrecer casa+lote. */
+  tiene_lote?: 'si' | 'no' | null
   cuotaArs?: number | null
 }
 
@@ -49,6 +52,7 @@ function contextToCatalog(ctx: ReservarContext): LeadFormCatalogContext {
     variante: ctx.variante,
     sistema_constructivo: ctx.sistema,
     provincia_id: ctx.provincia_id,
+    tiene_lote: ctx.tiene_lote ?? null,
     precio_desde_usd: ctx.priceUsd ?? null,
     cuota_ars: ctx.cuotaArs ?? null,
   }
