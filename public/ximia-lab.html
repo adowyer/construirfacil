@@ -42,7 +42,7 @@
       var tries = 0;
       var t = setInterval(function () {
         tries++;
-        if (window.botpress && window.botpress.on) { clearInterval(t); window.botpress.on('webchat:ready', attach); }
+        if (window.botpress && window.botpress.on) { clearInterval(t); window.botpress.on('webchat:initialized', attach); }
         else if (tries > 50) { clearInterval(t); } // ~10s de gracia
       }, 200);
     })();
