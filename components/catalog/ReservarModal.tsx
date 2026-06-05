@@ -17,7 +17,7 @@
  * transforms/overflow de ancestros, igual que DeliveryConditionsModal.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LeadForm, type LeadFormCatalogContext } from '@/components/LeadForm'
 
 export interface ReservarContext {
@@ -112,9 +112,21 @@ export default function ReservarModal({
   const message = buildPrefilledMessage(context)
   const hasContext = !!context.model
 
-  const resolvedEyebrow =
-    eyebrow ?? (hasContext ? 'Quiero esta casa' : 'Contactanos')
-  const resolvedTitle = title ?? 'Dejanos tus datos y te contactamos'
+  // Después de que el LeadForm avisa onSuccess, cambiamos eyebrow + title
+  // del modal — el "Contactanos / Dejanos tus datos" sonaba como si todavía
+  // no se hubiera enviado.
+  const [submitted, setSubmitted] = useState(false)
+  // Reseteamos el flag cuando se vuelve a abrir el modal (otro modelo, etc).
+  useEffect(() => {
+    if (open) setSubmitted(false)
+  }, [open])
+
+  const resolvedEyebrow = submitted
+    ? 'Gracias por contactarnos'
+    : (eyebrow ?? (hasContext ? 'Quiero esta casa' : 'Contactanos'))
+  const resolvedTitle = submitted
+    ? null
+    : (title ?? 'Dejanos tus datos y te contactamos')
   const resolvedSubmitLabel =
     submitLabel ?? (hasContext ? 'Quiero esta casa →' : 'Contactanos →')
 
@@ -137,8 +149,10 @@ export default function ReservarModal({
           ×
         </button>
         <p className="cf-reservar-modal-eyebrow">{resolvedEyebrow}</p>
-        <h3 className="cf-reservar-modal-title">{resolvedTitle}</h3>
-        {context.model && (
+        {resolvedTitle && (
+          <h3 className="cf-reservar-modal-title">{resolvedTitle}</h3>
+        )}
+        {!submitted && context.model && (
           <p className="cf-reservar-modal-detail">
             {[context.model, context.variante && `Variante ${context.variante}`, context.sistema]
               .filter(Boolean)
@@ -156,6 +170,7 @@ export default function ReservarModal({
           variant="light"
           submitLabel={resolvedSubmitLabel}
           catalog={contextToCatalog(context)}
+          onSuccess={() => setSubmitted(true)}
         />
       </div>
     </dialog>
