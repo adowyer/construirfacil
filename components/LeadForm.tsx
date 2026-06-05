@@ -80,6 +80,21 @@ export function LeadForm({
   )
   const pathRef = useRef<HTMLInputElement>(null)
   const [waUrl, setWaUrl] = useState<string | null>(null)
+  // Si el visitante ya envió un lead antes (cookie cf_session), arrancamos
+  // directamente en success state — no le pedimos los datos otra vez.
+  const [existingLeadEmail, setExistingLeadEmail] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/lead-session', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((j: { email: string | null }) => {
+        if (!cancelled && j.email) setExistingLeadEmail(j.email)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (pathRef.current) pathRef.current.value = window.location.pathname
@@ -99,7 +114,17 @@ export function LeadForm({
     }
   }, [state.ok, onSuccess])
 
-  if (state.ok) {
+  // Avisa al padre cuando descubrimos que el visitante ya tenía session
+  // de lead, para que el modal (ReservarModal) ajuste su header.
+  useEffect(() => {
+    if (existingLeadEmail) onSuccess?.()
+  }, [existingLeadEmail, onSuccess])
+
+  if (state.ok || existingLeadEmail) {
+    // Distinción de copy según contexto:
+    //   - state.ok           → lead enviado RECIÉN (en este request)
+    //   - existingLeadEmail  → lead enviado ANTES (cookie cf_session previa)
+    const wasJustSubmitted = state.ok
     return (
       <div className="text-center py-10">
         <p
@@ -107,15 +132,16 @@ export function LeadForm({
             isLight ? 'text-[#1a1a1a]' : 'text-white'
           }`}
         >
-          Llegó tu consulta
+          {wasJustSubmitted ? 'Llegó tu consulta' : 'Ya tenemos tus datos'}
         </p>
         <p
           className={`mt-3 max-w-sm mx-auto ${
             isLight ? 'text-neutral-500' : 'text-white/60'
           }`}
         >
-          En las próximas horas un asesor te escribe para avanzar con tu casa.
-          Si querés agilizar, podemos seguir directo por acá:
+          {wasJustSubmitted
+            ? 'En las próximas horas un asesor te escribe para avanzar con tu casa. Si querés agilizar, podemos seguir directo por acá:'
+            : 'Un asesor te va a contactar a la brevedad. Si querés agilizar, podemos seguir directo por acá:'}
         </p>
         {waUrl && (
           <a

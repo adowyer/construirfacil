@@ -19,6 +19,10 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAttribution } from '@/lib/track/attribution'
 import { sendLeadEmail } from '@/lib/email/lead'
+import {
+  encodeSessionCookie,
+  SESSION_COOKIE_CONFIG,
+} from '@/lib/auth/session-cookie'
 
 export type LeadResult = { ok: boolean; error: string | null }
 
@@ -146,6 +150,22 @@ export async function submitLead(
     cuota_ars,
     localidad,
   })
+
+  // Emitir cookie cf_session — el visitante ya dejó sus datos, no le
+  // exigimos OTP para ver el catálogo después. El gate y el LeadForm la
+  // respetan: el gate la acepta como prueba de identidad (medio), el
+  // LeadForm la lee al montar y muestra success state si matchea email.
+  if (email) {
+    cookieStore.set({
+      name: SESSION_COOKIE_CONFIG.name,
+      value: encodeSessionCookie(email),
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: SESSION_COOKIE_CONFIG.maxAgeSeconds,
+    })
+  }
 
   return { ok: true, error: null }
 }
