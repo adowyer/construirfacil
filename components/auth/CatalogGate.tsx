@@ -99,7 +99,12 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
         codeRef.current?.focus()
         return
       }
-      // Cookie ya seteada — forzar refresh del server tree.
+      // Cookie ya seteada. En soft gate (CatalogPage abre el modal con un
+      // useState local), cerrar manualmente — router.refresh() solo
+      // invalida el server tree, no afecta el state client que controla
+      // la visibilidad del modal. En hard gate (sin onClose) el server
+      // re-renderiza sin gate y el page se reemplaza completo.
+      onClose?.()
       router.refresh()
     })
   }
