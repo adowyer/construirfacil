@@ -100,15 +100,15 @@ export function LeadForm({
             isLight ? 'text-[#1a1a1a]' : 'text-white'
           }`}
         >
-          ¡Recibido!
+          Llegó tu consulta
         </p>
         <p
           className={`mt-3 max-w-sm mx-auto ${
             isLight ? 'text-neutral-500' : 'text-white/60'
           }`}
         >
-          Un asesor te va a contactar para avanzar con tu casa. Si querés,
-          escribinos ahora mismo:
+          En las próximas horas un asesor te escribe para avanzar con tu casa.
+          Si querés agilizar, podemos seguir por WhatsApp:
         </p>
         {waUrl && (
           <a
