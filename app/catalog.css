@@ -2357,6 +2357,7 @@ body:has(.cf-row.cf-expanded) {
 }
 
 
+
 .cf-pn-tag {
   font-size: 11px;
   padding: 4px 10px;
@@ -4761,9 +4762,14 @@ body:has(.cf-row.cf-expanded) {
 
 .cf-detalles-btn-stacked .cf-detalles-btn-label {
   white-space: normal;
-  text-align: left;
+  text-align: right;
   line-height: 1.2;
-  max-width: 95px;
+  max-width: 115px;
+}
+
+/* Stacked: icono "+" va A LA DERECHA del label (orden invertido vs default). */
+.cf-detalles-btn-stacked .cf-detalles-btn {
+  flex-direction: row-reverse;
 }
 
 /* Modal — `<dialog>` nativo: vive en el top layer del browser, no se ve
