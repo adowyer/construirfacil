@@ -33,6 +33,7 @@ import {
 import { variantLabel } from '@/lib/format/variant'
 import { splitModelTitle, styleDisplayName } from '@/lib/content/model-naming'
 import { ensureHtml } from '@/lib/content/rich'
+import GatedSlide from '@/components/auth/GatedSlide'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import {
   type CatalogImage,
@@ -111,6 +112,11 @@ interface PanelsProps {
    *  Comparativo esconde el cotizador y el CTA "Ver precio" — la marca no
    *  opera en la zona del usuario, no tiene sentido cotizar. */
   zoneRule?: EffectiveZoneRule | null
+  /** Dispara el modal del gate (soft). ModelRow lo pasa desde CatalogPage.
+   *  Lo usan los GatedSlide (Planos/Axos/Comparativo/Equipamiento) y los
+   *  CTAs sensibles ("Ver precio", "Quiero esta casa") cuando el visitante
+   *  no está identificado. */
+  onGateRequired?: () => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2208,15 +2214,21 @@ export default function ExpandedPanels(props: PanelsProps) {
       </div>
 
       {/* 5. Perspectivas (image_type='axo') — completa el bloque de
-          distribución mostrando la vista axonométrica de los ambientes. */}
+          distribución mostrando la vista axonométrica de los ambientes.
+          GATED: las axos son vistas técnicas con detalle arquitectónico. */}
       {hasAxos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
-          <PanelAxos
-            images={props.images}
-            activeSkus={props.activeSkus}
-            deliveryHtml={props.deliveryConditionsHtml ?? null}
-            varianteLabels={props.model.variante_labels}
-          />
+          <GatedSlide
+            teaser="Registrate para ver las perspectivas axonométricas"
+            onGateRequired={props.onGateRequired}
+          >
+            <PanelAxos
+              images={props.images}
+              activeSkus={props.activeSkus}
+              deliveryHtml={props.deliveryConditionsHtml ?? null}
+              varianteLabels={props.model.variante_labels}
+            />
+          </GatedSlide>
         </div>
       )}
 
@@ -2260,38 +2272,55 @@ export default function ExpandedPanels(props: PanelsProps) {
         className="cf-station-slide cf-slide-image"
         data-panel="comparativo"
       >
-        <Panel7Comparativo
-          model={props.model}
-          images={props.images}
-          activeSkus={props.activeSkus}
-          cotizador={props.cotizador ?? null}
-          provinciaId={props.provinciaId ?? null}
-          marcaWhatsapp={props.marcaWhatsapp ?? null}
-          zoneRule={props.zoneRule ?? null}
-          onSelect={props.onComparativoSelect}
-        />
+        <GatedSlide
+          teaser="Registrate para ver variantes y precios del comparativo"
+          onGateRequired={props.onGateRequired}
+        >
+          <Panel7Comparativo
+            model={props.model}
+            images={props.images}
+            activeSkus={props.activeSkus}
+            cotizador={props.cotizador ?? null}
+            provinciaId={props.provinciaId ?? null}
+            marcaWhatsapp={props.marcaWhatsapp ?? null}
+            zoneRule={props.zoneRule ?? null}
+            onSelect={props.onComparativoSelect}
+          />
+        </GatedSlide>
       </div>
 
       {/* 8. Materiales / Equipamiento — solo si el modelo tiene atributos
-          cargados. Si está vacío, ocultamos el slide entero. */}
+          cargados. Si está vacío, ocultamos el slide entero.
+          GATED: lista detallada de materiales/equipamiento. */}
       {props.attributesForCatalogIds.length > 0 && (
         <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
-          <Panel8Equipamiento
-            model={props.model}
-            attributesForCatalogIds={props.attributesForCatalogIds}
-          />
+          <GatedSlide
+            teaser="Registrate para ver el equipamiento incluido"
+            onGateRequired={props.onGateRequired}
+          >
+            <Panel8Equipamiento
+              model={props.model}
+              attributesForCatalogIds={props.attributesForCatalogIds}
+            />
+          </GatedSlide>
         </div>
       )}
 
-      {/* 9. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
+      {/* 9. Planos arquitectónicos — solo si hay. Slide medio (75vw).
+          GATED: planos = info técnica copiable. */}
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
-          <PanelPlanos
-            images={props.images}
-            activeSkus={props.activeSkus}
-            deliveryHtml={props.deliveryConditionsHtml ?? null}
-            varianteLabels={props.model.variante_labels}
-          />
+          <GatedSlide
+            teaser="Registrate para ver los planos arquitectónicos"
+            onGateRequired={props.onGateRequired}
+          >
+            <PanelPlanos
+              images={props.images}
+              activeSkus={props.activeSkus}
+              deliveryHtml={props.deliveryConditionsHtml ?? null}
+              varianteLabels={props.model.variante_labels}
+            />
+          </GatedSlide>
         </div>
       )}
 

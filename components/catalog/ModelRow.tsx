@@ -27,6 +27,7 @@ import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModa
 import CotizarCenteredModal from '@/components/catalog/CotizarCenteredModal'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
+import { useClientIdentified } from '@/lib/auth/use-client-identified'
 import {
   skuPrices,
   type CotizadorData,
@@ -441,9 +442,14 @@ export default function ModelRow({
   provinciaId = null,
   tieneLote = null,
   marcaWhatsapp = null,
-  isClientVerified = true,
+  isClientVerified: isClientVerifiedProp = true,
   onGateRequired,
 }: ModelRowProps) {
+  // Combina la prop de SSR con el hook del cliente. Cubre el caso del
+  // visitante que envió un lead en otra pestaña (la cookie cf_session ya
+  // está) y este componente lo detecta en el primer render del cliente.
+  const clientStatus = useClientIdentified()
+  const isClientVerified = isClientVerifiedProp || clientStatus.identified
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
   // fallback al cover default del modelo.
   const displayCoverUrl = coverUrl ?? model.cover_url
@@ -491,7 +497,16 @@ export default function ModelRow({
     return skuPrices(cheapest)
   })()
   const hasCotizador = Boolean(cotizador && cotizador.tiers.length > 0)
-  const openCotizar = () => setCotizarModalOpen(true)
+  const openCotizar = () => {
+    // Gate: ver precio dinámico requiere identificación. Si el visitante
+    // no tiene cookie (cf_client o cf_session), dispara el modal del
+    // gate en lugar de abrir el cotizador.
+    if (!isClientVerified) {
+      onGateRequired?.()
+      return
+    }
+    setCotizarModalOpen(true)
+  }
   const scrollToPanelInTrack = (panelName: string) => {
     const track = galleryRef.current
     if (!track) return
@@ -505,12 +520,11 @@ export default function ModelRow({
     // Si ya está expandida, scroll directo. Sino expandimos + marcamos el
     // panel a scrollear; el useEffect de abajo lo hace cuando el track ya
     // está en el DOM y el slider terminó su layout.
+    // El gate del comparativo se aplica DENTRO del panel (blur+overlay)
+    // si el visitante no está identificado — no acá. Permitimos llegar a
+    // verlo borroso para generar FOMO.
     if (isExpanded) {
       scrollToPanelInTrack('comparativo')
-      return
-    }
-    if (!isClientVerified) {
-      onGateRequired?.()
       return
     }
     setScrollToPanel('comparativo')
@@ -913,12 +927,10 @@ export default function ModelRow({
         className={`cf-row ${isExpanded ? 'cf-expanded' : ''}`}
         onClick={() => {
           if (isExpanded) return
-          // Auth gate: el listado es libre pero el detalle requiere login.
-          // Si no está verified, dejamos que CatalogPage muestre el modal.
-          if (!isClientVerified) {
-            onGateRequired?.()
-            return
-          }
+          // Catálogo + detalle son libres. El gate se dispara recién en
+          // acciones sensibles (Ver precio, Quiero esta casa) y al avanzar
+          // a slides técnicos (Planos, Comparativo) — manejado dentro de
+          // ExpandedPanels con useClientIdentified.
           setIsExpanded(true)
           track('model_open', { model: model.group_slug })
         }}
@@ -1194,6 +1206,7 @@ export default function ModelRow({
               marcaWhatsapp={marcaWhatsapp}
               zoneRule={zoneRule}
               onComparativoSelect={setComparativoSel}
+              onGateRequired={onGateRequired}
             />
           )}
         </div>

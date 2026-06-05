@@ -13,6 +13,10 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { submitLead, type LeadResult } from '@/app/cotizar/actions'
 import { track } from '@/lib/track/client'
 import { buildWhatsappUrl } from '@/lib/cta/whatsapp'
+import {
+  refetchClientStatus,
+  useClientIdentified,
+} from '@/lib/auth/use-client-identified'
 
 const FIELD = {
   dark: 'w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/20 transition-colors',
@@ -82,19 +86,8 @@ export function LeadForm({
   const [waUrl, setWaUrl] = useState<string | null>(null)
   // Si el visitante ya envió un lead antes (cookie cf_session), arrancamos
   // directamente en success state — no le pedimos los datos otra vez.
-  const [existingLeadEmail, setExistingLeadEmail] = useState<string | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/lead-session', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((j: { email: string | null }) => {
-        if (!cancelled && j.email) setExistingLeadEmail(j.email)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const clientStatus = useClientIdentified()
+  const existingLeadEmail = clientStatus.leadEmail
 
   useEffect(() => {
     if (pathRef.current) pathRef.current.value = window.location.pathname
@@ -110,6 +103,10 @@ export function LeadForm({
   useEffect(() => {
     if (state.ok) {
       track('lead')
+      // El submitLead seteó la cookie cf_session — re-cacheamos el status
+      // para que otros componentes (slides gated, CTAs) vean al usuario
+      // como identificado sin recargar la página.
+      refetchClientStatus().catch(() => {})
       onSuccess?.()
     }
   }, [state.ok, onSuccess])
