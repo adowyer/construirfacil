@@ -2272,12 +2272,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         />
       </div>
 
-      {/* 8. La Casa que Crece — feature único (text + GIF) sin variants. */}
-      <div className="cf-station-slide cf-slide-text cf-slide-text-xwide">
-        <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
-      </div>
-
-      {/* 9. Materiales / Equipamiento — solo si el modelo tiene atributos
+      {/* 8. Materiales / Equipamiento — solo si el modelo tiene atributos
           cargados. Si está vacío, ocultamos el slide entero. */}
       {props.attributesForCatalogIds.length > 0 && (
         <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
@@ -2288,7 +2283,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 12. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
+      {/* 9. Planos arquitectónicos — solo si hay. Slide medio (75vw). */}
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
           <PanelPlanos
@@ -2300,12 +2295,22 @@ export default function ExpandedPanels(props: PanelsProps) {
         </div>
       )}
 
-      {/* 13. También podría interesarte — modelos relacionados al final. */}
+      {/* 12. También podría interesarte — modelos relacionados.
+          Slide extra angosto (52vw) para acortar la distancia con La Casa
+          que Crece (el slide siguiente, último). */}
       {props.allModels && props.allModels.length > 1 && (
-        <div className="cf-station-slide cf-slide-image">
+        <div className="cf-station-slide cf-slide-image cf-slide-image-xnarrow">
           <PanelRelated model={props.model} allModels={props.allModels} />
         </div>
       )}
+
+      {/* 13. La Casa que Crece — feature único (text + GIF) sin variants.
+          Va al FINAL: el GIF es genérico/ilustrativo y al lado del slide
+          de Planos confundía (parecía animación del plano). Lo aislamos
+          como cierre aspiracional. */}
+      <div className="cf-station-slide cf-slide-text cf-slide-text-xwide">
+        <Panel6CasaQueCrece model={props.model} brandContent={props.brandContent} activeSkus={props.activeSkus} />
+      </div>
     </>
   )
 }

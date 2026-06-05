@@ -257,6 +257,38 @@ export default function CotizarModal({
               Quiero esta casa →
             </button>
           </div>
+
+          {/* Disclaimer educativo de Precios dinámicos. Va DESPUÉS de los
+              botones para que los CTAs queden por encima del fold y los
+              curiosos puedan scrollear para entender el modelo de precios. */}
+          <div className="cf-cotizar-modal-disclaimer">
+            <p>
+              <strong>El precio es orientativo y dinámico.</strong> Nuestras casas no
+              tienen un precio &ldquo;de catálogo&rdquo; porque cada cliente las configura
+              a su preferencia. El valor final depende de la{' '}
+              <strong>variante</strong> —superficie y distribución—, el{' '}
+              <strong>sistema constructivo</strong> —Wood Plus, Steel Plus o Stone Plus—,
+              las <strong>terminaciones</strong> que elijas —revestimientos o aislaciones
+              opcionales— y los accesorios del catálogo —parrilla, lavadero exterior,
+              equipo solar, etc.—.
+            </p>
+            <p>
+              <strong>El precio se ajusta por &ldquo;tiempo&rdquo; y &ldquo;volumen&rdquo;.</strong>{' '}
+              Creamos un exclusivo <strong>modelo de cotización colectiva por cupos</strong>{' '}
+              que premia tu flexibilidad. Al organizar las obras por ubicación y volumen de
+              ventas reducimos los costos, y trasladamos ese ahorro directo a tu precio
+              final. En cualquier caso,{' '}
+              <strong>
+                mejoramos cualquier presupuesto y somos hasta un 50% más rápidos
+              </strong>{' '}
+              que la construcción tradicional.
+            </p>
+            <p>
+              Los precios que ves en la casa elegida son la referencia más cercana sobre
+              la configuración estándar, sujeto a ajustes personales en el momento de la
+              formalización de la compra.
+            </p>
+          </div>
         </div>
       </div>
 

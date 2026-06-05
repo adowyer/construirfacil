@@ -1010,8 +1010,8 @@ body:has(.cf-row.cf-expanded) {
   }
 
   .cf-row-seemore-plus {
-    width: 24px;
-    height: 24px;
+    width: 40px;
+    height: 40px;
     font-size: 16px;
   }
 }
@@ -1167,6 +1167,18 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-slide-image-narrow .cf-pn {
+  aspect-ratio: auto;
+  width: 100%;
+}
+
+/* Variante extra angosta — usado por PanelRelated para acortar la
+   distancia con el slide siguiente (La Casa que Crece). */
+.cf-slide-image-xnarrow {
+  width: 52vw;
+  overflow: hidden;
+}
+
+.cf-slide-image-xnarrow .cf-pn {
   aspect-ratio: auto;
   width: 100%;
 }
@@ -4452,21 +4464,24 @@ body:has(.cf-row.cf-expanded) {
 }
 
 /* "Ver →" — CTA al final que hace scroll suave a la grilla del listado.
-   Blanco con texto rojo para destacar de los pills (todos blancos con texto
-   negro) y de la barra (roja). */
+   Amarillo brillante para destacar como acción principal sobre el sticky
+   rojo (excepción visual deliberada: rompe el palette para llamar la
+   atención sin chocar con los otros CTAs rojos del sitio). */
 .cf-stf-pill.cf-stf-pill-ver {
-  background: #fff;
-  color: #ff003d;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  background: #FFD500;
+  color: #0a0a0a;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 6px 18px;
+  box-shadow: 0 4px 12px rgba(255, 213, 0, 0.4);
 }
 
 .cf-stf-pill.cf-stf-pill-ver:hover {
-  background: #fff;
-  color: #d80035;
+  background: #FFC700;
+  color: #0a0a0a;
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 213, 0, 0.5);
 }
 
 /* Disabled: combinaciones que vaciarían el listado. No clickeable. */
@@ -5902,7 +5917,7 @@ body:has(.cf-row.cf-expanded) {
 
 /* ── Tipografía Principal ── */
 .cf-slide-title-large {
-  font-size: clamp(40px, 4.5vw, 70px);
+  font-size: clamp(65px, 4.5vw, 70px);
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 0.85;
@@ -7168,7 +7183,7 @@ body:has(.cf-row.cf-expanded) {
 }
 
 .cf-slide-image .cf-pn-related {
-  width: 67% !important;
+  width: 100% !important;
 }
 
 
