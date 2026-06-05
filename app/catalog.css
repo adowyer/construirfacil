@@ -1231,15 +1231,15 @@ body:has(.cf-row.cf-expanded) {
 
 /* Override del aspect-ratio 16/10 base de .cf-pn cuando vive dentro de un
    slide-text. El slide ya define el ancho — sin esto, el aspect-ratio
-   calcula width = height * 1.6 y desborda el slide. */
+   calcula width = height * 1.6 y desborda el slide.
+   El scroll vive en el panel concreto (ej. .cf-pn-desc) — los slides
+   mantienen altura fija para no romper el alineamiento del slider. */
 .cf-slide-text .cf-pn,
 .cf-slide-text-narrow .cf-pn,
 .cf-slide-text-wide .cf-pn,
 .cf-slide-text-xwide .cf-pn {
   aspect-ratio: auto;
   width: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .cf-slide-text-narrow .cf-pn-text,
@@ -2355,6 +2355,7 @@ body:has(.cf-row.cf-expanded) {
   gap: 6px;
   margin-top: 24px;
 }
+
 
 .cf-pn-tag {
   font-size: 11px;
@@ -4223,8 +4224,8 @@ body:has(.cf-row.cf-expanded) {
 .cf-sticky-filters-inner {
   display: flex;
   align-items: center;
-  gap: 26px;
-  padding: 14px 20px;
+  gap: 12px;
+  padding: 14px 18px;
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
@@ -4399,6 +4400,7 @@ body:has(.cf-row.cf-expanded) {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.9);
   margin-right: 5px;
+  white-space: nowrap;
 }
 
 /* "Elegí" — texto intro de la barra (reemplaza el viejo filtro de Estilo). */
@@ -4464,24 +4466,23 @@ body:has(.cf-row.cf-expanded) {
 }
 
 /* "Ver →" — CTA al final que hace scroll suave a la grilla del listado.
-   Amarillo brillante para destacar como acción principal sobre el sticky
-   rojo (excepción visual deliberada: rompe el palette para llamar la
-   atención sin chocar con los otros CTAs rojos del sitio). */
+   Negro sobre rojo del sticky: mismo lenguaje visual que las pills activas
+   (que también son negras). Destaca por contraste sin romper el palette. */
 .cf-stf-pill.cf-stf-pill-ver {
-  background: #FFD500;
-  color: #0a0a0a;
+  background: #0a0a0a;
+  color: #fff;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 6px 18px;
-  box-shadow: 0 4px 12px rgba(255, 213, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .cf-stf-pill.cf-stf-pill-ver:hover {
-  background: #FFC700;
-  color: #0a0a0a;
+  background: #1a1a1a;
+  color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(255, 213, 0, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
 /* Disabled: combinaciones que vaciarían el listado. No clickeable. */

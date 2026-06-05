@@ -56,6 +56,17 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
     else emailRef.current?.focus()
   }, [step])
 
+  // Escape cierra el modal (solo en soft gate — onClose definido). A11y:
+  // keyboard-only users no quedan atrapados.
+  useEffect(() => {
+    if (!onClose) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   // Cooldown del resend.
   useEffect(() => {
     if (resendCountdown <= 0) return
@@ -128,7 +139,12 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
   }
 
   return (
-    <div className="cf-gate-root" aria-modal="true" role="dialog">
+    <div
+      className="cf-gate-root"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="cf-gate-title"
+    >
       <div
         className="cf-gate-backdrop"
         onClick={onClose}
@@ -152,9 +168,10 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
 
         {step === 'email' ? (
           <>
-            <h2 className="cf-gate-title">TU NUEVA CASA TE ESPERA.</h2>
+            <h2 id="cf-gate-title" className="cf-gate-title">TU NUEVA CASA TE ESPERA.</h2>
             <p className="cf-gate-body">
-              Verifica tu identidad para darte información de modelos y precios dinámicos personalizados por localidad.
+              Con tu mail desbloqueás <strong>precios personalizados por localidad</strong>,
+              y te mostramos el cuadro comparativo de variantes, planos y financiación. <strong>Sólo 30 segundos.</strong>
             </p>
             <div className="cf-gate-oauth-row">
               <button
@@ -205,7 +222,7 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
                   disabled={pending}
                 />
               </label>
-              {error && <p className="cf-gate-error">{error}</p>}
+              {error && <p role="alert" className="cf-gate-error">{error}</p>}
               <button type="submit" className="cf-gate-cta" disabled={pending}>
                 {pending ? 'Enviando…' : 'Recibir código'}
               </button>
@@ -217,10 +234,10 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
           </>
         ) : (
           <>
-            <h2 className="cf-gate-title">Ingresá el código</h2>
+            <h2 id="cf-gate-title" className="cf-gate-title">Tu llave de 4 dígitos</h2>
             <p className="cf-gate-body">
-              Te enviamos un código de 4 dígitos a{' '}
-              <strong>{email}</strong>. Revisá la bandeja de entrada y SPAM.
+              Te mandamos el código a <strong>{email}</strong>. Llega en segundos —
+              si no lo ves, revisá SPAM.
             </p>
             <form onSubmit={handleVerify} className="cf-gate-form">
               <label className="cf-gate-field">
@@ -241,7 +258,7 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
                   autoComplete="one-time-code"
                 />
               </label>
-              {error && <p className="cf-gate-error">{error}</p>}
+              {error && <p role="alert" className="cf-gate-error">{error}</p>}
               <button
                 type="submit"
                 className="cf-gate-cta"

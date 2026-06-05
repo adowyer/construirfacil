@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react'
 import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { track } from '@/lib/track/client'
 import type { CotizadorData, SkuPrices } from '@/lib/content/cotizador-data'
 
@@ -235,17 +236,19 @@ export default function CotizarModal({
           </div>
 
           <div className="cf-cotizar-panel-ctas">
-            <a
-              href={getAsesorHref()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cf-cotizar-panel-cta-secondary"
-              onClick={() =>
-                track('asesor_click', { source: 'cotizar_persiana', ...context })
-              }
-            >
-              Conversar con Ximia
-            </a>
+            {XIMIA_ENABLED && (
+              <a
+                href={getAsesorHref()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cf-cotizar-panel-cta-secondary"
+                onClick={() =>
+                  track('asesor_click', { source: 'cotizar_persiana', ...context })
+                }
+              >
+                Conversar con Ximia
+              </a>
+            )}
             <button
               type="button"
               className="cf-cotizar-panel-cta-primary"

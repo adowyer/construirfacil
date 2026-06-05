@@ -1158,8 +1158,8 @@ export default function ModelRow({
                   <span className="cf-row-seemore-plus">
                     <svg
                       viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
+                      width="20"
+                      height="20"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="3"

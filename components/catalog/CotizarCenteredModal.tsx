@@ -24,6 +24,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { track } from '@/lib/track/client'
 import type { CotizadorData, SkuPrices } from '@/lib/content/cotizador-data'
 import { submitLead, type LeadResult } from '@/app/cotizar/actions'
@@ -92,20 +93,22 @@ function WaitlistContent({
           </p>
         </div>
         <div className="cf-cotizar-modal-ctas">
-          <a
-            href={getAsesorHref()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cf-cotizar-panel-cta-secondary"
-            onClick={() =>
-              track('asesor_click', {
-                source: 'waitlist_success',
-                ...context,
-              })
-            }
-          >
-            Conversar con Ximia
-          </a>
+          {XIMIA_ENABLED && (
+            <a
+              href={getAsesorHref()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cf-cotizar-panel-cta-secondary"
+              onClick={() =>
+                track('asesor_click', {
+                  source: 'waitlist_success',
+                  ...context,
+                })
+              }
+            >
+              Conversar con Ximia
+            </a>
+          )}
           <button
             type="button"
             className="cf-cotizar-panel-cta-primary"
@@ -276,20 +279,22 @@ function WaitlistContent({
         )}
 
         <div className="cf-cotizar-modal-ctas" style={{ marginTop: 14 }}>
-          <a
-            href={getAsesorHref()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cf-cotizar-panel-cta-secondary"
-            onClick={() =>
-              track('asesor_click', {
-                source: 'waitlist_form',
-                ...context,
-              })
-            }
-          >
-            Conversar con Ximia
-          </a>
+          {XIMIA_ENABLED && (
+            <a
+              href={getAsesorHref()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cf-cotizar-panel-cta-secondary"
+              onClick={() =>
+                track('asesor_click', {
+                  source: 'waitlist_form',
+                  ...context,
+                })
+              }
+            >
+              Conversar con Ximia
+            </a>
+          )}
           <button
             type="submit"
             disabled={isPending}
@@ -497,17 +502,19 @@ export default function CotizarCenteredModal({
                     Ver cuadro comparativo
                   </button>
                 )}
-                <a
-                  href={getAsesorHref()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="cf-cotizar-panel-cta-secondary"
-                  onClick={() =>
-                    track('asesor_click', { source: 'cotizar_modal', ...context })
-                  }
-                >
-                  Conversar con Ximia
-                </a>
+                {XIMIA_ENABLED && (
+                  <a
+                    href={getAsesorHref()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cf-cotizar-panel-cta-secondary"
+                    onClick={() =>
+                      track('asesor_click', { source: 'cotizar_modal', ...context })
+                    }
+                  >
+                    Conversar con Ximia
+                  </a>
+                )}
                 <button
                   type="button"
                   className="cf-cotizar-panel-cta-primary"

@@ -29,6 +29,7 @@ import type {
   FooterContentRow,
 } from '@/lib/supabase/queries/footer'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { useInViewport } from '@/lib/hooks/useInViewport'
 import ReservarModal from './ReservarModal'
 import { Ruler, BadgeCheck, ShieldCheck, Factory, Globe, Phone } from 'lucide-react'
@@ -158,14 +159,16 @@ export default function CatalogFooter({
             >
               {footerContent?.cta_primary_label || 'Contactanos →'}
             </button>
-            <a
-              className="cf-footer-cta-secondary"
-              href={getAsesorHref()}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
-            </a>
+            {XIMIA_ENABLED && (
+              <a
+                className="cf-footer-cta-secondary"
+                href={getAsesorHref()}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
+              </a>
+            )}
           </div>
         </div>
       </section>

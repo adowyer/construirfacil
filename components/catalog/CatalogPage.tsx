@@ -858,6 +858,7 @@ export default function CatalogPage({
             onProvinciaChange={setProvinciaId}
             onOffersToggle={toggleOffers}
             onTieneLoteChange={setTieneLote}
+            resultsCount={filtered.length}
           />
 
           {/* Banners Casa+Lote retirados de aquí. La propuesta vive 100%

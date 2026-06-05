@@ -41,6 +41,10 @@ interface StickyFiltersProps {
   onProvinciaChange: (id: string | null) => void
   onOffersToggle: () => void
   onTieneLoteChange: (v: 'si' | 'no' | null) => void
+  /** Cantidad de casas que matchean los filtros activos. Si está, el botón
+   *  VER muestra "Ver 12 casas →" en lugar de "Ver →". Da feedback de
+   *  scoping al usuario sin obligarlo a scrollear. */
+  resultsCount?: number
 }
 
 const BED_OPTIONS = ['1', '2', '3', '4+'] as const
@@ -81,6 +85,7 @@ export default function StickyFilters({
   onProvinciaChange,
   onOffersToggle,
   onTieneLoteChange,
+  resultsCount,
 }: StickyFiltersProps) {
   const isBedEnabled = (v: string) =>
     !enabledBeds || enabledBeds.has(v) || bedFilters.includes(v)
@@ -259,7 +264,9 @@ export default function StickyFilters({
           if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }}
       >
-        Ver →
+        {resultsCount != null
+          ? `Ver ${resultsCount} ${resultsCount === 1 ? 'modelo' : 'modelos'} →`
+          : 'Ver →'}
       </button>
     </>
   )
