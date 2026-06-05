@@ -27,6 +27,11 @@ type Step = 'email' | 'code'
 
 const RESEND_COOLDOWN_S = 30
 
+// Feature flag: ocultamos el botón Facebook hasta que la app pase Business
+// Verification de Meta. Una vez aprobado, setear NEXT_PUBLIC_FACEBOOK_ENABLED=true
+// en Vercel + redeploy. El código del callback ya está en producción.
+const FACEBOOK_ENABLED = process.env.NEXT_PUBLIC_FACEBOOK_ENABLED === 'true'
+
 export default function CatalogGate() {
   const router = useRouter()
   const [step, setStep] = useState<Step>('email')
@@ -141,15 +146,17 @@ export default function CatalogGate() {
                 <GoogleG />
                 Continuar con Google
               </button>
-              <button
-                type="button"
-                onClick={handleFacebook}
-                disabled={pending}
-                className="cf-gate-facebook"
-              >
-                <FacebookF />
-                Continuar con Facebook
-              </button>
+              {FACEBOOK_ENABLED && (
+                <button
+                  type="button"
+                  onClick={handleFacebook}
+                  disabled={pending}
+                  className="cf-gate-facebook"
+                >
+                  <FacebookF />
+                  Continuar con Facebook
+                </button>
+              )}
             </div>
             <div className="cf-gate-divider">
               <span>o usá tu email</span>
