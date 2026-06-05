@@ -32,7 +32,14 @@ const RESEND_COOLDOWN_S = 30
 // en Vercel + redeploy. El código del callback ya está en producción.
 const FACEBOOK_ENABLED = process.env.NEXT_PUBLIC_FACEBOOK_ENABLED === 'true'
 
-export default function CatalogGate() {
+interface CatalogGateProps {
+  /** Si está definido, el modal puede cerrarse (botón X + click afuera).
+   *  Sin esta prop el gate es hard (entrada directa a /modelos/[slug] o
+   *  /catalogo SSR sin cookie) y no se puede salir sin verificar. */
+  onClose?: () => void
+}
+
+export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
@@ -122,8 +129,22 @@ export default function CatalogGate() {
 
   return (
     <div className="cf-gate-root" aria-modal="true" role="dialog">
-      <div className="cf-gate-backdrop" />
+      <div
+        className="cf-gate-backdrop"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div className="cf-gate-card">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="cf-gate-close"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        )}
         <div className="cf-gate-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/cf_logo_gris.png" alt="ConstruirFácil" />

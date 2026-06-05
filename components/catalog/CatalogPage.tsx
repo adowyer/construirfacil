@@ -1183,8 +1183,9 @@ export default function CatalogPage({
       {/* Auth gate modal — visible cuando un visitante no verificado intenta
           expandir el detalle de una casa. ModelRow setea showGate via la
           prop onGateRequired; al verificar el OTP, el componente hace
-          router.refresh() y la cookie reactiva todo. */}
-      {showGate && <CatalogGate />}
+          router.refresh() y la cookie reactiva todo. Acá pasamos onClose
+          para que el visitante pueda volver al listado sin verificarse. */}
+      {showGate && <CatalogGate onClose={() => setShowGate(false)} />}
     </>
   )
 }

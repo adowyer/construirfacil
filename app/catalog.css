@@ -9430,6 +9430,27 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
   text-align: center;
 }
 
+.cf-gate-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: 0;
+  font-size: 26px;
+  line-height: 1;
+  color: #999;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.cf-gate-close:hover {
+  background: #f5f5f3;
+  color: #0a0a0a;
+}
+
 .cf-gate-brand {
   margin-bottom: 24px;
 }
