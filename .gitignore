@@ -75,3 +75,7 @@ CATALOG_AUDIT.md
 # apple-icon.png). Excepciones explícitas porque *.png estaba ignorado.
 !/app/icon.png
 !/app/apple-icon.png
+
+# Análisis y scripts de diagnóstico temporales
+tmp_*
+INFO/
