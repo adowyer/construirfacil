@@ -22,6 +22,7 @@ import SiteHeader from '@/components/SiteHeader'
 import HeroRow, { type GrowthPair, type LineaModelo } from './HeroRow'
 import StickyFilters from './StickyFilters'
 import ModelRow from './ModelRow'
+import CatalogGate from '@/components/auth/CatalogGate'
 import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import { variantLabel } from '@/lib/format/variant'
@@ -100,6 +101,12 @@ interface PageProps {
    *  Se usa en `/` (home) — entrar al catálogo es un toggle interno, no una
    *  navegación. Default false (modo catálogo normal, ej. /catalogo/[marca]). */
   initialHomeMode?: boolean
+  /** True si el visitante ya pasó el auth gate (cookie cf_client válida).
+   *  Solo aplica en home con initialHomeMode=true: si false, el botón "Ver
+   *  Catálogo" navega a /catalogo (donde el gate de SSR ataca); si true,
+   *  abre el catálogo inline. En rutas que ya hicieron SSR gate
+   *  (/catalogo/*), este prop no aplica. */
+  isClientVerified?: boolean
   /** 'b2b' (ruta /empresas): HomeRow usa copy B2B y "Ver catálogo" navega
    *  al catálogo B2C abierto (/catalogo) en vez del toggle interno.
    *  El contenido del HeroRow B2B llega por `headerSlides` (variant b2b). */
@@ -168,6 +175,7 @@ export default function CatalogPage({
   homeSlides = [],
   selectedMarca = null,
   initialHomeMode = false,
+  isClientVerified = true,
   variant = 'b2c',
   deliveryConditionsHtml = null,
   cotizador = null,
@@ -197,12 +205,19 @@ export default function CatalogPage({
   const [phase, setPhase] = useState<LandingPhase>(
     initialHomeMode ? 'home' : 'catalog',
   )
+  // Auth gate modal: lo dispara ModelRow cuando un visitante no verificado
+  // intenta expandir el detalle de una casa.
+  const [showGate, setShowGate] = useState(false)
+  const requestGate = useCallback(() => setShowGate(true), [])
 
   const SHELL_MS = 900 // duración persiana (sincronizado con CSS)
   const FADE_MS = 400 // duración fade-in/out del catálogo
 
   const goToCatalog = () => {
     if (phase !== 'home') return
+    // El listado es abierto: cualquier visitante puede verlo. El gate se
+    // dispara recién cuando intenta abrir el detalle de una casa (manejado
+    // por ModelRow + setShowGate de este componente).
     setPhase('opening')
     window.setTimeout(() => setPhase('catalog'), SHELL_MS)
   }
@@ -1004,6 +1019,8 @@ export default function CatalogPage({
                       ? marcas.find((mm) => mm.id === model.marca_id)?.whatsapp_number ?? null
                       : null
                   }
+                  isClientVerified={isClientVerified}
+                  onGateRequired={requestGate}
                 />
               )
             })}
@@ -1163,6 +1180,11 @@ export default function CatalogPage({
         )}
       </div>
 
+      {/* Auth gate modal — visible cuando un visitante no verificado intenta
+          expandir el detalle de una casa. ModelRow setea showGate via la
+          prop onGateRequired; al verificar el OTP, el componente hace
+          router.refresh() y la cookie reactiva todo. */}
+      {showGate && <CatalogGate />}
     </>
   )
 }

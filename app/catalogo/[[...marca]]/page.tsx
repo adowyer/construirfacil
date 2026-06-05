@@ -41,6 +41,7 @@ import { getFooterContent } from '@/lib/supabase/queries/footer'
 import { getResolvedHomeSlides } from '@/lib/supabase/queries/home_content'
 import { getDeliveryConditions } from '@/lib/supabase/queries/delivery_conditions'
 import CatalogPage from '@/components/catalog/CatalogPage'
+import { currentClientEmail } from '@/lib/auth/get-current-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,6 +85,13 @@ export default async function CatalogoPage({ params }: PageProps) {
 
   // Tirar 404 si vienen segmentos extra (ej. /catalogo/hausind/X/Y).
   if (marca && marca.length > 1) notFound()
+
+  // ── Auth gate ─────────────────────────────────────────────────────────
+  // El listado del catálogo queda ABIERTO (mejor SEO + first impression).
+  // El gate se dispara cuando el visitante quiere ver el DETALLE de una
+  // casa (expandir model row o entrar a /modelos/[slug] directo). Acá solo
+  // leemos la cookie para pasarla a CatalogPage como prop.
+  const clientEmail = await currentClientEmail()
 
   const supabase = await createClient()
 
@@ -218,6 +226,7 @@ export default async function CatalogoPage({ params }: PageProps) {
       provincias={provincias}
       marcaZonas={marcaZonas}
       promos={promos}
+      isClientVerified={!!clientEmail}
     />
   )
 }

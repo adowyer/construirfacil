@@ -9397,3 +9397,266 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
     letter-spacing: 0.06em;
   }
 }
+
+/* ============================================================================
+   Auth Gate del catálogo — full-screen modal de 2 pasos (email → OTP).
+   ============================================================================ */
+.cf-gate-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.cf-gate-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.cf-gate-card {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  padding: 44px 40px 32px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+.cf-gate-brand {
+  margin-bottom: 24px;
+}
+
+.cf-gate-brand img {
+  height: 38px;
+  width: auto;
+  margin: 0 auto;
+  display: block;
+}
+
+.cf-gate-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #0a0a0a;
+  letter-spacing: -0.01em;
+}
+
+.cf-gate-body {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0 0 28px;
+}
+
+.cf-gate-body strong {
+  color: #0a0a0a;
+  font-weight: 600;
+}
+
+.cf-gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.cf-gate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cf-gate-field span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #888;
+  font-weight: 600;
+}
+
+.cf-gate-field input {
+  border: 1px solid #d4d4d0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 15px;
+  background: #fff;
+  color: #0a0a0a;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.cf-gate-field input:focus {
+  outline: none;
+  border-color: #0a0a0a;
+}
+
+.cf-gate-field input:disabled {
+  background: #f5f5f3;
+  cursor: not-allowed;
+}
+
+.cf-gate-code-input {
+  font-size: 24px !important;
+  letter-spacing: 0.4em !important;
+  text-align: center;
+  font-family: ui-monospace, monospace !important;
+}
+
+.cf-gate-error {
+  color: #cc003a;
+  font-size: 13px;
+  margin: -4px 0 0;
+  font-weight: 500;
+}
+
+.cf-gate-cta {
+  background: #ff003d;
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+
+.cf-gate-cta:hover:not(:disabled) {
+  background: #d80035;
+}
+
+.cf-gate-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cf-gate-fineprint {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.5;
+  margin: 24px 0 0;
+}
+
+.cf-gate-secondary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.cf-gate-link {
+  background: none;
+  border: 0;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+  font-family: inherit;
+}
+
+.cf-gate-link:hover:not(:disabled) {
+  color: #0a0a0a;
+}
+
+.cf-gate-link:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.cf-gate-oauth-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cf-gate-google,
+.cf-gate-facebook {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border-radius: 999px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  border: 1px solid transparent;
+}
+
+.cf-gate-google {
+  background: #fff;
+  color: #3c4043;
+  border-color: #dadce0;
+}
+
+.cf-gate-google:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.cf-gate-facebook {
+  background: #1877f2;
+  color: #fff;
+}
+
+.cf-gate-facebook:hover:not(:disabled) {
+  background: #166fe5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.cf-gate-google:disabled,
+.cf-gate-facebook:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cf-gate-divider {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+  text-align: center;
+}
+
+.cf-gate-divider::before,
+.cf-gate-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e6e4dd;
+}
+
+.cf-gate-divider span {
+  padding: 0 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #999;
+}
+
+@media (max-width: 480px) {
+  .cf-gate-card {
+    padding: 32px 24px;
+  }
+  .cf-gate-title {
+    font-size: 20px;
+  }
+  .cf-gate-code-input {
+    font-size: 20px !important;
+  }
+}

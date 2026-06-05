@@ -23,6 +23,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { loadHomeData } from '@/lib/content/home-data'
 import CatalogPage from '@/components/catalog/CatalogPage'
+import { currentClientEmail } from '@/lib/auth/get-current-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,12 +36,14 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const supabase = await createClient()
   const data = await loadHomeData(supabase)
+  const clientEmail = await currentClientEmail()
 
   return (
     <CatalogPage
       {...data}
       selectedMarca={null}
       initialHomeMode={true}
+      isClientVerified={!!clientEmail}
     />
   )
 }

@@ -103,6 +103,13 @@ interface ModelRowProps {
    *  escribe el fallback global `NEXT_PUBLIC_WHATSAPP_NUMBER` en la pantalla
    *  post-success del LeadForm. NULL → usa el fallback. */
   marcaWhatsapp?: string | null
+  /** True si el visitante ya pasó el auth gate. Cuando es false, al hacer
+   *  click para expandir la card disparamos `onGateRequired` en lugar de
+   *  expandir — el gate vive en CatalogPage como modal full-screen. */
+  isClientVerified?: boolean
+  /** Callback que CatalogPage usa para mostrar el gate modal cuando un
+   *  visitante no verificado intenta expandir una casa. */
+  onGateRequired?: () => void
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -434,6 +441,8 @@ export default function ModelRow({
   provinciaId = null,
   tieneLote = null,
   marcaWhatsapp = null,
+  isClientVerified = true,
+  onGateRequired,
 }: ModelRowProps) {
   // Foto a mostrar en la card del listado: prop dinámica si llegó, sino
   // fallback al cover default del modelo.
@@ -498,10 +507,14 @@ export default function ModelRow({
     // está en el DOM y el slider terminó su layout.
     if (isExpanded) {
       scrollToPanelInTrack('comparativo')
-    } else {
-      setScrollToPanel('comparativo')
-      setIsExpanded(true)
+      return
     }
+    if (!isClientVerified) {
+      onGateRequired?.()
+      return
+    }
+    setScrollToPanel('comparativo')
+    setIsExpanded(true)
   }
   // Una vez que el expand montó (next paint), si quedó un panel pendiente
   // de scrollear, lo hacemos. Limpiamos el flag para que no vuelva a disparar.
@@ -900,6 +913,12 @@ export default function ModelRow({
         className={`cf-row ${isExpanded ? 'cf-expanded' : ''}`}
         onClick={() => {
           if (isExpanded) return
+          // Auth gate: el listado es libre pero el detalle requiere login.
+          // Si no está verified, dejamos que CatalogPage muestre el modal.
+          if (!isClientVerified) {
+            onGateRequired?.()
+            return
+          }
           setIsExpanded(true)
           track('model_open', { model: model.group_slug })
         }}

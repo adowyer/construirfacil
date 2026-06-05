@@ -22,6 +22,8 @@ import { createClient } from '@/lib/supabase/server'
 import { loadHomeData } from '@/lib/content/home-data'
 import CatalogPage from '@/components/catalog/CatalogPage'
 import { modelGroupSlug } from '@/lib/content/model-slug'
+import CatalogGate from '@/components/auth/CatalogGate'
+import { currentClientEmail } from '@/lib/auth/get-current-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +71,10 @@ export async function generateMetadata({
 
 export default async function ModeloPage({ params }: PageProps) {
   const { slug } = await params
+  const clientEmail = await currentClientEmail()
+  if (!clientEmail) {
+    return <CatalogGate />
+  }
   const { data, model } = await findModel(slug)
   if (!model) notFound()
 
