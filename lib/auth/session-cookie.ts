@@ -31,8 +31,17 @@ function secret(): string {
   return s
 }
 
+// Domain tag — separa esta firma de la de cf_client (gate-cookie.ts).
+// Ver comentario allá. Sin domain separation, las firmas serían
+// intercambiables entre las dos cookies y un atacante podía promover una
+// session a verified renombrando la cookie.
+const DOMAIN = 'session'
+
 function sign(payload: string): string {
-  return createHmac('sha256', secret()).update(payload).digest('hex').slice(0, 32)
+  return createHmac('sha256', secret())
+    .update(`${DOMAIN}:${payload}`)
+    .digest('hex')
+    .slice(0, 32)
 }
 
 /** Encode: "email|hmac" — misma estructura que la cookie del gate. */

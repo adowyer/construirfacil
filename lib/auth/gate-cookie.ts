@@ -22,8 +22,19 @@ function secret(): string {
   return s
 }
 
+// Domain tag prefijado al payload firmado: separa la firma de la cookie
+// cf_client (verificada por OTP/OAuth) de la cookie cf_session (post-lead).
+// Sin esto, un atacante podía firmar un payload vía form de lead (que no
+// exige OTP) y usar el valor renombrando la cookie a cf_client, pasando
+// como "verified" sin haberlo verificado. Cambio rompe-cookies existentes
+// (los usuarios actuales tendrán que re-verificar).
+const DOMAIN = 'gate'
+
 function sign(payload: string): string {
-  return createHmac('sha256', secret()).update(payload).digest('hex').slice(0, 32)
+  return createHmac('sha256', secret())
+    .update(`${DOMAIN}:${payload}`)
+    .digest('hex')
+    .slice(0, 32)
 }
 
 /** Encode: "email|hmac" */

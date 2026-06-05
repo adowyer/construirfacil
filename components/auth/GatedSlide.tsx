@@ -26,20 +26,30 @@ interface GatedSlideProps {
   teaser: string
   /** Callback que dispara el modal del gate. Lo provee CatalogPage. */
   onGateRequired?: () => void
+  /** Hint SSR del estado de identidad. Si llega `true`, evitamos el
+   *  flicker del primer paint cliente (que arranca con cached=false hasta
+   *  que /api/client-status responda). Si llega undefined o false, el
+   *  hook decide. */
+  ssrIdentified?: boolean
 }
 
 export default function GatedSlide({
   children,
   teaser,
   onGateRequired,
+  ssrIdentified = false,
 }: GatedSlideProps) {
   const { identified } = useClientIdentified()
-
-  if (identified) return <>{children}</>
+  // OR: si SSR ya sabía que el usuario está identified, no esperamos al
+  // fetch del cliente — render directo. Si no, el hook decide.
+  if (ssrIdentified || identified) return <>{children}</>
 
   return (
     <div className="cf-gated-slide">
-      <div className="cf-gated-slide-content" aria-hidden="true">
+      {/* inert (HTML 2022) saca el subtree completo del tab order, focus
+          y screen reader. Bloquea el bypass por keyboard donde el usuario
+          podía tabear a CTAs invisibles debajo del overlay. */}
+      <div className="cf-gated-slide-content" aria-hidden="true" inert>
         {children}
       </div>
       <div className="cf-gated-slide-overlay">
@@ -67,7 +77,7 @@ export default function GatedSlide({
           Registrate gratis →
         </button>
         <p className="cf-gated-slide-fineprint">
-          30 segundos. Solo te pedimos mail y nombre.
+          Sólo te va tomar 30 segundos. Te pedimos mail y nombre y desbloqueás toda la información de precios por localidad, planos y características técnicas.
         </p>
       </div>
     </div>

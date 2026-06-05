@@ -207,6 +207,7 @@ export function LeadForm({
 
       {state.error && (
         <div
+          role="alert"
           className={`text-sm px-4 py-3 rounded-lg border ${
             isLight
               ? 'bg-red-50 border-red-200 text-red-700'

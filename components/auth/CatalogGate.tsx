@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation'
 import { requestOTP, verifyOTP } from '@/app/(auth)/gate/actions'
 import { startGoogleOAuth } from '@/app/(auth)/gate/google-action'
 import { startFacebookOAuth } from '@/app/(auth)/gate/facebook-action'
+import { refetchClientStatus } from '@/lib/auth/use-client-identified'
 
 type Step = 'email' | 'code'
 
@@ -55,6 +56,20 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
     if (step === 'code') codeRef.current?.focus()
     else emailRef.current?.focus()
   }, [step])
+
+  // Focus restore: cuando el modal monta, guardamos el activeElement; al
+  // cerrar, devolvemos focus a quien abrió el gate. Sin esto, el usuario
+  // keyboard queda con focus en <body> y pierde su lugar en el catálogo.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    return () => {
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        // requestAnimationFrame para que el restore ocurra después del unmount
+        // y no compita con el focus del componente que está montando.
+        requestAnimationFrame(() => previouslyFocused.focus())
+      }
+    }
+  }, [])
 
   // Escape cierra el modal (solo en soft gate — onClose definido). A11y:
   // keyboard-only users no quedan atrapados.
@@ -99,11 +114,15 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
         codeRef.current?.focus()
         return
       }
-      // Cookie ya seteada. En soft gate (CatalogPage abre el modal con un
-      // useState local), cerrar manualmente — router.refresh() solo
-      // invalida el server tree, no afecta el state client que controla
-      // la visibilidad del modal. En hard gate (sin onClose) el server
-      // re-renderiza sin gate y el page se reemplaza completo.
+      // Cookie ya seteada. Triple sync:
+      //  1) refetchClientStatus() — invalida el cache module-level del hook
+      //     useClientIdentified para que los GatedSlide se desbloqueen sin
+      //     recarga manual (sino se quedan blurred hasta hard refresh).
+      //  2) onClose() — cierra el modal en soft gate (useState local del
+      //     CatalogPage, no afectado por router.refresh).
+      //  3) router.refresh() — invalida el server tree para que ModelRow
+      //     y demás reciban isClientVerified=true en el próximo render.
+      await refetchClientStatus().catch(() => {})
       onClose?.()
       router.refresh()
     })

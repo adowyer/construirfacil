@@ -1207,6 +1207,7 @@ export default function ModelRow({
               zoneRule={zoneRule}
               onComparativoSelect={setComparativoSel}
               onGateRequired={onGateRequired}
+              isClientVerified={isClientVerified}
             />
           )}
         </div>

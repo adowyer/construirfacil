@@ -118,6 +118,10 @@ interface PanelsProps {
    *  CTAs sensibles ("Ver precio", "Quiero esta casa") cuando el visitante
    *  no está identificado. */
   onGateRequired?: () => void
+  /** Hint SSR de identidad. Lo pasamos a GatedSlide como ssrIdentified
+   *  para evitar el flicker del primer paint cliente cuando el usuario
+   *  ya estaba logueado en el SSR. */
+  isClientVerified?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2224,8 +2228,9 @@ export default function ExpandedPanels(props: PanelsProps) {
       {hasAxos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
           <GatedSlide
-            teaser="Registrate para ver las perspectivas axonométricas"
+            teaser="Registrate para ver las perspectivas axonométricas de esta casa"
             onGateRequired={props.onGateRequired}
+            ssrIdentified={props.isClientVerified}
           >
             <PanelAxos
               images={props.images}
@@ -2278,8 +2283,9 @@ export default function ExpandedPanels(props: PanelsProps) {
         data-panel="comparativo"
       >
         <GatedSlide
-          teaser="Registrate para ver variantes y precios del comparativo"
+          teaser="Registrate para ver todas las variantes y el comparativo de precios y características."
           onGateRequired={props.onGateRequired}
+          ssrIdentified={props.isClientVerified}
         >
           <Panel7Comparativo
             model={props.model}
@@ -2302,6 +2308,7 @@ export default function ExpandedPanels(props: PanelsProps) {
           <GatedSlide
             teaser="Registrate para ver el equipamiento incluido"
             onGateRequired={props.onGateRequired}
+            ssrIdentified={props.isClientVerified}
           >
             <Panel8Equipamiento
               model={props.model}
@@ -2318,6 +2325,7 @@ export default function ExpandedPanels(props: PanelsProps) {
           <GatedSlide
             teaser="Registrate para ver los planos arquitectónicos"
             onGateRequired={props.onGateRequired}
+            ssrIdentified={props.isClientVerified}
           >
             <PanelPlanos
               images={props.images}
