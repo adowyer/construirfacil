@@ -34,6 +34,7 @@ import { variantLabel } from '@/lib/format/variant'
 import { splitModelTitle, styleDisplayName } from '@/lib/content/model-naming'
 import { ensureHtml } from '@/lib/content/rich'
 import GatedSlide from '@/components/auth/GatedSlide'
+import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import {
   type CatalogImage,
@@ -275,15 +276,17 @@ function PanelInlineCTA({
         >
           {primaryLabel ?? 'Ver precio'} →
         </a>
-        <a
-          className="cf-pn-cta-secondary"
-          href={getAsesorHref()}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Conversar con Ximia
-        </a>
+        {XIMIA_ENABLED && (
+          <a
+            className="cf-pn-cta-secondary"
+            href={getAsesorHref()}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Conversar con Ximia
+          </a>
+        )}
       </div>
     </div>
   )
@@ -1501,17 +1504,19 @@ export function Panel7Comparativo({
                   Ver precio →
                 </a>
               ))}
-            <a
-              className={
-                excluded ? 'cf-pn-cta-primary' : 'cf-pn-cta-secondary'
-              }
-              href={getAsesorHref()}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Conversar con Ximia
-            </a>
+            {XIMIA_ENABLED && (
+              <a
+                className={
+                  excluded ? 'cf-pn-cta-primary' : 'cf-pn-cta-secondary'
+                }
+                href={getAsesorHref()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Conversar con Ximia
+              </a>
+            )}
           </div>
         </div>
       </div>
