@@ -4391,11 +4391,12 @@ body:has(.cf-row.cf-expanded) {
 
 /* "Elegí" — texto intro de la barra (reemplaza el viejo filtro de Estilo). */
 .cf-stf-elegi {
-  font-size: 18px;
+  font-size: 25px;
   font-weight: 500;
   text-transform: uppercase;
   color: #fff;
   margin-right: 10px;
+  margin-left: 5px;
   white-space: nowrap;
 }
 

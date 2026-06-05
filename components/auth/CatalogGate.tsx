@@ -152,10 +152,9 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
 
         {step === 'email' ? (
           <>
-            <h2 className="cf-gate-title">El catálogo te espera.</h2>
+            <h2 className="cf-gate-title">TU NUEVA CASA TE ESPERA.</h2>
             <p className="cf-gate-body">
-              Decinos quién sos para acceder. Podés ingresar con Google o con
-              tu email.
+              Verifica tu identidad para darte información de modelos y precios dinámicos personalizados por localidad.
             </p>
             <div className="cf-gate-oauth-row">
               <button

@@ -48,7 +48,7 @@ function PlusIcon() {
 export default function DeliveryConditionsModal({
   html,
   variant = 'standalone',
-  label = 'Detalles de la casa',
+  label = 'Ver Condiciones',
 }: {
   html: string
   variant?: 'gallery' | 'standalone' | 'inline'

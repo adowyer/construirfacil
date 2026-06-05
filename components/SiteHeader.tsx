@@ -139,7 +139,7 @@ export default function SiteHeader({
             onClick={onVerCatalogo}
             className="cf-header-catalog-btn cf-header-catalog-btn--home"
           >
-            Ver Catálogo
+            Buscá tu Casa
           </button>
         )}
 
