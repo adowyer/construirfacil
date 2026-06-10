@@ -289,6 +289,7 @@ const PRINCIPAL_TEXT = HEADER_DEFAULTS.principal?.title ?? ''
 
 function SlidePrincipal({ s }: { s?: HeaderSlide }) {
   const text = s?.title || PRINCIPAL_TEXT
+  const boldTerm = s?.bold_term ?? null
   const [typed, setTyped] = useState('')
   const [done, setDone] = useState(false)
 
@@ -313,10 +314,32 @@ function SlidePrincipal({ s }: { s?: HeaderSlide }) {
     }
   }, [text])
 
+  // Renderiza `typed` respetando bold_term: si el typewriter ya pasó por la
+  // posición del término, envuelve la porción ya tipeada en <strong>. Insensible
+  // a mayúsculas porque el headline puede traer "Rincón" y la localidad
+  // "Rincon" (sin tilde) o variantes — comparamos sobre la versión lower.
+  const rendered = (() => {
+    if (!boldTerm) return typed
+    const boldStart = text.toLowerCase().indexOf(boldTerm.toLowerCase())
+    if (boldStart === -1) return typed
+    const boldEnd = boldStart + boldTerm.length
+    if (typed.length <= boldStart) return typed
+    const prefix = typed.slice(0, boldStart)
+    const boldPortion = typed.slice(boldStart, Math.min(typed.length, boldEnd))
+    const suffix = typed.length > boldEnd ? typed.slice(boldEnd) : ''
+    return (
+      <>
+        {prefix}
+        <strong>{boldPortion}</strong>
+        {suffix}
+      </>
+    )
+  })()
+
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-dark cf-slide-principal-card">
       <h2 className="cf-slide-title-large cf-principal-typewriter" style={{ marginBottom: '60px' }}>
-        {typed}
+        {rendered}
         <span className={`cf-typewriter-cursor${done ? ' cf-typewriter-cursor-done' : ''}`} aria-hidden>|</span>
       </h2>
       <StepsFooter />

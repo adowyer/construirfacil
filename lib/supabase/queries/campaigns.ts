@@ -20,6 +20,9 @@ import type { HeaderSlide } from '@/lib/supabase/queries/header_content'
 export interface Campaign {
   id: string
   slug: string
+  /** Alias corto opcional para piezas impresas (construirfacil.com/<short_slug>).
+   *  NO es el canónico — la atribución/UTM sigue por `slug`. */
+  short_slug: string | null
   localidad: string
   provincia: string | null
   eyebrow: string | null
@@ -60,6 +63,38 @@ export async function getCampaignBySlug(
 
   if (error) {
     console.error('[getCampaignBySlug]', error.message)
+    return null
+  }
+  if (!data) return null
+
+  const c = data as Campaign
+  const now = Date.now()
+  if (c.start_at && new Date(c.start_at).getTime() > now) return null
+  if (c.end_at && new Date(c.end_at).getTime() < now) return null
+  return c
+}
+
+/**
+ * Campaña activa para `short_slug` (alias corto imprimible). Misma ventana
+ * de activa/start/end que `getCampaignBySlug`. Usado por la ruta top-level
+ * `/[campaignShort]/page.tsx`.
+ */
+export async function getCampaignByShortSlug(
+  supabase: SupabaseClient,
+  rawShortSlug: string,
+): Promise<Campaign | null> {
+  const shortSlug = normalizeCampaignSlug(rawShortSlug)
+  if (!shortSlug) return null
+
+  const { data, error } = await supabase
+    .from('campaigns')
+    .select('*')
+    .eq('short_slug', shortSlug)
+    .eq('active', true)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[getCampaignByShortSlug]', error.message)
     return null
   }
   if (!data) return null
@@ -201,5 +236,8 @@ export function campaignPrincipalSlide(c: Campaign): HeaderSlide {
     gallery_urls: [],
     sort_order: -1000,
     status: 'active',
+    // El typewriter del slide principal usa esto para renderizar la localidad
+    // en negrita dentro del headline a medida que se va tipeando.
+    bold_term: c.localidad,
   }
 }

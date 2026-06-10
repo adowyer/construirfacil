@@ -32,8 +32,14 @@ function buildPayload(formData: FormData) {
   const localidad = optText(formData.get('localidad')) ?? ''
   const rawSlug = optText(formData.get('slug'))
   const slug = slugifyLocalidad(rawSlug || localidad)
+  // `short_slug` opcional: si lo dejan vacío, queda null (no se publica URL
+  // corta). Si lo escriben, lo slugificamos para evitar caracteres raros en
+  // un alias que va a ir impreso.
+  const rawShortSlug = optText(formData.get('short_slug'))
+  const short_slug = rawShortSlug ? slugifyLocalidad(rawShortSlug) || null : null
   return {
     slug,
+    short_slug,
     localidad,
     provincia: optText(formData.get('provincia')),
     eyebrow: optText(formData.get('eyebrow')),
@@ -48,11 +54,16 @@ function buildPayload(formData: FormData) {
   }
 }
 
-function revalidateCampaign(slug?: string | null, id?: string) {
+function revalidateCampaign(
+  slug?: string | null,
+  id?: string,
+  shortSlug?: string | null,
+) {
   revalidatePath('/admin/campanas')
   revalidatePath('/admin')
   revalidatePath('/')
   if (slug) revalidatePath(`/casa-financiada/${slug}`)
+  if (shortSlug) revalidatePath(`/${shortSlug}`)
   if (id) revalidatePath(`/admin/campanas/${id}`)
 }
 
@@ -79,7 +90,7 @@ export async function createCampaign(
     }
     return { error: `Error al crear: ${error.message}` }
   }
-  revalidateCampaign(payload.slug)
+  revalidateCampaign(payload.slug, undefined, payload.short_slug)
   redirect(`/admin/campanas/${inserted.id}`)
 }
 
@@ -106,17 +117,18 @@ export async function updateCampaign(
     }
     return { error: `Error al actualizar: ${error.message}` }
   }
-  revalidateCampaign(payload.slug, id)
+  revalidateCampaign(payload.slug, id, payload.short_slug)
   return { error: null }
 }
 
 export async function deleteCampaign(
   id: string,
   slug: string,
+  shortSlug?: string | null,
 ): Promise<Result> {
   const admin = createAdminClient()
   const { error } = await admin.from('campaigns').delete().eq('id', id)
   if (error) return { error: `No se pudo eliminar: ${error.message}` }
-  revalidateCampaign(slug)
+  revalidateCampaign(slug, undefined, shortSlug)
   redirect('/admin/campanas')
 }

@@ -55,6 +55,11 @@ export interface HeaderSlide {
   gallery_urls: string[]
   sort_order: number
   status: 'active' | 'inactive' | 'archived'
+  /** Porción del `title` que debe renderizar en bold. Solo lo usa el slide
+   *  `principal` (typewriter) — útil para resaltar el nombre de la localidad
+   *  en una landing de campaña. No es columna en DB; lo setea el código que
+   *  construye el slide sintético (ver `campaignPrincipalSlide`). */
+  bold_term?: string | null
 }
 
 /**

@@ -67,10 +67,19 @@ export function CampaignForm({
         </div>
       )}
 
-      <div className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-xs text-neutral-500">
-        El banner aparece al tope del HomeRow en{' '}
-        <code className="text-neutral-700">/casa-financiada/&lt;slug&gt;</code>.
-        Sin campaña activa para ese slug, esa URL muestra el home normal.
+      <div className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-xs text-neutral-500 space-y-1">
+        <p>
+          El banner aparece al tope del HomeRow en{' '}
+          <code className="text-neutral-700">/casa-financiada/&lt;slug&gt;</code>.
+          Sin campaña activa para ese slug, esa URL muestra el home normal.
+        </p>
+        <p>
+          Si definís{' '}
+          <code className="text-neutral-700">Slug corto imprimible</code>, la
+          campaña también responde en{' '}
+          <code className="text-neutral-700">construirfacil.com/&lt;corto&gt;</code>{' '}
+          — pensado para vía pública / volantes.
+        </p>
       </div>
 
       {/* Identidad / URL */}
@@ -120,6 +129,30 @@ export function CampaignForm({
           <p className="text-xs text-neutral-400 mt-1">
             Llave canónica (path y utm_content). No la cambies después de
             repartir los links del medio.
+          </p>
+        </div>
+        <div className="mt-4">
+          <Label
+            htmlFor="short_slug"
+            hint="opcional, para piezas impresas (sin /casa-financiada/)"
+          >
+            Slug corto imprimible
+          </Label>
+          <input
+            type="text"
+            id="short_slug"
+            name="short_slug"
+            placeholder="rincon-de-los-sauces"
+            defaultValue={defaultValues?.short_slug ?? ''}
+            className={inputClass}
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            URL corta:{' '}
+            <code className="text-neutral-700">
+              construirfacil.com/&lt;slug-corto&gt;
+            </code>{' '}
+            — para volantes, vía pública, papel. Sin UTMs. Vacío = no se publica
+            URL corta.
           </p>
         </div>
       </fieldset>
