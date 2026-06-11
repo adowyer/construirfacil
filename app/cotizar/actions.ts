@@ -52,6 +52,7 @@ export async function submitLead(
     rawLeadType === 'waitlist_provincia' ? 'waitlist_provincia' : 'quiero_esta_casa'
 
   const name = String(formData.get('name') ?? '').trim()
+  const apellido = optText(formData.get('apellido'))
   const phone = String(formData.get('phone') ?? '').trim()
   const email = optText(formData.get('email'))
 
@@ -83,10 +84,21 @@ export async function submitLead(
   const variante = optText(formData.get('variante'))
   const sistema_constructivo = optText(formData.get('sistema_constructivo'))
   const provincia_id = optText(formData.get('provincia_id'))
-  // Filtro Lote del StickyFilters (#78). Solo aceptamos 'si' / 'no' / null.
+  // tiene_lote: ahora viene del radio del form (con defaultChecked desde el
+  // filtro Casa+Lote si el visitante lo eligió). Solo 'si' / 'no' / null.
   const rawTieneLote = optText(formData.get('tiene_lote'))
   const tiene_lote =
     rawTieneLote === 'si' || rawTieneLote === 'no' ? rawTieneLote : null
+  // Campos de calificación nuevos (migración 0071).
+  const rawTimeframe = optText(formData.get('timeframe'))
+  const timeframe =
+    rawTimeframe === '3m' || rawTimeframe === '6m' || rawTimeframe === '1y'
+      ? rawTimeframe
+      : null
+  const rawAhorro = optText(formData.get('ahorro_ars_range'))
+  const VALID_AHORRO = ['none', 'lt_10m', '10m_30m', '30m_60m', '60m_plus']
+  const ahorro_ars_range =
+    rawAhorro && VALID_AHORRO.includes(rawAhorro) ? rawAhorro : null
   const precio_desde_usd = optNumber(formData.get('precio_desde_usd'))
   const cuota_ars = optNumber(formData.get('cuota_ars'))
 
@@ -102,6 +114,7 @@ export async function submitLead(
     .from('leads')
     .insert({
       name,
+      apellido,
       phone: phone || null,
       email,
       localidad,
@@ -117,6 +130,8 @@ export async function submitLead(
       sistema_constructivo,
       provincia_id,
       tiene_lote,
+      timeframe,
+      ahorro_ars_range,
       lead_type,
     })
     .select('id')
@@ -136,6 +151,7 @@ export async function submitLead(
     leadId: inserted.id,
     leadType: lead_type,
     name,
+    apellido,
     phone,
     email,
     message,
@@ -149,6 +165,9 @@ export async function submitLead(
     precio_desde_usd,
     cuota_ars,
     localidad,
+    tiene_lote,
+    timeframe,
+    ahorro_ars_range,
   })
 
   // Emitir cookie cf_session — el visitante ya dejó sus datos, no le
@@ -174,6 +193,7 @@ interface AsyncEmailArgs {
   leadId: string
   leadType: 'quiero_esta_casa' | 'waitlist_provincia'
   name: string
+  apellido: string | null
   phone: string
   email: string | null
   message: string | null
@@ -187,6 +207,9 @@ interface AsyncEmailArgs {
   precio_desde_usd: number | null
   cuota_ars: number | null
   localidad: string | null
+  tiene_lote: 'si' | 'no' | null
+  timeframe: '3m' | '6m' | '1y' | null
+  ahorro_ars_range: string | null
 }
 
 async function sendLeadEmailAsync(args: AsyncEmailArgs): Promise<void> {
@@ -208,8 +231,9 @@ async function sendLeadEmailAsync(args: AsyncEmailArgs): Promise<void> {
     }
   }
 
-  // Lookup nombre de provincia.
-  let provinciaName: string | null = args.localidad
+  // Lookup nombre de provincia (sólo desde provincia_id; localidad NO se usa
+  // como fallback — son campos distintos y se renderizan por separado).
+  let provinciaName: string | null = null
   if (args.provincia_id) {
     const { data: p } = await admin
       .from('provincias')
@@ -238,9 +262,12 @@ async function sendLeadEmailAsync(args: AsyncEmailArgs): Promise<void> {
   ].filter(Boolean)
   const modelDisplayName = heroBits.join(' ')
 
+  // Nombre completo para el email (combina name + apellido si vino separado).
+  const clientFullName = [args.name, args.apellido].filter(Boolean).join(' ')
+
   const result = await sendLeadEmail({
     leadType: args.leadType,
-    clientName: args.name,
+    clientName: clientFullName || args.name,
     clientPhone: args.phone,
     clientEmail: args.email,
     clientMessage: args.message,
@@ -251,7 +278,11 @@ async function sendLeadEmailAsync(args: AsyncEmailArgs): Promise<void> {
     sistemaConstructivo: args.sistema_constructivo,
     precioDesdeUsd: args.precio_desde_usd,
     cuotaArs: args.cuota_ars,
+    localidad: args.localidad,
     provinciaName,
+    tieneLote: args.tiene_lote,
+    timeframe: args.timeframe,
+    ahorroArsRange: args.ahorro_ars_range,
     toMarca: marcaEmail,
     toClient: args.email,
   })

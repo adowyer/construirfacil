@@ -41,7 +41,18 @@ export interface LeadEmailPayload {
   cuotaArs: number | null
 
   // Geo
+  /** Texto libre del campo "Localidad" del form (ej. "Rincón de los Sauces").
+   *  Crítico para ventas: el "dónde" granular dentro de la provincia. */
+  localidad: string | null
   provinciaName: string | null
+
+  // Calificación (migración 0071) — opcionales en el tipo para compat con
+  // callers viejos; en el flujo "Quiero esta casa" son 'si'/'no', '3m'/'6m'/'1y',
+  // y rango de ARS respectivamente.
+  tieneLote?: 'si' | 'no' | null
+  timeframe?: '3m' | '6m' | '1y' | null
+  /** Código de rango: 'none' | 'lt_10m' | '10m_30m' | '30m_60m' | '60m_plus'. */
+  ahorroArsRange?: string | null
 
   // Destinos
   toMarca: string | null   // marca.lead_notification_email
@@ -85,6 +96,25 @@ function esc(s: string): string {
   )
 }
 
+/** Etiqueta humana para el rango de ahorro persistido como código. */
+function ahorroLabel(code: string | null | undefined): string | null {
+  switch (code) {
+    case 'none': return 'Aún no'
+    case 'lt_10m': return 'Menos de $10 millones'
+    case '10m_30m': return 'Entre $10 y $30 millones'
+    case '30m_60m': return 'Entre $30 y $60 millones'
+    case '60m_plus': return 'Más de $60 millones'
+    default: return null
+  }
+}
+
+function timeframeLabel(code: '3m' | '6m' | '1y' | null | undefined): string | null {
+  if (code === '3m') return '3 meses'
+  if (code === '6m') return '6 meses'
+  if (code === '1y') return '1 año'
+  return null
+}
+
 function summaryRows(p: LeadEmailPayload): string {
   const rows: [string, string][] = [
     ['Marca', p.marcaName],
@@ -95,6 +125,12 @@ function summaryRows(p: LeadEmailPayload): string {
   if (p.sistemaConstructivo)
     rows.push(['Sistema constructivo', p.sistemaConstructivo])
   if (p.provinciaName) rows.push(['Provincia', p.provinciaName])
+  if (p.localidad) rows.push(['Localidad', p.localidad])
+  if (p.tieneLote) rows.push(['Tiene terreno', p.tieneLote === 'si' ? 'Sí' : 'No'])
+  const tf = timeframeLabel(p.timeframe)
+  if (tf) rows.push(['Plazo deseado', tf])
+  const ahorro = ahorroLabel(p.ahorroArsRange)
+  if (ahorro) rows.push(['Ahorro disponible', ahorro])
   if (p.precioDesdeUsd != null)
     rows.push(['Precio desde', fmtUsd(p.precioDesdeUsd)])
   if (p.cuotaArs != null) rows.push(['Cuota estimada', fmtArs(p.cuotaArs)])
@@ -129,6 +165,7 @@ function emailToMarcaWaitlist(p: LeadEmailPayload): { subject: string; html: str
             ${p.clientEmail ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Email</td><td style="padding:6px 0;font-weight:600;font-size:14px;"><a href="mailto:${esc(p.clientEmail)}" style="color:#0a0a0a;text-decoration:none;">${esc(p.clientEmail)}</a></td></tr>` : ''}
             ${phoneRow}
             ${p.provinciaName ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Provincia</td><td style="padding:6px 0;font-weight:600;font-size:14px;">${esc(p.provinciaName)}</td></tr>` : ''}
+            ${p.localidad ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Localidad</td><td style="padding:6px 0;font-weight:600;font-size:14px;">${esc(p.localidad)}</td></tr>` : ''}
             ${p.modelDisplayName && p.modelDisplayName !== 'CASA' ? `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;">Estaba viendo</td><td style="padding:6px 0;font-weight:600;font-size:14px;">${esc(p.modelDisplayName)}</td></tr>` : ''}
           </table>
           ${p.clientMessage ? `<p style="margin:0 0 8px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#999;font-weight:600;">Mensaje</p><p style="margin:0;padding:14px 16px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#0a0a0a;line-height:1.5;">${esc(p.clientMessage)}</p>` : ''}

@@ -191,9 +191,9 @@ export function LeadForm({
       {catalog?.provincia_id && (
         <input type="hidden" name="provincia_id" value={catalog.provincia_id} />
       )}
-      {catalog?.tiene_lote && (
-        <input type="hidden" name="tiene_lote" value={catalog.tiene_lote} />
-      )}
+      {/* tiene_lote NO va como hidden — el form ya pregunta por terreno
+          explícitamente abajo. El context del filtro Casa+Lote se usa solo
+          como `defaultChecked` del radio (ver `defaultTieneLote` abajo). */}
       {catalog?.precio_desde_usd != null && (
         <input
           type="hidden"
@@ -221,15 +221,28 @@ export function LeadForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
           <label className={lbl} htmlFor="lf-name">
-            Nombre y apellido
+            Nombre
           </label>
           <input
             id="lf-name"
             name="name"
             required
-            autoComplete="name"
+            autoComplete="given-name"
             className={field}
             placeholder="Tu nombre"
+          />
+        </div>
+        <div>
+          <label className={lbl} htmlFor="lf-apellido">
+            Apellido
+          </label>
+          <input
+            id="lf-apellido"
+            name="apellido"
+            required
+            autoComplete="family-name"
+            className={field}
+            placeholder="Tu apellido"
           />
         </div>
         <div>
@@ -259,17 +272,75 @@ export function LeadForm({
             placeholder="tu@email.com"
           />
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label className={lbl} htmlFor="lf-localidad">
             Localidad
           </label>
           <input
             id="lf-localidad"
             name="localidad"
+            required
             defaultValue={defaultLocalidad ?? ''}
             className={field}
-            placeholder="Tu ciudad / provincia"
+            placeholder="Ej: Rincón de los Sauces"
           />
+        </div>
+      </div>
+
+      {/* Calificación — preguntas que ventas usa para priorizar el lead.
+          Visualmente diferenciadas (radios horizontales / select) y agrupadas
+          bajo un eyebrow para que no se sientan parte del contacto. */}
+      <div className="space-y-5">
+        <p className={`text-[11px] uppercase tracking-widest ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
+          Para asesorarte mejor
+        </p>
+
+        <fieldset>
+          <legend className={lbl}>¿Tenés terreno?</legend>
+          <RadioRow
+            name="tiene_lote"
+            options={[
+              { value: 'si', label: 'Sí' },
+              { value: 'no', label: 'No' },
+            ]}
+            defaultValue={catalog?.tiene_lote ?? null}
+            variant={variant}
+            required
+          />
+        </fieldset>
+
+        <fieldset>
+          <legend className={lbl}>¿Cuándo te gustaría tener tu casa?</legend>
+          <RadioRow
+            name="timeframe"
+            options={[
+              { value: '3m', label: '3 meses' },
+              { value: '6m', label: '6 meses' },
+              { value: '1y', label: '1 año' },
+            ]}
+            variant={variant}
+            required
+          />
+        </fieldset>
+
+        <div>
+          <label className={lbl} htmlFor="lf-ahorro">
+            ¿Tenés algún ahorro para aportar?{' '}
+            <span className={`normal-case ${isLight ? 'text-neutral-400' : 'text-white/25'}`}>(opcional)</span>
+          </label>
+          <select
+            id="lf-ahorro"
+            name="ahorro_ars_range"
+            defaultValue=""
+            className={field}
+          >
+            <option value="">Elegí una opción…</option>
+            <option value="none">Aún no</option>
+            <option value="lt_10m">Menos de $10 millones</option>
+            <option value="10m_30m">Entre $10 y $30 millones</option>
+            <option value="30m_60m">Entre $30 y $60 millones</option>
+            <option value="60m_plus">Más de $60 millones</option>
+          </select>
         </div>
       </div>
 
@@ -300,6 +371,52 @@ export function LeadForm({
         Sin compromiso. Te contactamos para asesorarte y darte tu cotización.
       </p>
     </form>
+  )
+}
+
+/**
+ * Grupo de radios horizontal (tipo "pill switch"). Uncontrolled — el form
+ * envía el valor seleccionado bajo el name compartido. `defaultValue` se
+ * convierte en `defaultChecked` en la opción que matchea.
+ */
+function RadioRow({
+  name,
+  options,
+  defaultValue,
+  variant,
+  required,
+}: {
+  name: string
+  options: { value: string; label: string }[]
+  defaultValue?: string | null
+  variant: 'dark' | 'light'
+  required?: boolean
+}) {
+  const isLight = variant === 'light'
+  return (
+    <div className="grid grid-flow-col auto-cols-fr gap-2 mt-1.5">
+      {options.map((o) => (
+        <label
+          key={o.value}
+          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium cursor-pointer transition-colors
+            ${
+              isLight
+                ? 'bg-white border-[#E2E0D8] text-[#1a1a1a] hover:border-[#ff003d]/40 has-[:checked]:bg-[#ff003d] has-[:checked]:text-white has-[:checked]:border-[#ff003d]'
+                : 'bg-white/5 border-white/15 text-white hover:border-white/30 has-[:checked]:bg-[#ff003d] has-[:checked]:text-white has-[:checked]:border-[#ff003d]'
+            }`}
+        >
+          <input
+            type="radio"
+            name={name}
+            value={o.value}
+            required={required}
+            defaultChecked={o.value === defaultValue}
+            className="sr-only"
+          />
+          {o.label}
+        </label>
+      ))}
+    </div>
   )
 }
 
