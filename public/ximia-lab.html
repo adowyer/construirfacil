@@ -13,6 +13,66 @@
     .muted { color: #8a8a90; font-size: 14px; line-height: 1.7; }
     .badge { display:inline-block; margin-top:16px; padding:4px 10px; border:1px solid #2a2a2e; border-radius:999px; font-size:12px; color:#a8a8ae; }
   </style>
+
+  <style>
+    /************************************
+      AJUSTES DE CHATBOT
+    ************************************/
+
+    .bpFabWrapper,
+    iframe.bpFab,
+    iframe[name="fab"] {
+        width: 190px !important;
+        height: 190px !important;
+        overflow: visible !important;
+    }
+
+    .bpFabWrapper {
+        position: fixed !important;
+        right: 9% !important;
+        top: 80px !important;
+    }
+
+    .bpHeightFull {
+        background-color: #fff !important;
+    }
+
+    .bpFab {
+        box-shadow: 0 4px 7px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    iframe.bpOpen {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(99vw, 1024px) !important;
+        height: min(90vh, 840px) !important;
+        z-index: 99998 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45) !important;
+        border: none !important;
+    }
+
+    body:has(iframe.bpOpen)::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.60);
+        z-index: 99997;
+    }
+
+    iframe[class*="bpWebchat"] {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    iframe.bpOpen {
+        opacity: 1;
+        pointer-events: auto;
+    }
+  </style>
 </head>
 <body>
   <div class="card">
