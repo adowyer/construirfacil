@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
+import XimiaWidget from '@/components/ximia/XimiaWidget'
 
 const geist = Geist({
   subsets: ['latin'],
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="es" className={`${geist.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
         {children}
+        <XimiaWidget />
       </body>
     </html>
   )
