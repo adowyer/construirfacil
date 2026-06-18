@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<title>Relevamiento de Interés</title>
+<style>
+  :root { --ink:#000; --line:#000; --muted:#000; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--ink);
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+
+  /* ---- Print setup: one A4 page ---- */
+  @page { size: A4; margin: 12mm 14mm; }
+  .sheet { width: 182mm; margin: 0 auto; }
+
+  /* ---- Sections ---- */
+  .sec { margin: 0 0 10px 0; }
+  .sec > .lbl {
+    font-size: 8.5pt; text-transform: uppercase; letter-spacing: .8px;
+    color: #fff; background: #222; display: inline-block;
+    padding: 2.5px 9px; border-radius: 2px; margin-bottom: 7px;
+  }
+
+  /* ---- Grid rows ---- */
+  .row { display: flex; gap: 16px; margin-bottom: 8px; align-items: flex-end; }
+  .row:last-child { margin-bottom: 0; }
+  .f { flex: 1; min-width: 0; }
+  .f.sm { flex: 0 0 36mm; }
+  .f.md { flex: 0 0 56mm; }
+  .f.grow2 { flex: 2; }
+
+  .f > label {
+    display: block; font-size: 9pt; color: var(--muted);
+    margin-bottom: 6px; line-height: 1.25;
+  }
+  .ln { border-bottom: 1px solid var(--line); height: 20px; }
+
+  /* ---- Checkbox groups: aligned left under their title ---- */
+  .checks { display: flex; flex-wrap: wrap; gap: 5px 11px; padding-bottom: 2px; }
+  .chk { display: inline-flex; align-items: center; gap: 4px; font-size: 9pt; color: var(--muted); white-space: nowrap; }
+  .box { width: 12px; height: 12px; border: 1.4px solid var(--ink); display: inline-block; border-radius: 2px; }
+
+  .hint { font-size: 8.5pt; color: var(--muted); font-style: italic; }
+
+  /* ---- Consent ---- */
+  .consent {
+    border: 1.4px solid var(--ink); border-radius: 5px; padding: 11px 13px; margin-top: 4px;
+    font-size: 9.5pt; line-height: 1.5;
+  }
+  .consent .agree { margin-top: 8px; font-size: 10.5pt; }
+  .consent .chk { color: var(--ink); }
+  .sign { display: flex; gap: 18px; margin-top: 11px; }
+  .sign label { font-size: 8.5pt; }
+
+  /* ---- Internal use ---- */
+  .internal { margin-top: 9px; }
+  .internal .lbl-mini {
+    font-size: 8.5pt; text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
+    margin-bottom: 7px; display: block;
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <!-- 1. DATOS PERSONALES -->
+  <div class="sec">
+    <span class="lbl">1 · Datos personales</span>
+    <div class="row">
+      <div class="f grow2"><label>Nombre y apellido</label><div class="ln"></div></div>
+      <div class="f sm"><label>DNI</label><div class="ln"></div></div>
+      <div class="f sm"><label>CUIL</label><div class="ln"></div></div>
+    </div>
+    <div class="row">
+      <div class="f sm"><label>Fecha de nacimiento</label><div class="ln" style="border-bottom:none;display:flex;align-items:flex-end;font-size:12pt;letter-spacing:1px;color:var(--muted)">__ / __ / __</div></div>
+      <div class="f sm"><label>Estado civil</label><div class="ln"></div></div>
+      <div class="f sm"><label>Celular (WhatsApp)</label><div class="ln"></div></div>
+      <div class="f"><label>Mail</label><div class="ln"></div></div>
+    </div>
+  </div>
+
+  <!-- 2. SITUACIÓN HABITACIONAL -->
+  <div class="sec">
+    <span class="lbl">2 · Situación habitacional</span>
+    <div class="row" style="justify-content:space-between">
+      <div class="f" style="flex:0 1 auto;display:flex;align-items:center;gap:9px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Tenés terreno?</label>
+        <div class="checks" style="flex-wrap:nowrap;gap:11px">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+      <div class="f" style="flex:0 1 auto;display:flex;align-items:center;gap:9px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Tiene escritura?</label>
+        <div class="checks" style="flex-wrap:nowrap;gap:11px">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+      <div class="f" style="flex:0 1 auto;display:flex;align-items:center;gap:9px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">Si NO: ¿te interesa un plan Terreno + Casa?</label>
+        <div class="checks" style="flex-wrap:nowrap;gap:11px">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div class="f" style="flex:0 1 auto;display:flex;align-items:center;gap:9px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Es tu primera vivienda?</label>
+        <div class="checks" style="flex-wrap:nowrap;gap:11px">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+      <div class="f" style="flex:0 1 auto;display:flex;align-items:center;gap:9px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Tenés más de 5 años de residencia comprobable en Neuquen?</label>
+        <div class="checks" style="flex-wrap:nowrap;gap:11px">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="f" style="flex:0 0 auto;display:flex;align-items:center;gap:12px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Alquilás?</label>
+        <div class="checks" style="flex-wrap:nowrap;gap:11px">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+      <div class="f" style="display:flex;align-items:center;gap:10px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Cuánto pagás de alquiler?</label>
+        <span style="color:var(--muted)">$</span>
+        <div class="ln" style="flex:1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. SITUACIÓN LABORAL -->
+  <div class="sec">
+    <span class="lbl">3 · Situación laboral</span>
+    <div class="row">
+      <div class="f"><label>Sueldo NETO en blanco — promedio últimos 3 meses</label><div class="ln"></div></div>
+      <div class="f" style="flex:0 0 42mm"><label>Antigüedad (años / meses)</label><div class="ln"></div></div>
+      <div class="f" style="flex:0 0 48mm">
+        <label>Tipo de contrato</label>
+        <div class="checks">
+          <span class="chk"><span class="box"></span> Efectivo</span>
+          <span class="chk"><span class="box"></span> Temporario</span>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="f"><label>Sueldo NETO en blanco del cónyuge <span class="hint">(si aplica)</span></label><div class="ln"></div></div>
+      <div class="f">
+        <label>¿El cónyuge suma como co-deudor?</label>
+        <div class="checks">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. AHORRO -->
+  <div class="sec">
+    <span class="lbl">4 · Ahorro</span>
+    <div class="row">
+      <div class="f" style="flex:0 0 62mm;display:flex;align-items:center;gap:12px;padding-bottom:2px">
+        <label style="margin-bottom:0;white-space:nowrap">¿Contás con un anticipo?</label>
+        <div class="checks">
+          <span class="chk"><span class="box"></span> Sí</span>
+          <span class="chk"><span class="box"></span> No</span>
+        </div>
+      </div>
+      <div class="f" style="display:flex;align-items:center;gap:12px">
+        <label style="margin-bottom:0;white-space:nowrap">Monto aproximado (en pesos)</label>
+        <div class="ln" style="flex:1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSENTIMIENTO -->
+  <div class="consent">
+    Autorizo a <strong>construirfacil.com</strong> a guardar y tratar estos datos con el fin de evaluar mi acceso a
+    financiación de vivienda y a contactarme por WhatsApp o teléfono. Puedo solicitar la consulta, rectificación o baja de
+    mis datos en cualquier momento. <span class="hint">(Ley 25.326 de Protección de Datos Personales).</span>
+    <div class="agree">
+      <span class="chk"><span class="box"></span> <strong>Sí, autorizo</strong></span>
+    </div>
+    <div class="sign">
+      <div class="f grow2"><label>Firma</label><div class="ln"></div></div>
+      <div class="f"><label>Aclaración</label><div class="ln"></div></div>
+      <div class="f sm"><label>Fecha</label><div class="ln" style="border-bottom:none;display:flex;align-items:flex-end;font-size:12pt;letter-spacing:1px;color:var(--muted)">__ / __ / __</div></div>
+    </div>
+  </div>
+
+  <!-- USO INTERNO -->
+  <div class="internal" style="display:flex;align-items:center;gap:16px">
+    <span class="lbl-mini" style="margin-bottom:0;white-space:nowrap">Uso interno</span>
+    <div class="f" style="display:flex;align-items:center;gap:10px"><label style="margin-bottom:0">Delegado</label><div class="ln" style="flex:1"></div></div>
+    <div class="f" style="display:flex;align-items:center;gap:10px"><label style="margin-bottom:0">Seccional</label><div class="ln" style="flex:1"></div></div>
+  </div>
+
+</div>
+</body>
+</html>

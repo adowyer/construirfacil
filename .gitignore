@@ -53,6 +53,10 @@ next-env.d.ts
 *.mp4
 /Users/
 /data/
+
+# Zona de aterrizaje de PII UOCRA (forms con datos personales + consentimiento, Ley 25.326).
+# Nunca versionar: xlsx exportados, PDFs de forms, y SQL generado con nombres/DNIs/emails.
+docs/uocra/solicitudes/
 /atributos.csv
 debug_collisions.mjs
 CATALOG_AUDIT.md

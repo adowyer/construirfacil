@@ -44,7 +44,21 @@ La **ubicación manda**: disponibilidad, cupo, financiación y precio dependen d
 - **Hausind tiene 3 líneas:** BOSQUE (premium), ATLAS (estándar), TERRA (la más chica/económica,
   open-concept). La planilla `INFO/Hausind Catalog Prices 220526.xlsx` solo tenía BOSQUE+ATLAS.
 - Catálogo de casas vive en `house_catalog` (renombrada de la tabla de modelos previa).
+- **3 tiers de precio por tiempo de entrega:** `precio_pozo` < `precio_contado` (**= Precio CUPO = Costo
+  Neto**) < `precio_lista`. El comprador de cupo paga Contado/Cupo (pozo = espera más, más barato).
+- **`costo_no_financiable_usd` = `0,75 × costo_neto`** (= 0,75 × precio_contado). Es el piso de obra que
+  Hausind debe recuperar; el margen financiable por el pool = `precio_tier − costo_no_financiable`.
+  (En paquetes con lote, incluye el lote en ambos lados.) Agregado en migración `0070`.
+- **⭐ Actualización de precios = `scripts/update_prices.py`** (proceso OFICIAL, repetible). Lee la
+  planilla (hoja "SUPERFICIES COSTOS OK") + un export CSV vivo de `house_catalog`, matchea por CLAVE
+  ESTABLE (linea+tipologia+variante+style+sistema — NO por SKU, que codifica el área CONGELADA), y emite
+  una migración `fix_prices` de puros UPDATE (sin delete/insert, SKU intacto) + guard del no_financiable
+  + reporte de cobertura. NO actualizar precios a mano ni en el admin. Ver docstring del script.
 - Condiciones financieras de origen: `INFO/Financiación_Bancaria.xlsx`.
+- **⭐ Taxonomía canónica de leads (multi-canal): `docs/leads_taxonomy.md`.** Modelo reutilizable para
+  TODOS los sources (UOCRA/web/futuros). Principio: HECHOS atómicos vs VEREDICTO derivado. Regla de
+  dominio: `horizonte_compra` (3m/6m/12m) es driver de tier de precio (lista/cupo/pozo). Score = FIT×INTENT.
+  Campos: migración `0083`.
 
 ## Convenciones
 - Migraciones: `NNNN_nombre.sql`, secuencial. Nunca renumerar las existentes.
