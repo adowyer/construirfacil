@@ -1,0 +1,45 @@
+.main {
+  min-height: 100vh;
+  background: #0b0b0c;
+  color: #e8e8ea;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  max-width: 560px;
+  padding: 40px;
+  text-align: center;
+}
+
+.title {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  font-size: 36px;
+}
+
+.muted {
+  color: #8a8a90;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.muted code {
+  background: #1a1a1d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 4px 10px;
+  border: 1px solid #2a2a2e;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #a8a8ae;
+}

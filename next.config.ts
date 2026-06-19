@@ -22,6 +22,14 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '8mb',
     },
   },
+
+  async rewrites() {
+    return [
+      // Legacy URL del lab (cuando era HTML estático con Botpress) → page Next.
+      // Rewrite, no redirect: la URL queda en la barra, no rompe links externos.
+      { source: '/ximia-lab.html', destination: '/ximia-lab' },
+    ]
+  },
 }
 
 export default nextConfig
