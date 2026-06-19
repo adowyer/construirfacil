@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
       // Legacy URL del lab (cuando era HTML estático con Botpress) → page Next.
       // Rewrite, no redirect: la URL queda en la barra, no rompe links externos.
       { source: '/ximia-lab.html', destination: '/ximia-lab' },
+      // Demo "real" con OTP habilitado — gemelo de /ximia-lab pero sin modo test.
+      { source: '/ximia-demo.html', destination: '/ximia-demo' },
     ]
   },
 }
