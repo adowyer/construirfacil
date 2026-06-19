@@ -68,7 +68,7 @@ function buildPrefilledMessage(ctx: ReservarContext): string {
     parts.push(`Precio estimado: USD ${ctx.priceUsd.toLocaleString('es-AR')}`)
   }
   if (parts.length === 0) return ''
-  return parts.join(' · ') + '\n\nQuiero esta casa. Por favor, contáctenme para avanzar.'
+  return parts.join(' · ') + '\n\nQuiero esta casa. Por favor, contactame para avanzar.'
 }
 
 export default function ReservarModal({

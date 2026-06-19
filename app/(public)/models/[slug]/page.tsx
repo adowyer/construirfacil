@@ -205,7 +205,7 @@ export default async function ModelDetailPage({
   const isWood = (house.construction_system?.slug ?? '').includes('wood')
   const discount = pctOff(house.price_lista_usd, house.price_pozo_usd)
 
-  const whatsappNumber = '5491155551234'
+  const whatsappNumber = '5491131551775'
   const whatsappText = encodeURIComponent(
     `Hola, me interesa el modelo ${house.name} (${house.total_area_m2} m²). ¿Podría obtener más información?`,
   )

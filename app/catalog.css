@@ -4253,9 +4253,10 @@ body:has(.cf-row.cf-expanded) {
    hamburguesa que abre los filtros en un overlay translúcido que baja desde
    arriba (portal a body). Antes el breakpoint era 768px y dejaba la barra
    inline rota en viewports 768-1280: cortaba "Precio ↑" y similares con un
-   overflow-x:auto poco descubrible. Subido a 1280px para cubrir laptops
-   13" y tablets landscape. */
-@media (max-width: 1280px) {
+   overflow-x:auto poco descubrible. Bajado a 1024px para no degradar a
+   "modo mobile" en monitores desktop chicos (auditoría UX 2026-06-19). La
+   barra inline aplica compresión de gaps/padding desde @1500 hacia abajo. */
+@media (max-width: 1024px) {
   .cf-sticky-filters {
     padding: 0 16px;
   }
@@ -7970,8 +7971,10 @@ body:has(.cf-row.cf-expanded) {
    los filtros sticky en overflow-x feo (el "menú en dos líneas" que reportó
    el user) y el breadcrumb wrappeando con nombre de marca largo. Acá bajamos
    paddings, gaps y tipografías para que el mismo layout entre sin sacrificar
-   identidad visual. */
-@media (max-width: 1400px) {
+   identidad visual. (Auditoría UX 2026-06-19: subido a 1500px para atrapar
+   también la zona desktop chico tras bajar el breakpoint mobile del sticky
+   filters de 1280 a 1024 — ahora la compresión cubre el rango 1024-1500.) */
+@media (max-width: 1500px) {
   /* Sticky filters — el padding lateral SE MANTIENE igual que .cf-grid
      y .cf-hero-row-track (clamp en la regla base) para que estén alineados.
      Solo reducimos paddings/gaps INTERIORES del inner para que entren los

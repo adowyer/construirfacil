@@ -434,7 +434,7 @@ export default function CotizarCenteredModal({
             <>
               <p className="cf-cotizar-modal-eyebrow">Tu cotización</p>
               <h3 className="cf-cotizar-modal-title">
-                Cotizá tu casa: variante, sistema y terminaciones
+                Cotizá tu casa: variante, sistema y plazo
               </h3>
               {detail && <p className="cf-cotizar-modal-detail">{detail}</p>}
 

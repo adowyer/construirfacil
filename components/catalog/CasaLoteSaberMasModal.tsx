@@ -81,9 +81,6 @@ export default function CasaLoteSaberMasModal({
             provincia. Si tenés terreno propio, elegí <strong>“Tengo lote”</strong>
             y vas a ver todos los modelos sin restricción.
           </p>
-          <p style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
-            Texto provisional sujeto a revisión.
-          </p>
         </div>
 
         <div className="cf-cotizar-modal-ctas">

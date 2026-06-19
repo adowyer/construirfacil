@@ -45,7 +45,7 @@ export async function requestOTP(args: {
   const name = args.name.trim()
 
   if (!isValidEmail(email)) {
-    return { ok: false, error: 'Email inválido.' }
+    return { ok: false, error: 'Ese email no parece válido. Revisalo y probá de nuevo.' }
   }
   if (!name) {
     return { ok: false, error: 'Decinos tu nombre para identificarte.' }
@@ -113,7 +113,7 @@ export async function verifyOTP(args: {
   const code = args.code.trim()
 
   if (!isValidEmail(email)) {
-    return { ok: false, error: 'Email inválido.' }
+    return { ok: false, error: 'Ese email no parece válido. Revisalo y probá de nuevo.' }
   }
   if (!/^\d{4}$/.test(code)) {
     return { ok: false, error: 'El código debe ser de 4 dígitos.' }

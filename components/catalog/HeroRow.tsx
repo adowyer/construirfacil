@@ -217,14 +217,14 @@ function SlidePasos({ s }: { s?: HeaderSlide }) {
 
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
-            Una vez preadjudicado tu crédito, postulás para el "cupo" de viviendas en curso, con un mínimo pago condicional.
+            Una vez preadjudicado tu crédito, postulás para el cupo de viviendas en curso, con un mínimo pago condicional.
           </p>
           <div className="cf-step-item">POSTULÁ <img src="/Flecha-celeste.png" className="cf-step-arrow-img" alt="" /></div>
         </div>
 
         <div className="cf-paso-col">
           <p className="cf-pasos-text">
-            Cuando se completa el "cupo" del barrio comenzamos la obra y en pocas semanas te mudás a tu nueva casa.
+            Cuando se completa el cupo del barrio comenzamos la obra y en pocas semanas te mudás a tu nueva casa.
           </p>
           <div className="cf-step-item">DISFRUTÁ <img src="/Flecha-verde.png" className="cf-step-arrow-img" alt="" /></div>
         </div>
@@ -454,7 +454,7 @@ const LINEAS: LineaInfo[] = [
     teaser:
       'Homenaje a la madera. Casas modernas y minimalistas, con nombres de especies nativas de nuestra mesopotamia.',
     about:
-      'Nuestra Línea de casas HAUSIND® BOSQUE es un merecido homenaje al más cálido, sustentable y noble de los materiales usados en la construcción en todo el mundo: La madera. Nombradas con nombres de especies nativas de nuestra mesopotamia, donde se emplaza nuestra producción de unidades de base Wood Plus, la Línea BOSQUE se expresa en viviendas modernas, minimalistas de alta eficiencia habitacional, con potencial de crecimiento orgánico, y siempre con la heterogeneidad de estilos que demanda el mercado. Se desarrolla a partir de 3 distribuciones internas de sus ambientes, a las que llamamos "tipologías", y en cada una de ellas, variantes de estilo con acabados y materiales para todos los gustos y presupuestos. La Línea BOSQUE se puede fabricar, según preferencia, presupuesto y lugar de implantación, en 2 de nuestros 3 modos constructivos de base; Wood Plus (estructura de madera misionera tratada de larga durabilidad, panelizada en nuestras plantas), ó Steel Plus (paneles de madera SIP o WFP de alta durabilidad y óptima aislación termoacústica producidos en nuestras plantas, sobre una sólida estructura de perfiles de acero).',
+      'Nuestra Línea de casas HAUSIND® BOSQUE es un merecido homenaje al más cálido, sustentable y noble de los materiales usados en la construcción en todo el mundo: La madera. Nombradas con nombres de especies nativas de nuestra mesopotamia, donde se emplaza nuestra producción de unidades de base Wood Plus, la Línea BOSQUE se expresa en viviendas modernas, minimalistas de alta eficiencia habitacional, con potencial de crecimiento orgánico, y siempre con la heterogeneidad de estilos que demanda el mercado. Se desarrolla a partir de 3 distribuciones internas de sus ambientes, a las que llamamos "tipologías", y en cada una de ellas, variantes de estilo con acabados y materiales para todos los gustos y presupuestos. La Línea BOSQUE se puede fabricar, según preferencia, presupuesto y lugar de implantación, en 2 de nuestros 3 modos constructivos de base; Wood Plus (estructura de madera misionera tratada de larga durabilidad, panelizada en nuestras plantas), o Steel Plus (paneles de madera SIP o WFP de alta durabilidad y óptima aislación termoacústica producidos en nuestras plantas, sobre una sólida estructura de perfiles de acero).',
   },
   {
     name: 'Atlas',
@@ -464,7 +464,7 @@ const LINEAS: LineaInfo[] = [
     teaser:
       'Inspirada en regiones arquitectónicamente emblemáticas del planeta. Heterogeneidad de estilos para cada familia.',
     about:
-      'Inspirada en regiones arquitectónicamente emblemáticas del planeta, nuestra Línea de casas HAUSIND® ATLAS busca representar la heterogeneidad de estilos que demanda el mercado, adaptando su estética a una funcionalidad siempre eficiente y armónica. Cada estilo de vivienda se asocia a un diseño exterior e interior acorde, pero sobre todo transmite un estilo de vida, que se expresa en materiales, acabados, terminaciones, revestimientos, muebles y artefactos específicos para cada uno de ellos. Se desarrolla a partir de 2 distribuciones internas de sus ambientes, a las que llamamos "tipologías", y en cada una de ellas hay variantes visuales para cada tipo de cliente y familia. La Línea ATLAS, cuyo concepto constructivo es el más asociado a la idea de "La Casa que Crece", se puede fabricar, según el presupuesto, la preferencia del cliente y lugar de implantación, en 2 de nuestros 3 modos constructivos de base; Wood Plus (estructura de madera misionera tratada de larga durabilidad, panelizada en nuestras plantas), ó Steel Plus (estructura de acero galvanizado con paneles SIP o WFP de alta durabilidad y óptima aislación termoacústica, producidos en nuestras plantas).',
+      'Inspirada en regiones arquitectónicamente emblemáticas del planeta, nuestra Línea de casas HAUSIND® ATLAS busca representar la heterogeneidad de estilos que demanda el mercado, adaptando su estética a una funcionalidad siempre eficiente y armónica. Cada estilo de vivienda se asocia a un diseño exterior e interior acorde, pero sobre todo transmite un estilo de vida, que se expresa en materiales, acabados, terminaciones, revestimientos, muebles y artefactos específicos para cada uno de ellos. Se desarrolla a partir de 2 distribuciones internas de sus ambientes, a las que llamamos "tipologías", y en cada una de ellas hay variantes visuales para cada tipo de cliente y familia. La Línea ATLAS, cuyo concepto constructivo es el más asociado a la idea de "La Casa que Crece", se puede fabricar, según el presupuesto, la preferencia del cliente y lugar de implantación, en 2 de nuestros 3 modos constructivos de base; Wood Plus (estructura de madera misionera tratada de larga durabilidad, panelizada en nuestras plantas), o Steel Plus (estructura de acero galvanizado con paneles SIP o WFP de alta durabilidad y óptima aislación termoacústica, producidos en nuestras plantas).',
   },
   {
     name: 'Terra',

@@ -247,7 +247,7 @@ export default function StickyFilters({
           }}
           style={{ minWidth: 0 }}
         >
-          <option value="">—</option>
+          <option value="">Elegí…</option>
           <option value="si">Sí</option>
           <option value="no">No</option>
         </select>
