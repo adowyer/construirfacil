@@ -253,6 +253,40 @@ export default function CatalogPage({
     if (target) setActiveModel(target)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialModelSlug])
+
+  // URL sync: cuando se expande un modelo, la barra del browser cambia a
+  // /modelos/{slug} via pushState. Beneficios:
+  //  - El usuario ve y puede copiar/compartir la URL de la casa.
+  //  - El back del browser cierra el modelo (popstate listener abajo).
+  //  - Refresh recarga la misma casa (server-side via /modelos/[slug]).
+  // No re-corre por initialModelSlug porque éste ya viene desde la URL.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!activeModel) return
+    const slug = modelGroupSlug({
+      style_name: activeModel.style_name,
+      tipologia_code_new: activeModel.tipologia_code_new,
+    })
+    const target = `/modelos/${slug}`
+    if (window.location.pathname === target) return
+    window.history.pushState({ cfModelSlug: slug }, '', target)
+  }, [activeModel])
+
+  // Back del browser cierra el modelo expandido. Si el popstate trae un
+  // pathname que ya NO es /modelos/* y tenemos un modelo abierto, lo cerramos
+  // sincronizando estado con la URL.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onPopState = () => {
+      const isModelUrl = window.location.pathname.startsWith('/modelos/')
+      if (!isModelUrl && activeModel) {
+        setActiveModel(null)
+        document.body.style.overflow = ''
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [activeModel])
   const [station, setStation] = useState<Station>('portada')
   // Multi-select: arrays. '' inicial sería un valor inválido, así que arrays vacíos.
   const [bedFilters, setBedFilters] = useState<string[]>([])
@@ -693,6 +727,16 @@ export default function CatalogPage({
     document.body.style.overflow = ''
     if (detailRef.current) {
       detailRef.current.style.transform = 'translateX(100%)'
+    }
+    // Restaurar URL: si vinimos por click (history.state.cfModelSlug), pop la
+    // entrada para volver al pathname anterior con back del browser. Si
+    // llegamos directo a /modelos/[slug] como deep-link (sin state propio),
+    // replaceState a / para no tirar al usuario a una página externa.
+    if (typeof window === 'undefined') return
+    if (window.history.state?.cfModelSlug) {
+      window.history.back()
+    } else if (window.location.pathname.startsWith('/modelos/')) {
+      window.history.replaceState(null, '', '/')
     }
   }, [])
 

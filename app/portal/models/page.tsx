@@ -105,7 +105,7 @@ export default async function PortalModelsPage() {
                   </Link>
                   {model.status === 'published' && (
                     <Link
-                      href={`/models/${model.slug}`}
+                      href={`/modelos/${model.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline hover:no-underline text-neutral-500"

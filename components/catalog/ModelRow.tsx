@@ -28,6 +28,8 @@ import CotizarCenteredModal from '@/components/catalog/CotizarCenteredModal'
 import { buildCotizarMailto } from '@/lib/cta/mailto'
 import { track } from '@/lib/track/client'
 import { useClientIdentified } from '@/lib/auth/use-client-identified'
+import { modelGroupSlug } from '@/lib/content/model-slug'
+import ShareModelButton from './ShareModelButton'
 import {
   skuPrices,
   type CotizadorData,
@@ -455,6 +457,56 @@ export default function ModelRow({
   const displayCoverUrl = coverUrl ?? model.cover_url
   const [hovered, setHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // URL sync: cuando esta card se expande, la barra cambia a /modelos/{slug}.
+  // Al cerrarse vuelve atrás. Beneficios:
+  //  - El visitante puede copiar la URL desde la barra del browser.
+  //  - El back del browser cierra la card.
+  //  - Refresh recarga la misma casa (SSR via app/modelos/[slug]).
+  // Sólo la card actualmente expandida hace push/pop — las demás filas no
+  // interfieren (sus useEffect están en isExpanded=false).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const slug = modelGroupSlug({
+      style_name: model.style_name,
+      tipologia_code_new: model.tipologia_code_new,
+    })
+    const target = `/modelos/${slug}`
+    if (isExpanded) {
+      if (window.location.pathname !== target) {
+        window.history.pushState({ cfModelSlug: slug }, '', target)
+      }
+    } else if (window.location.pathname === target) {
+      // Solo restauramos si la URL actual es la nuestra (otra card podría
+      // haberse expandido encima cambiando la URL).
+      if (window.history.state?.cfModelSlug === slug) {
+        window.history.back()
+      } else {
+        window.history.replaceState(null, '', '/')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded])
+
+  // Back del browser cierra esta card si estaba expandida y la URL ya no
+  // corresponde. Solo activo cuando isExpanded — evita N listeners en filas
+  // colapsadas.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isExpanded) return
+    const slug = modelGroupSlug({
+      style_name: model.style_name,
+      tipologia_code_new: model.tipologia_code_new,
+    })
+    const target = `/modelos/${slug}`
+    const onPopState = () => {
+      if (window.location.pathname !== target) {
+        setIsExpanded(false)
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [isExpanded, model.style_name, model.tipologia_code_new])
+
   // Chevrons de scroll horizontal del slider expandido. Aparecen/desaparecen
   // dinámicamente según si hay contenido fuera de viewport en cada dirección.
   // En desktop son clickeables (mueven el shell ~80% del viewport). En
@@ -1051,7 +1103,7 @@ export default function ModelRow({
                 strategy: model.naming_strategy,
               })
               return (
-                <h3 className="cf-row-name" style={{ marginBottom: 28, textTransform: 'uppercase', letterSpacing: '-0.01em', color: '#0a0a0a', lineHeight: 1.05 }}>
+                <h3 className="cf-row-name" style={{ marginBottom: 12, textTransform: 'uppercase', letterSpacing: '-0.01em', color: '#0a0a0a', lineHeight: 1.05 }}>
                   {split.eyebrow && (
                     <span style={{ display: 'block', fontSize: 22, fontWeight: 500, marginBottom: 2 }}>
                       {split.eyebrow}
@@ -1063,6 +1115,17 @@ export default function ModelRow({
                 </h3>
               )
             })()}
+            {/* Share button inline — visible apenas se expande la casa.
+                La URL ya está en la barra (sync via pushState en CatalogPage),
+                pero el botón le da camino directo a WhatsApp / mail / copiar. */}
+            <div style={{ marginBottom: 24 }}>
+              <ShareModelButton
+                modelName={model.display_name}
+                styleName={model.style_name}
+                tipologiaCode={model.tipologia_code_new}
+                variant="inline"
+              />
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 32, width: '100%' }}>
               {/* Bloque "Tipología" removido: la tipología ya está en el nombre
@@ -1255,6 +1318,14 @@ export default function ModelRow({
                 {displayLinea(model.linea)}
               </span>
             </div>
+            {/* Share — al lado del CTA principal. Web Share API en mobile,
+                popover en desktop. La URL deep-link la calculamos del slug. */}
+            <ShareModelButton
+              modelName={model.display_name}
+              styleName={model.style_name}
+              tipologiaCode={model.tipologia_code_new}
+              variant="sticky"
+            />
             {/* El sticky abre la MISMA modal que los botones "Cotizar" de la
                 ficha — un único comportamiento en todo el catálogo. La modal
                 muestra el precio "desde" + disclaimer y desde ahí se entra al

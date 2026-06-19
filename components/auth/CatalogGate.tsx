@@ -38,9 +38,14 @@ interface CatalogGateProps {
    *  Sin esta prop el gate es hard (entrada directa a /modelos/[slug] o
    *  /catalogo SSR sin cookie) y no se puede salir sin verificar. */
   onClose?: () => void
+  /** Si viene desde un deep-link a un modelo, el copy del modal nombra
+   *  específicamente esa casa ("Estás a punto de ver la Casa NODO.") en
+   *  vez del headline genérico, para que el visitante entienda QUÉ está
+   *  bloqueado. Sin context, fallback al headline general. */
+  context?: { modelName?: string | null } | null
 }
 
-export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
+export default function CatalogGate({ onClose, context }: CatalogGateProps = {}) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
@@ -192,11 +197,25 @@ export default function CatalogGate({ onClose }: CatalogGateProps = {}) {
 
         {step === 'email' ? (
           <>
-            <h2 id="cf-gate-title" className="cf-gate-title">TU NUEVA CASA TE ESPERA.</h2>
-            <p className="cf-gate-body">
-              Con tu mail desbloqueás <strong>precios personalizados por localidad</strong>,
-              y te mostramos el cuadro comparativo de variantes, planos y financiación. <strong>Sólo 30 segundos.</strong>
-            </p>
+            {context?.modelName ? (
+              <>
+                <h2 id="cf-gate-title" className="cf-gate-title">
+                  Estás a punto de ver la {context.modelName}.
+                </h2>
+                <p className="cf-gate-body">
+                  Para abrir los <strong>planos, las fotos interiores y el precio cupo</strong>{' '}
+                  necesitamos tu mail. <strong>Tardás 30 segundos</strong> —y te queda hecho para todo el catálogo.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 id="cf-gate-title" className="cf-gate-title">TU NUEVA CASA TE ESPERA.</h2>
+                <p className="cf-gate-body">
+                  Con tu mail desbloqueás <strong>precios personalizados por localidad</strong>,
+                  y te mostramos el cuadro comparativo de variantes, planos y financiación. <strong>Sólo 30 segundos.</strong>
+                </p>
+              </>
+            )}
             <div className="cf-gate-oauth-row">
               <button
                 type="button"

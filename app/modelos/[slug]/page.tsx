@@ -22,7 +22,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadHomeData } from '@/lib/content/home-data'
 import CatalogPage from '@/components/catalog/CatalogPage'
 import { modelGroupSlug } from '@/lib/content/model-slug'
-import CatalogGate from '@/components/auth/CatalogGate'
+import ModelGateClient from '@/components/auth/ModelGateClient'
 import { currentClientEmail } from '@/lib/auth/get-current-client'
 
 export const dynamic = 'force-dynamic'
@@ -71,12 +71,44 @@ export async function generateMetadata({
 
 export default async function ModeloPage({ params }: PageProps) {
   const { slug } = await params
-  const clientEmail = await currentClientEmail()
-  if (!clientEmail) {
-    return <CatalogGate />
-  }
+  // Buscar el modelo PRIMERO: si no existe, 404 limpio (no gate roto con
+  // "Modelo no encontrado" detrás). Si existe, podemos enriquecer el gate
+  // con un teaser de la casa concreta — el visitante que llega de un
+  // anuncio entiende QUÉ está bloqueado.
   const { data, model } = await findModel(slug)
   if (!model) notFound()
+
+  const clientEmail = await currentClientEmail()
+  if (!clientEmail) {
+    const areaLabel = model.area_min ? `${Math.round(model.area_min)} m²` : null
+    const bedsLabel = model.beds_min ? `${model.beds_min} dorm.` : null
+    const metaLine = [areaLabel, bedsLabel].filter(Boolean).join(' · ')
+    return (
+      <div className="cf-model-gate-wrap">
+        <div className="cf-model-gate-teaser" aria-hidden="true">
+          {model.cover_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={model.cover_url}
+              alt=""
+              className="cf-model-gate-teaser-img"
+            />
+          )}
+          <div className="cf-model-gate-teaser-meta">
+            <p className="cf-model-gate-teaser-eyebrow">Modelo del catálogo</p>
+            <h1 className="cf-model-gate-teaser-title">{model.display_name}</h1>
+            {metaLine && (
+              <p className="cf-model-gate-teaser-line">{metaLine}</p>
+            )}
+            {model.concept_blurb && (
+              <p className="cf-model-gate-teaser-blurb">{model.concept_blurb}</p>
+            )}
+          </div>
+        </div>
+        <ModelGateClient modelName={model.display_name} />
+      </div>
+    )
+  }
 
   return (
     <CatalogPage
