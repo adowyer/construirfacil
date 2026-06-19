@@ -117,6 +117,11 @@ export default function CatalogGate({ onClose, context }: CatalogGateProps = {})
         setError(res.error)
         setCode('')
         codeRef.current?.focus()
+        // Rate limit: el usuario agotó intentos. Habilitar Reenviar inmediato
+        // (sin cooldown) — el botón pasa a ser su única salida productiva.
+        if (res.code === 'rate_limited') {
+          setResendCountdown(0)
+        }
         return
       }
       // Cookie ya seteada. Triple sync:

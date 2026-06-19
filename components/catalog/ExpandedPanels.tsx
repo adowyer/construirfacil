@@ -2228,7 +2228,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {hasAxos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
           <GatedSlide
-            teaser="Registrate para ver las perspectivas axonométricas de esta casa"
+            teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver las perspectivas axonométricas.`}
             onGateRequired={props.onGateRequired}
             ssrIdentified={props.isClientVerified}
           >
@@ -2283,7 +2283,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         data-panel="comparativo"
       >
         <GatedSlide
-          teaser="Registrate para ver todas las variantes y el comparativo de precios y características."
+          teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver el precio de cada variante.`}
           onGateRequired={props.onGateRequired}
           ssrIdentified={props.isClientVerified}
         >
@@ -2306,7 +2306,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {props.attributesForCatalogIds.length > 0 && (
         <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
           <GatedSlide
-            teaser="Registrate para ver el equipamiento incluido"
+            teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver el equipamiento incluido.`}
             onGateRequired={props.onGateRequired}
             ssrIdentified={props.isClientVerified}
           >
@@ -2323,7 +2323,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
           <GatedSlide
-            teaser="Registrate para ver los planos arquitectónicos"
+            teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver los planos de cada variante.`}
             onGateRequired={props.onGateRequired}
             ssrIdentified={props.isClientVerified}
           >

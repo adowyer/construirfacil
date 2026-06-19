@@ -21,11 +21,11 @@ import { sendOtpEmail } from '@/lib/email/otp'
 import { encodeGateCookie, GATE_COOKIE_CONFIG } from '@/lib/auth/gate-cookie'
 
 const OTP_TTL_MIN = 10
-const OTP_MAX_ATTEMPTS = 5
+const OTP_MAX_ATTEMPTS = 3
 
 export type OtpResult =
   | { ok: true }
-  | { ok: false; error: string }
+  | { ok: false; error: string; code?: 'rate_limited' }
 
 function isValidEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
@@ -143,9 +143,14 @@ export async function verifyOTP(args: {
     return { ok: false, error: 'El código venció. Pedí uno nuevo.' }
   }
 
-  // Rate limit.
+  // Rate limit. `code: 'rate_limited'` permite al cliente reaccionar (habilitar
+  // el botón "Pedir un código nuevo" bypaseando el cooldown del Reenviar).
   if (row.attempts >= OTP_MAX_ATTEMPTS) {
-    return { ok: false, error: 'Demasiados intentos. Pedí un código nuevo.' }
+    return {
+      ok: false,
+      error: 'Llegaste al máximo de intentos. Pedí un código nuevo abajo.',
+      code: 'rate_limited',
+    }
   }
 
   const matches = row.code === code
@@ -162,12 +167,16 @@ export async function verifyOTP(args: {
 
   if (!matches) {
     const remaining = OTP_MAX_ATTEMPTS - (row.attempts + 1)
+    if (remaining > 0) {
+      return {
+        ok: false,
+        error: `Código incorrecto. Te ${remaining === 1 ? 'queda 1 intento' : `quedan ${remaining} intentos`}.`,
+      }
+    }
     return {
       ok: false,
-      error:
-        remaining > 0
-          ? `Código incorrecto. Te quedan ${remaining} intentos.`
-          : 'Demasiados intentos. Pedí un código nuevo.',
+      error: 'Llegaste al máximo de intentos. Pedí un código nuevo abajo.',
+      code: 'rate_limited',
     }
   }
 
