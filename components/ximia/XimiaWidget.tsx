@@ -272,8 +272,12 @@ export default function XimiaWidget() {
     }
   }
 
-  // El widget no se monta en admin.
-  if (pathname?.startsWith('/admin')) return null
+  // Por ahora el widget solo se monta en las páginas de prueba (/ximia-lab*
+  // sin gate y /ximia-demo* con OTP). NO se muestra en el catálogo público
+  // hasta que decidamos el rollout. (Para volver a habilitar global, invertir
+  // la condición y skip solo en /admin/*.)
+  const allow = pathname?.startsWith('/ximia-lab') || pathname?.startsWith('/ximia-demo')
+  if (!allow) return null
 
   return (
     <>
