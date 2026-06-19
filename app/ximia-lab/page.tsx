@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import LabResetButton from '@/components/ximia/LabResetButton'
 import styles from './page.module.css'
 
 /**
@@ -8,6 +9,11 @@ import styles from './page.module.css'
  *
  * URL canónica: /ximia-lab. La URL legacy /ximia-lab.html resuelve acá vía
  * `rewrites()` en next.config.ts (sin redirect — el host queda igual).
+ *
+ * Modo test: el widget detecta el pathname `/ximia-lab*` y pasa un email
+ * `test+{sessionId8}@construirfacil.com` cuando no hay identidad real, así
+ * Ximia nunca pide OTP y el equipo puede iterar casos sin verificar mail.
+ * "Empezar de nuevo" abajo limpia el sessionId → caso fresco.
  */
 
 export const metadata: Metadata = {
@@ -22,9 +28,13 @@ export default function XimiaLabPage() {
         <h1 className={styles.title}>Ximia · Lab</h1>
         <p className={styles.muted}>
           Página de prueba — no enlazada, <code>noindex</code>.<br />
-          Abrí el chat desde el ícono arriba a la derecha.
+          Abrí el chat desde el ícono arriba a la derecha.<br />
+          Acá no pide verificar mail: cada visita arranca como un usuario nuevo.
         </p>
-        <div className={styles.badge}>Widget propio · ConstruirFácil</div>
+        <div className={styles.badge}>Modo test · ConstruirFácil</div>
+        <div className={styles.actions}>
+          <LabResetButton />
+        </div>
       </div>
     </main>
   )

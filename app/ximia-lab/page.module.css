@@ -43,3 +43,28 @@
   font-size: 12px;
   color: #a8a8ae;
 }
+
+.actions {
+  margin-top: 28px;
+}
+
+.resetButton {
+  font-size: 14px;
+  padding: 10px 22px;
+  border-radius: 22px;
+  border: 1px solid #2a2a2e;
+  background: transparent;
+  color: #e8e8ea;
+  cursor: pointer;
+  font-weight: 500;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.resetButton:hover {
+  background: #1a1a1d;
+  border-color: #3a3a3e;
+}
+.resetButton:focus-visible {
+  outline: 2px solid #0092b3;
+  outline-offset: 2px;
+}

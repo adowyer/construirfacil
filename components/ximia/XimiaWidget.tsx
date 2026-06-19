@@ -135,7 +135,18 @@ export default function XimiaWidget() {
     async (text: string, opts?: { isStart?: boolean; identityOverride?: Identity }) => {
       if (!sessionId) return
       const isStart = opts?.isStart === true
-      const id = opts?.identityOverride ?? identity
+      let id = opts?.identityOverride ?? identity
+      // Lab mode: en /ximia-lab el equipo prueba múltiples casos sin verificar mail
+      // cada vez. Si no hay identidad real, pasamos un email único por sessionId →
+      // el Compliance lint del agente lo trata como verified y nunca pide OTP.
+      // "Empezar de nuevo" en la page limpia el sessionId → nuevo email fake.
+      const isLab = pathname?.startsWith('/ximia-lab') ?? false
+      if (isLab && !id.user_id && !id.email) {
+        id = {
+          user_id: null,
+          email: `test+${sessionId.slice(0, 8)}@construirfacil.com`,
+        }
+      }
       setTyping(true)
       const t0 = performance.now()
       try {
@@ -181,7 +192,7 @@ export default function XimiaWidget() {
         setTyping(false)
       }
     },
-    [sessionId, identity],
+    [sessionId, identity, pathname],
   )
 
   // __START__ la primera vez que se abre el chat en esta sesión (no en cada reload).
