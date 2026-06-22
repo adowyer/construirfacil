@@ -212,6 +212,8 @@ function WaitlistContent({
               name="email"
               type="email"
               required
+              pattern="[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}"
+              title="Ingresá un email válido (ej: nombre@dominio.com)"
               autoComplete="email"
               style={{
                 width: '100%',

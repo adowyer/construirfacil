@@ -65,6 +65,11 @@ export async function submitLead(
   if (!email) {
     return { ok: false, error: 'Necesitamos tu email para poder contactarte.' }
   }
+  // HTML5 type=email + required acepta "foo@gmail" (sin TLD) y HubSpot lo
+  // rechaza al sincronizar. Forzamos local + @ + dominio + . + TLD alfa de 2+.
+  if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) {
+    return { ok: false, error: 'El email no parece válido. Revisalo y volvé a intentar.' }
+  }
   // Regla extra por flujo: en "quiero_esta_casa" el teléfono también es
   // obligatorio (cierre rápido por WA/llamada). En "waitlist_provincia" el
   // teléfono es opcional — la promesa es "te avisamos por mail cuando lleguemos".

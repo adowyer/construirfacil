@@ -215,6 +215,8 @@ export function MarcaForm({
               name="lead_notification_email"
               defaultValue={defaultValues?.lead_notification_email ?? ''}
               placeholder="ventas@marca.com"
+              pattern="[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}"
+              title="Ingresá un email válido (ej: nombre@dominio.com)"
               className={inputClass}
             />
           </div>

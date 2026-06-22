@@ -356,6 +356,8 @@ export default function XimiaWidget() {
                     disabled={authBusy}
                     autoComplete="email"
                     inputMode="email"
+                    pattern="[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}"
+                    title="Ingresá un email válido (ej: nombre@dominio.com)"
                   />
                   {authError && <div className={styles.authError}>{authError}</div>}
                   <button

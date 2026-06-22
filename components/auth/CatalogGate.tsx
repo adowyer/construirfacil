@@ -264,6 +264,8 @@ export default function CatalogGate({ onClose, context }: CatalogGateProps = {})
                 <input
                   type="email"
                   required
+                  pattern="[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}"
+                  title="Ingresá un email válido (ej: nombre@dominio.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
