@@ -261,12 +261,13 @@ export function LeadForm({
         </div>
         <div>
           <label className={lbl} htmlFor="lf-email">
-            Email <span className={`normal-case ${isLight ? 'text-neutral-400' : 'text-white/25'}`}>(opcional)</span>
+            Email
           </label>
           <input
             id="lf-email"
             name="email"
             type="email"
+            required
             autoComplete="email"
             className={field}
             placeholder="tu@email.com"

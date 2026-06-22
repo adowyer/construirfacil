@@ -59,16 +59,17 @@ export async function submitLead(
   if (!name) {
     return { ok: false, error: 'Necesitamos tu nombre para poder contactarte.' }
   }
-  // Reglas distintas según el flujo:
-  //   - quiero_esta_casa: teléfono obligatorio (cierre rápido por WA/llamada).
-  //   - waitlist_provincia: email obligatorio (canal de aviso primario);
-  //     teléfono opcional. La promesa al cliente es "te avisamos por mail
-  //     cuando lleguemos", así que el mail es lo no-negociable.
+  // El email es OBLIGATORIO en todos los flujos: es nuestra clave de identidad
+  // canónica (dedup de leads + cf_session). Sin mail no podemos garantizar que
+  // un mismo interesado no se registre dos veces, así que es no-negociable.
+  if (!email) {
+    return { ok: false, error: 'Necesitamos tu email para poder contactarte.' }
+  }
+  // Regla extra por flujo: en "quiero_esta_casa" el teléfono también es
+  // obligatorio (cierre rápido por WA/llamada). En "waitlist_provincia" el
+  // teléfono es opcional — la promesa es "te avisamos por mail cuando lleguemos".
   if (lead_type === 'quiero_esta_casa' && !phone) {
     return { ok: false, error: 'Tu teléfono es obligatorio para poder contactarte.' }
-  }
-  if (lead_type === 'waitlist_provincia' && !email) {
-    return { ok: false, error: 'Necesitamos tu email para avisarte cuando lleguemos.' }
   }
 
   const localidad = optText(formData.get('localidad'))
@@ -110,37 +111,86 @@ export async function submitLead(
   })
 
   const admin = createAdminClient()
-  const { data: inserted, error } = await admin
+
+  // Payload completo para INSERT. Para el ENRICH (lead repetido) derivamos un
+  // subconjunto más abajo.
+  const payload = {
+    name,
+    apellido,
+    phone: phone || null,
+    email,
+    localidad,
+    message,
+    campaign_slug,
+    ...utm,
+    path,
+    marca_id,
+    model_slug,
+    style_name,
+    tipologia_code_new,
+    variante,
+    sistema_constructivo,
+    provincia_id,
+    tiene_lote,
+    timeframe,
+    ahorro_ars_range,
+    lead_type,
+  }
+
+  // Dedup por email — clave de identidad canónica. Regla de negocio (Andrea):
+  // "si alguien, aun en otra sesión, ingresa un mail que tenemos, lo dejamos
+  // pasar, no lo volvemos a registrar". Match case-insensitive (ilike sin
+  // wildcards) para tolerar mayúsculas distintas; el índice único parcial por
+  // lower(email) llega como migración aparte (DDL lo corre Andrea a mano).
+  const { data: existing } = await admin
     .from('leads')
-    .insert({
-      name,
-      apellido,
-      phone: phone || null,
-      email,
-      localidad,
-      message,
-      campaign_slug,
-      ...utm,
-      path,
-      marca_id,
-      model_slug,
-      style_name,
-      tipologia_code_new,
-      variante,
-      sistema_constructivo,
-      provincia_id,
-      tiene_lote,
-      timeframe,
-      ahorro_ars_range,
-      lead_type,
-    })
     .select('id')
-    .single()
-  if (error) {
-    return {
-      ok: false,
-      error: `No pudimos registrar tu consulta: ${error.message}`,
+    .ilike('email', email)
+    .limit(1)
+    .maybeSingle()
+
+  let leadId: string
+  if (existing) {
+    // ENRICH: pisamos solo con los campos que ESTA visita trajo con valor — así
+    // un re-ingreso desde el form genérico /cotizar (sin contexto de catálogo)
+    // no borra datos que ya teníamos. Preservamos la atribución del PRIMER
+    // contacto (first-touch): campaign_slug, utm_* y path NO se sobrescriben.
+    const attributionKeys = new Set([
+      'campaign_slug',
+      'path',
+      ...Object.keys(utm),
+    ])
+    const enrich: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
     }
+    for (const [k, v] of Object.entries(payload)) {
+      if (attributionKeys.has(k)) continue
+      if (v !== null && v !== undefined && v !== '') enrich[k] = v
+    }
+    const { error: updErr } = await admin
+      .from('leads')
+      .update(enrich)
+      .eq('id', existing.id)
+    if (updErr) {
+      return {
+        ok: false,
+        error: `No pudimos registrar tu consulta: ${updErr.message}`,
+      }
+    }
+    leadId = existing.id
+  } else {
+    const { data: inserted, error } = await admin
+      .from('leads')
+      .insert(payload)
+      .select('id')
+      .single()
+    if (error) {
+      return {
+        ok: false,
+        error: `No pudimos registrar tu consulta: ${error.message}`,
+      }
+    }
+    leadId = inserted.id
   }
 
   // ── Email: lookup marca + provincia para armar el payload, despacha en
@@ -148,7 +198,7 @@ export async function submitLead(
   //    el usuario no debería esperar a Resend). Actualizamos el status del
   //    lead después; cualquier reintento de los failed lo hace un worker. ──
   void sendLeadEmailAsync({
-    leadId: inserted.id,
+    leadId,
     leadType: lead_type,
     name,
     apellido,
