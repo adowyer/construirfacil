@@ -470,6 +470,8 @@ export default function ModelRow({
     const slug = modelGroupSlug({
       style_name: model.style_name,
       tipologia_code_new: model.tipologia_code_new,
+      circulacion: model.circulacion,
+      morfologia: model.morfologia,
     })
     const target = `/modelos/${slug}`
     if (isExpanded) {
@@ -496,6 +498,8 @@ export default function ModelRow({
     const slug = modelGroupSlug({
       style_name: model.style_name,
       tipologia_code_new: model.tipologia_code_new,
+      circulacion: model.circulacion,
+      morfologia: model.morfologia,
     })
     const target = `/modelos/${slug}`
     const onPopState = () => {
@@ -1007,6 +1011,8 @@ export default function ModelRow({
                 const split = splitModelTitle({
                   style_name: model.style_name,
                   tipologia_code_new: model.tipologia_code_new,
+                  circulacion: model.circulacion,
+                  morfologia: model.morfologia,
                   strategy: model.naming_strategy,
                 })
                 return (
@@ -1100,6 +1106,8 @@ export default function ModelRow({
               const split = splitModelTitle({
                 style_name: model.style_name,
                 tipologia_code_new: model.tipologia_code_new,
+                circulacion: model.circulacion,
+                morfologia: model.morfologia,
                 strategy: model.naming_strategy,
               })
               return (
@@ -1208,6 +1216,8 @@ export default function ModelRow({
                       const split = splitModelTitle({
                         style_name: model.style_name,
                         tipologia_code_new: model.tipologia_code_new,
+                        circulacion: model.circulacion,
+                        morfologia: model.morfologia,
                         strategy: model.naming_strategy,
                       })
                       return (
@@ -1301,6 +1311,8 @@ export default function ModelRow({
                   const split = splitModelTitle({
                     style_name: model.style_name,
                     tipologia_code_new: model.tipologia_code_new,
+                    circulacion: model.circulacion,
+                    morfologia: model.morfologia,
                     strategy: model.naming_strategy,
                   })
                   return (

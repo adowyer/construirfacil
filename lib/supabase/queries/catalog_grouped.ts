@@ -58,7 +58,12 @@ export type CatalogModel = {
   display_name: string                   // "CASA NODO Estilo PAMPA" (post-0046) o "Casa Pampa" si la línea no tiene tipologia_code_new aún
   estilo: string                         // Moderno / Campestre / etc
   tipologia_code: string                 // legacy: 1 / 2 / TU / TO / TZ
-  tipologia_code_new: string | null      // canónico nuevo: EJE/NODO/ZETA/DECK (0046)
+  tipologia_code_new: string | null      // canónico legacy (0046): EJES/NODO/CUBO/ZETA/DECK como UN solo eje
+  // 4 ejes nuevos (0090). NULL en líneas/marcas no backfilleadas.
+  circulacion: string | null             // EJES | NODO
+  morfologia:  string | null             // DECK | CUBO | ZETA
+  acceso:      string | null             // Frontal | Lateral | Flip
+  area_social: string | null             // Anterior | Posterior | Lateral
   /** Estrategia de naming heredada de la línea (default si la línea no la tiene). */
   naming_strategy: NamingStrategy
   /** Mapping variante base → label, heredado de la línea. */
@@ -248,7 +253,19 @@ export async function getGroupedCatalog(
 
   // 2) Agrupar por (linea, style_name, tipologia_code)
   const groupMap = new Map<string, ModelVariant[]>()
-  const groupMeta = new Map<string, { linea: string; segmento: string | null; style_name: string; estilo: string; tipologia_code: string; tipologia_code_new: string | null; marca_id: string | null }>()
+  const groupMeta = new Map<string, {
+    linea: string
+    segmento: string | null
+    style_name: string
+    estilo: string
+    tipologia_code: string
+    tipologia_code_new: string | null
+    circulacion: string | null
+    morfologia: string | null
+    acceso: string | null
+    area_social: string | null
+    marca_id: string | null
+  }>()
 
   for (const row of (rows ?? [])) {
     const key = groupSlug(row.linea, row.style_name, row.tipologia_code)
@@ -261,6 +278,10 @@ export async function getGroupedCatalog(
         estilo: row.estilo,
         tipologia_code: row.tipologia_code,
         tipologia_code_new: row.tipologia_code_new ?? null,
+        circulacion: row.circulacion ?? null,
+        morfologia: row.morfologia ?? null,
+        acceso: row.acceso ?? null,
+        area_social: row.area_social ?? null,
         marca_id: row.marca_id ?? null,
       })
     }
@@ -489,12 +510,17 @@ export async function getGroupedCatalog(
 
     const lineaMeta = lineaMetaByName.get(normLineaName(meta.linea))
     const strategy = lineaMeta?.naming_strategy ?? DEFAULT_NAMING_STRATEGY
-    // Display name: si la línea ya migró (tipologia_code_new !== null) usamos
-    // el helper canónico "CASA NODO Estilo PAMPA". Si no, fallback al legacy.
-    const displayNameComposed = meta.tipologia_code_new
+    // Display name: si el modelo está backfilleado con los 4 ejes (post-0090),
+    // el helper compone "Casa EJES CUBO Pampa" (modo nuevo). Si no, fallback
+    // al legacy basado en tipologia_code_new ("CASA NODO PAMPA"). Y si la
+    // línea ni siquiera tiene tipologia_code_new, fallback duro a "Casa Pampa".
+    const hasNew = meta.circulacion && meta.morfologia
+    const displayNameComposed = (hasNew || meta.tipologia_code_new)
       ? displayModelTitle({
           style_name: meta.style_name,
           tipologia_code_new: meta.tipologia_code_new,
+          circulacion: meta.circulacion,
+          morfologia: meta.morfologia,
           strategy,
         })
       : displayName(meta.style_name)
@@ -508,6 +534,10 @@ export async function getGroupedCatalog(
       estilo: meta.estilo,
       tipologia_code: meta.tipologia_code,
       tipologia_code_new: meta.tipologia_code_new,
+      circulacion: meta.circulacion,
+      morfologia: meta.morfologia,
+      acceso: meta.acceso,
+      area_social: meta.area_social,
       naming_strategy: strategy,
       variante_labels: lineaMeta?.variante_labels ?? null,
       concept_blurb: lineaMeta?.concept_blurb ?? null,

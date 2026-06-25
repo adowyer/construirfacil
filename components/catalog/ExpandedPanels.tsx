@@ -345,6 +345,8 @@ export function Panel1Description({
             const split = splitModelTitle({
               style_name: model.style_name,
               tipologia_code_new: model.tipologia_code_new,
+              circulacion: model.circulacion,
+              morfologia: model.morfologia,
               strategy: model.naming_strategy,
             })
             return (
@@ -1118,6 +1120,8 @@ export function PanelEstilosCompare({
             const split = splitModelTitle({
               style_name: current.style_name,
               tipologia_code_new: current.tipologia_code_new,
+              circulacion: current.circulacion,
+              morfologia: current.morfologia,
               strategy: current.naming_strategy,
             })
             return (
@@ -1157,6 +1161,8 @@ export function PanelEstilosCompare({
           const split = splitModelTitle({
             style_name: current.style_name,
             tipologia_code_new: current.tipologia_code_new,
+            circulacion: current.circulacion,
+            morfologia: current.morfologia,
             strategy: current.naming_strategy,
           })
           return (
@@ -2091,6 +2097,8 @@ function PanelRelated({
               const split = splitModelTitle({
                 style_name: model.style_name,
                 tipologia_code_new: model.tipologia_code_new,
+                circulacion: model.circulacion,
+                morfologia: model.morfologia,
                 strategy: model.naming_strategy,
               })
               return (
@@ -2140,6 +2148,8 @@ function PanelRelated({
                         const rSplit = splitModelTitle({
                           style_name: r.style_name,
                           tipologia_code_new: r.tipologia_code_new,
+                          circulacion: r.circulacion,
+                          morfologia: r.morfologia,
                           strategy: r.naming_strategy,
                         })
                         return (

@@ -35,14 +35,33 @@ type AuthStep = 'idle' | 'request' | 'verify'
 // modelos/precios. `white-space: pre-wrap` en la burbuja ya cubre los \n.
 function renderInline(text: string): React.ReactNode {
   const parts: React.ReactNode[] = []
-  const re = /\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*/g
+  // image ![alt](url)  |  bold **x**  |  italic *x*  (image first so it isn't eaten by *)
+  const re = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*/g
   let last = 0
   let m: RegExpExecArray | null
   let i = 0
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index))
-    if (m[1] !== undefined) parts.push(<strong key={i++}>{m[1]}</strong>)
-    else if (m[2] !== undefined) parts.push(<em key={i++}>{m[2]}</em>)
+    if (m[2] !== undefined) {
+      // m[1] = alt, m[2] = url — render the desire photo inline
+      parts.push(
+        <img
+          key={i++}
+          src={m[2]}
+          alt={m[1]}
+          loading="lazy"
+          style={{
+            display: 'block',
+            width: '100%',
+            maxWidth: '320px',
+            height: 'auto',
+            borderRadius: '12px',
+            margin: '10px 0',
+          }}
+        />,
+      )
+    } else if (m[3] !== undefined) parts.push(<strong key={i++}>{m[3]}</strong>)
+    else if (m[4] !== undefined) parts.push(<em key={i++}>{m[4]}</em>)
     last = m.index + m[0].length
   }
   if (last < text.length) parts.push(text.slice(last))

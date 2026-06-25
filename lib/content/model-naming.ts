@@ -1,21 +1,22 @@
 /**
  * lib/content/model-naming.ts
  *
- * Helpers de display del nombre comercial de un modelo según la convención
- * unificada que arranca con 0046_tipologias_y_naming:
+ * Helpers de display del nombre comercial de un modelo. Convive en 2 modos:
  *
- *   CASA <TIPOLOGIA> Estilo <ESTILO>
- *   (orden gobernado por lineas.naming_strategy.order)
+ *   • Nuevo (post-0090): 4 ejes independientes en house_catalog
+ *       Casa [Circulación] [Morfología] [Estilo] — Acceso [X] / Área Social [Y]
+ *       Ej: "Casa EJES CUBO Pampa — Acceso Flip · Área Social Anterior"
  *
- * Composición completa de la ficha:
+ *   • Legacy (pre-0090): un solo tipologia_code_new (EJES/NODO/CUBO/ZETA/DECK)
+ *       Casa <TIPOLOGIA> Estilo <ESTILO>
+ *       Ej: "Casa NODO Estilo Pampa"
  *
- *   "CASA NODO Estilo PAMPA · 2 Dormitorios + lavadero ext."
+ * Cuál se usa: si circulacion+morfologia están presentes → modo nuevo;
+ * si no → fallback al legacy (modelos no backfilleados, marcas distintas a
+ * Hausind que todavía no usan los 4 ejes).
  *
- * Donde:
- *   - `Estilo PAMPA` viene de house_catalog.style_name + DISPLAY_NAMES
- *   - `NODO` viene de house_catalog.tipologia_code_new
- *   - `2 Dormitorios` viene de lineas.variante_labels[variante_base]
- *   - `+ lavadero ext.` viene de house_catalog.feature_delta
+ * Composición completa de la ficha (modo nuevo):
+ *   "Casa EJES CUBO Pampa — Acceso Flip · Área Social Anterior · 2 Dormitorios + lavadero ext."
  *
  * Pure functions: no DB calls. Server + client safe.
  */
@@ -87,8 +88,13 @@ export const DEFAULT_NAMING_STRATEGY: NamingStrategy = {
 
 export type DisplayModelNameInput = {
   style_name: string | null | undefined
-  /** EJE / NODO / ZETA / DECK */
+  /** Legacy single-axis: EJES/NODO/CUBO/ZETA/DECK. Fallback cuando los 4 ejes no están. */
   tipologia_code_new: string | null | undefined
+  /** 4 ejes nuevos (post-0090). Si circulacion+morfologia están → modo nuevo. */
+  circulacion?: string | null
+  morfologia?: string | null
+  acceso?: string | null
+  area_social?: string | null
   /** Variante cruda ("0", "2", "3.1"). */
   variante?: string | null
   /** Label de la variante ya resuelto contra lineas.variante_labels. */
@@ -99,14 +105,18 @@ export type DisplayModelNameInput = {
   strategy?: NamingStrategy
 }
 
+function hasNewAxes(input: DisplayModelNameInput): boolean {
+  return Boolean(
+    (input.circulacion ?? '').trim() && (input.morfologia ?? '').trim(),
+  )
+}
+
 /**
- * Devuelve el nombre base sin variante:
- *   { style: 'Pampa', tipologia: 'NODO', strategy: tipologia-first }
- *   → "CASA NODO PAMPA"
+ * Devuelve el nombre base sin variante ni descriptor:
+ *   Modo nuevo:    "Casa EJES CUBO Pampa"
+ *   Modo legacy:   "CASA NODO PAMPA"
  *
- * (Sin la palabra "Estilo". Para layout en dos líneas usar `splitModelTitle`.)
- *
- * Si no hay tipología, cae a "Casa Pampa" (compat con el legacy).
+ * Para layout en dos líneas usar `splitModelTitle`.
  */
 export function displayModelTitle(input: DisplayModelNameInput): string {
   const split = splitModelTitle(input)
@@ -115,15 +125,26 @@ export function displayModelTitle(input: DisplayModelNameInput): string {
 }
 
 /**
- * Versión en dos partes para layout vertical:
- *   { eyebrow: 'CASA NODO', hero: 'PAMPA' }
+ * Versión en dos partes para layout vertical.
+ *
+ *   Modo nuevo:    { eyebrow: 'CASA EJES CUBO', hero: 'Pampa' }
+ *   Modo legacy:   { eyebrow: 'CASA NODO',      hero: 'PAMPA' }
  *
  * El consumidor decide cómo presentarlas (eyebrow chico arriba, hero
- * grande/bold abajo). Si no hay tipología, eyebrow='CASA' y hero=estilo.
+ * grande/bold abajo). En modo nuevo el hero queda en mayúsculas-de-display
+ * (style_name canónico) y el eyebrow lleva ambos ejes en mayúsculas.
  */
 export function splitModelTitle(
   input: DisplayModelNameInput,
 ): { eyebrow: string; hero: string } {
+  if (hasNewAxes(input)) {
+    const circ = (input.circulacion ?? '').toUpperCase()
+    const morfo = (input.morfologia ?? '').toUpperCase()
+    const heroNew = styleDisplayName(input.style_name) || (input.style_name ?? '').toUpperCase()
+    if (!heroNew) return { eyebrow: '', hero: '' }
+    return { eyebrow: `CASA ${circ} ${morfo}`, hero: heroNew }
+  }
+  // Legacy
   const strategy = input.strategy ?? DEFAULT_NAMING_STRATEGY
   const styleRaw = (input.style_name ?? '').toUpperCase()
   const tipo = (input.tipologia_code_new ?? '').toUpperCase()
@@ -136,19 +157,41 @@ export function splitModelTitle(
 }
 
 /**
- * Compone la cadena completa con variante y feature_delta:
+ * Descriptor de Acceso + Área Social (sólo modo nuevo).
+ *   { acceso: 'Flip', area_social: 'Anterior' } → "Acceso Flip · Área Social Anterior"
+ * Devuelve '' si ninguno está presente.
+ */
+export function modelDescriptor(input: DisplayModelNameInput): string {
+  const parts: string[] = []
+  const acc = (input.acceso ?? '').trim()
+  const soc = (input.area_social ?? '').trim()
+  if (acc) parts.push(`Acceso ${acc}`)
+  if (soc) parts.push(`Área Social ${soc}`)
+  return parts.join(' · ')
+}
+
+/**
+ * Compone la cadena completa.
  *
- *   "CASA NODO Estilo PAMPA · 2 Dormitorios + lavadero ext."
+ *   Modo nuevo:
+ *     "Casa EJES CUBO Pampa — Acceso Flip · Área Social Anterior · 2 Dormitorios + lavadero ext."
+ *   Modo legacy:
+ *     "CASA NODO PAMPA · 2 Dormitorios + lavadero ext."
  *
- * El separador "·" se usa entre el título y la variante. El feature_delta
- * se concatena directo al label de variante con un espacio.
+ * El separador "—" antecede al descriptor de ejes adicionales (modo nuevo);
+ * "·" separa descriptor / variante / feature_delta.
  */
 export function displayModelName(input: DisplayModelNameInput): string {
   const title = displayModelTitle(input)
+  const descriptor = modelDescriptor(input)
   const variLabel = (input.variante_label ?? '').trim()
   const delta = (input.feature_delta ?? '').trim()
-  const suffix = [variLabel, delta].filter(Boolean).join(' ')
-  return suffix ? `${title} · ${suffix}` : title
+  const tail = [variLabel, delta].filter(Boolean).join(' ')
+
+  let out = title
+  if (descriptor) out += ` — ${descriptor}`
+  if (tail) out += ` · ${tail}`
+  return out
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -38,7 +38,10 @@ UNSUB_BASE = "https://www.construirfacil.com/unsubscribe?u="
 #  El footer (logo + disclaimer + baja one-click) lo agrega _WRAP en render().
 # ════════════════════════════════════════════════════════════════════════
 _WRAP = ('<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;'
-         'color:#1a1a1a;line-height:1.6;max-width:560px">{body}'
+         'color:#1a1a1a;line-height:1.6;max-width:560px">'
+         '<h1 style="font-size:20px;font-weight:bold;color:#1a1a1a;line-height:1.35;'
+         'margin:0 0 20px">¡Verificá tu registro en Construir Fácil y te acercamos a la '
+         'casa de tus sueños! ⏳</h1>{body}'
          '<div style="margin-top:26px;padding-top:16px;border-top:1px solid #ececec;'
          'text-align:center">'
          '<img src="https://www.construirfacil.com/cf_logo_gris.png" alt="Construir Fácil" '
@@ -66,6 +69,9 @@ TEMPLATES = {
             "días? Si tenés un horario preferido, o un día en particular en que no puedas, por "
             "favor decímelo.</p>"
             "<p>Un asesor de Construir Fácil se pondrá en contacto en breve para avanzar.</p>"
+            "<p style=\"margin-top:18px\">Sólo respondé este mail confirmando que querés avanzar y "
+            "un asesor de Construir Fácil se pone en contacto con vos para contarte todos los "
+            "detalles.</p>"
             "<p>Quedo atento.<br>Un saludo cordial,<br><strong>Construir Fácil</strong></p>"
         ),
     },
@@ -86,6 +92,9 @@ TEMPLATES = {
             "días? Si tenés un horario preferido, o un día en particular en que no puedas, por "
             "favor decímelo.</p>"
             "<p>Un asesor de Construir Fácil se pondrá en contacto en breve para avanzar.</p>"
+            "<p style=\"margin-top:18px\">Sólo respondé este mail confirmando que querés avanzar y "
+            "un asesor de Construir Fácil se pone en contacto con vos para contarte todos los "
+            "detalles.</p>"
             "<p>Quedo atento.<br>Un saludo cordial,<br><strong>Construir Fácil</strong></p>"
         ),
     },
@@ -164,11 +173,12 @@ def render(tpl, nombre, unsubscribe_url):
 def send_resend(env, to_email, subject, html, unsubscribe_url):
     h = {"Authorization": f"Bearer {env['RESEND_API_KEY']}", "Content-Type": "application/json"}
     body = {"from": env["RESEND_FROM_EMAIL"], "to": [to_email], "subject": subject, "html": html,
-            # reply-to a hola@ximia.ai (construirfacil.com no tiene MX → rebotaría). ximia.ai sí recibe.
-            "reply_to": "hola@ximia.ai",
+            # reply-to a hola@construirfacil.com (buzón propio ya operativo). El "respondé este
+            # mail confirmando" del CTA cae acá → es la confirmación/segundo opt-in del lead.
+            "reply_to": "hola@construirfacil.com",
             "headers": {
                 # One-click (RFC 8058): el botón nativo de Gmail hace POST a la URL → baja automática.
-                "List-Unsubscribe": f"<{unsubscribe_url}>, <mailto:hola@ximia.ai?subject=BAJA>",
+                "List-Unsubscribe": f"<{unsubscribe_url}>, <mailto:hola@construirfacil.com?subject=BAJA>",
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
             }}
     st, resp = http("https://api.resend.com/emails", h, "POST", body)
@@ -204,17 +214,20 @@ def mask(s, keep=4):
     return ("*" * max(0, len(s) - keep)) + s[-keep:] if s else "(vacío)"
 
 
-def run_test(env, recipients, sample="Andrea"):
-    """Muestra de CADA bucket a direcciones de prueba. No toca la DB. El link de
-    baja usa un token dummy (al clickear dirá 'no pudimos procesar' — es prueba)."""
+def run_test(env, recipients, sample="Hola"):
+    """Muestra de CADA bucket a direcciones de prueba. Formato por destinatario:
+    'email' o 'email|Nombre' (para previsualizar el saludo personalizado). No toca la DB.
+    En PRODUCCIÓN cada lead recibe SU propio nombre (no este sample)."""
     test_url = unsub_url(env, "00000000-0000-0000-0000-000000000000")
-    print(f"=== ENVÍO DE PRUEBA a {recipients} (muestra de cada bucket, nombre='{sample}') ===")
+    print(f"=== ENVÍO DE PRUEBA (muestra de cada bucket, nombre real por destinatario) ===")
     for bucket in ("READY", "QUALIFIES_LATER"):
-        subj, html = render(TEMPLATES[bucket], sample, test_url)
-        for to in recipients:
+        for spec in recipients:
+            to, _, nm = spec.partition("|")
+            nombre = nm or sample
+            subj, html = render(TEMPLATES[bucket], nombre, test_url)
             ok, err = send_resend(env, to, subj, html, test_url)
-            print(f"  {bucket:16s} -> {to}: {'OK' if ok else 'FALLÓ ' + str(err)}")
-    print("\n(Prueba: nada se escribió en la base. Revisá cómo llegan los 2 mails.)")
+            print(f"  {bucket:16s} -> {to} (Hola {nombre}): {'OK' if ok else 'FALLÓ ' + str(err)}")
+    print("\n(Prueba: nada se escribió en la base. En PRODUCCIÓN cada lead recibe SU propio nombre.)")
 
 
 def main():
