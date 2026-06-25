@@ -127,12 +127,13 @@ export function displayModelTitle(input: DisplayModelNameInput): string {
 /**
  * Versión en dos partes para layout vertical.
  *
- *   Modo nuevo:    { eyebrow: 'CASA EJES CUBO', hero: 'Pampa' }
+ *   Modo nuevo:    { eyebrow: 'CASA EJES CUBO', hero: 'PAMPA' }
  *   Modo legacy:   { eyebrow: 'CASA NODO',      hero: 'PAMPA' }
  *
  * El consumidor decide cómo presentarlas (eyebrow chico arriba, hero
- * grande/bold abajo). En modo nuevo el hero queda en mayúsculas-de-display
- * (style_name canónico) y el eyebrow lleva ambos ejes en mayúsculas.
+ * grande/bold abajo). Hero y eyebrow van todos en MAYÚSCULAS para que el
+ * título completo lea como un bloque visual coherente. La diferenciación es
+ * por peso (eyebrow regular, hero bold), no por capitalización.
  */
 export function splitModelTitle(
   input: DisplayModelNameInput,
@@ -140,7 +141,7 @@ export function splitModelTitle(
   if (hasNewAxes(input)) {
     const circ = (input.circulacion ?? '').toUpperCase()
     const morfo = (input.morfologia ?? '').toUpperCase()
-    const heroNew = styleDisplayName(input.style_name) || (input.style_name ?? '').toUpperCase()
+    const heroNew = (input.style_name ?? '').toUpperCase()
     if (!heroNew) return { eyebrow: '', hero: '' }
     return { eyebrow: `CASA ${circ} ${morfo}`, hero: heroNew }
   }
