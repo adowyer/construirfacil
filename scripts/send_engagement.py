@@ -32,6 +32,7 @@ from pathlib import Path
 
 CF = Path.home() / "Projects" / "CONSTRUIRFACIL"
 UNSUB_BASE = "https://www.construirfacil.com/unsubscribe?u="
+VERIFY_BASE = "https://www.construirfacil.com/verify?u="
 
 # ════════════════════════════════════════════════════════════════════════
 #  TEMPLATES — copy final aprobado. {nombre} = primer nombre del lead.
@@ -42,6 +43,14 @@ _WRAP = ('<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;'
          '<h1 style="font-size:20px;font-weight:bold;color:#1a1a1a;line-height:1.35;'
          'margin:0 0 20px">¡Verificá tu registro en Construir Fácil y te acercamos a la '
          'casa de tus sueños! ⏳</h1>{body}'
+         '<div style="text-align:center;margin:28px 0">'
+         '<a href="{verify_url}" style="display:inline-block;padding:14px 32px;background:#ff003d;'
+         'color:#ffffff;font-weight:bold;font-size:16px;text-decoration:none;border-radius:6px">'
+         'Verificar mi cuenta</a></div>'
+         '<p style="font-size:13px;color:#888;margin:0 0 6px">Si el botón no te direcciona a la web, '
+         'copiá y pegá este link en tu navegador:</p>'
+         '<p style="font-size:13px;word-break:break-all;margin:0">'
+         '<a href="{verify_url}" style="color:#ff003d">{verify_url}</a></p>'
          '<div style="margin-top:26px;padding-top:16px;border-top:1px solid #ececec;'
          'text-align:center">'
          '<img src="https://www.construirfacil.com/cf_logo_gris.png" alt="Construir Fácil" '
@@ -61,7 +70,7 @@ TEMPLATES = {
             "<p>Evaluamos los datos de tu solicitud en <strong>Construir Fácil</strong> y "
             "<strong>¡tengo una excelente noticia para darte!</strong></p>"
             "<p>Tenés las dos condiciones que más pesan para acercarte a tu nueva casa:</p>"
-            "<ul><li><strong>Capacidad de crédito pre aprobada</strong></li>"
+            "<ul><li><strong>Buena capacidad de crédito según nuestra evaluación inicial</strong></li>"
             "<li><strong>Terreno apto dónde construir la casa</strong></li></ul>"
             "<p>Ahora falta <strong>elegir tu modelo de casa</strong> indicado, e iniciar los "
             "trámites. Nos gustaría convenir los próximos pasos en una breve llamada por whatsapp.</p>"
@@ -134,6 +143,13 @@ def unsub_url(env, lead_id):
     return f"{UNSUB_BASE}{lead_id}.{sig}"
 
 
+def verify_url(env, lead_id):
+    # MISMO HMAC que lib/auth/verify-token.ts (dominio 'verify', mismo secret).
+    sig = hmac.new(_unsub_secret(env).encode(), f"verify:{lead_id}".encode(),
+                   hashlib.sha256).hexdigest()[:32]
+    return f"{VERIFY_BASE}{lead_id}.{sig}"
+
+
 def http(url, headers, method="GET", body=None):
     data = json.dumps(body).encode() if body is not None else None
     # Cloudflare (delante de Resend) bloquea el UA de python-urllib con error 1010.
@@ -164,9 +180,10 @@ def select_targets(env, bucket_filter):
     return [r for r in rows if r.get("bucket") in ALLOWED_BUCKETS]
 
 
-def render(tpl, nombre, unsubscribe_url):
+def render(tpl, nombre, verify_link, unsubscribe_url):
     subj = tpl["subject"].format(nombre=nombre)
-    html = _WRAP.format(body=tpl["body"].format(nombre=nombre), unsub_url=unsubscribe_url)
+    html = _WRAP.format(body=tpl["body"].format(nombre=nombre),
+                        verify_url=verify_link, unsub_url=unsubscribe_url)
     return subj, html
 
 
@@ -218,13 +235,15 @@ def run_test(env, recipients, sample="Hola"):
     """Muestra de CADA bucket a direcciones de prueba. Formato por destinatario:
     'email' o 'email|Nombre' (para previsualizar el saludo personalizado). No toca la DB.
     En PRODUCCIÓN cada lead recibe SU propio nombre (no este sample)."""
-    test_url = unsub_url(env, "00000000-0000-0000-0000-000000000000")
+    zero = "00000000-0000-0000-0000-000000000000"
+    test_url = unsub_url(env, zero)
+    test_verify = verify_url(env, zero)
     print(f"=== ENVÍO DE PRUEBA (muestra de cada bucket, nombre real por destinatario) ===")
     for bucket in ("READY", "QUALIFIES_LATER"):
         for spec in recipients:
             to, _, nm = spec.partition("|")
             nombre = nm or sample
-            subj, html = render(TEMPLATES[bucket], nombre, test_url)
+            subj, html = render(TEMPLATES[bucket], nombre, test_verify, test_url)
             ok, err = send_resend(env, to, subj, html, test_url)
             print(f"  {bucket:16s} -> {to} (Hola {nombre}): {'OK' if ok else 'FALLÓ ' + str(err)}")
     print("\n(Prueba: nada se escribió en la base. En PRODUCCIÓN cada lead recibe SU propio nombre.)")
@@ -250,7 +269,7 @@ def main():
     print("\nMuestra (PII enmascarada, copy renderizado):")
     for r in rows[:2]:
         nombre = (r.get("name") or "").split()[0] if r.get("name") else "Hola"
-        subj, _ = render(TEMPLATES[r["bucket"]], nombre, unsub_url(env, r["id"]))
+        subj, _ = render(TEMPLATES[r["bucket"]], nombre, verify_url(env, r["id"]), unsub_url(env, r["id"]))
         print(f"  -> {mask(r.get('email'),6)} [{r['bucket']}] asunto: «{subj}»")
 
     if not commit:
@@ -261,7 +280,8 @@ def main():
     for r in rows:
         nombre = (r.get("name") or "").split()[0] if r.get("name") else "Hola"
         uurl = unsub_url(env, r["id"])
-        subj, html = render(TEMPLATES[r["bucket"]], nombre, uurl)
+        vurl = verify_url(env, r["id"])
+        subj, html = render(TEMPLATES[r["bucket"]], nombre, vurl, uurl)
         ok, err = send_resend(env, r["email"], subj, html, uurl)
         if ok and mark_sent(env, r["id"]):
             log_hubspot(env, r.get("dni"))
