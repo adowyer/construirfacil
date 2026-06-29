@@ -81,17 +81,17 @@ TEMPLATES = {
         "subject": _SUBJECT,
         "body": (
             "<p>Hola {nombre}, ¿cómo estás?</p>"
-            "<p><strong>¡Tengo una excelente noticia para darte!</strong></p>"
+            "<p style=\"font-size:22px;margin:0 0 16px\"><strong>¡Tengo una excelente noticia para darte!</strong></p>"
             "<p>Evaluamos los datos de tu solicitud en <strong>Construir Fácil</strong> y tenés "
             "las dos condiciones que más pesan para avanzar en el trámite de compra de tu nueva "
             "casa:</p>"
             "<ul><li><strong>Buena capacidad de crédito según nuestra evaluación inicial</strong></li>"
             "<li><strong>Terreno apto donde construir la casa</strong></li></ul>"
-            "<p><strong>Último paso para completar tu postulación:</strong></p>"
+            "<p style=\"font-size:22px;margin:0 0 16px\"><strong>Último paso para completar tu postulación:</strong></p>"
             "<p>Para confirmar tu registro y empezar a gestionar el trámite de reserva y seña de "
             "la casa que elegiste, pulsá el botón a continuación:</p>"
             + _BTN +
-            "<p style=\"font-size:18px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
+            "<p style=\"font-size:22px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
             "que responda a tu necesidad.</strong></p>"
             + _TAIL
         ),
@@ -100,7 +100,7 @@ TEMPLATES = {
         "subject": _SUBJECT,
         "body": (
             "<p>Hola {nombre}, ¿cómo estás?</p>"
-            "<p><strong>¡Tengo una excelente noticia para darte!</strong></p>"
+            "<p style=\"font-size:22px;margin:0 0 16px\"><strong>¡Tengo una excelente noticia para darte!</strong></p>"
             "<p>Evaluamos los datos de tu solicitud en <strong>Construir Fácil</strong> y quiero "
             "contarte que el análisis de crédito dio muy bien y eso es un gran paso. "
             "<strong>Ahora nos falta lograr la tierra para tu nueva casa:</strong></p>"
@@ -112,11 +112,11 @@ TEMPLATES = {
             "<li>Si no diste esa autorización, respondé este correo diciéndonos que te interesa "
             "un lote.</li>"
             "</ul>"
-            "<p><strong>Último paso para completar tu postulación:</strong></p>"
+            "<p style=\"font-size:22px;margin:0 0 16px\"><strong>Último paso para completar tu postulación:</strong></p>"
             "<p>Para confirmar tu registro y empezar a gestionar el trámite de reserva y seña de "
             "la casa que elegiste, pulsá el botón a continuación:</p>"
             + _BTN +
-            "<p style=\"font-size:18px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
+            "<p style=\"font-size:22px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
             "ideal, el que responda a tu gusto y necesidad.</strong></p>"
             + _TAIL
         ),

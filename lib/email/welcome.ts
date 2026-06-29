@@ -85,10 +85,10 @@ function welcomeHtml(args: { name?: string | null; unsubscribeUrl?: string }): s
     .join('')
 
   const inner = `<p style="${P}">${greeting(args.name)} un gusto volver a conectar.</p>
-    <p style="${P}"><strong>¡Felicitaciones!</strong> Tu postulación para la nueva casa ya está en marcha.</p>
+    <p style="font-size:22px;color:#222;line-height:1.6;margin:0 0 16px;"><strong>¡Felicitaciones! Tu nueva casa ya está en marcha.</strong></p>
     <p style="${P}">Tu solicitud en <strong>Construir Fácil</strong> ya cuenta con los datos necesarios; ahora vamos a guiarte en los pasos siguientes:</p>
     <ol style="${P}padding-left:20px;">${steps}</ol>
-    <p style="${P}">A partir de mañana mismo, uno de nuestros asesores va a hacerte una breve llamada por WhatsApp.</p>
+    <p style="font-size:22px;color:#222;line-height:1.6;margin:0 0 16px;"><strong>A partir de mañana mismo, uno de nuestros asesores va a hacerte una breve llamada por WhatsApp.</strong></p>
     <p style="${P}">Si tenés un horario preferido, o un día en particular en que no puedas, avisanos por este medio. Si no, cuando recibas el contacto lo coordinás directamente con el asesor.</p>
     ${footer(args.unsubscribeUrl)}`
 
