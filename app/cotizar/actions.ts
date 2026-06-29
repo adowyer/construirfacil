@@ -117,13 +117,25 @@ export async function submitLead(
 
   const admin = createAdminClient()
 
+  // Identidad canónica: resolvemos (o creamos) el user para colgar el lead de
+  // él. Acá hay email (obligatorio) → resuelve por email; el DNI se enganchará
+  // en el cálculo financiero y colapsará si hace falta. (phone va como dato, NO
+  // como llave: las familias lo comparten.)
+  const { data: userId } = await admin.rpc('resolve_user', {
+    p_email: email,
+    p_phone: phone || null,
+    p_name: name,
+    p_source: 'catalog',
+  })
+
   // Payload completo para INSERT. Para el ENRICH (lead repetido) derivamos un
-  // subconjunto más abajo.
+  // subconjunto más abajo. user_id va en el payload → cubre insert Y enrich.
   const payload = {
     name,
     apellido,
     phone: phone || null,
     email,
+    user_id: userId ?? null,
     localidad,
     message,
     campaign_slug,

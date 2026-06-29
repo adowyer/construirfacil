@@ -53,23 +53,21 @@ export async function requestOTP(args: {
 
   const sb = createAdminClient()
 
-  // 1) Upsert users (mismo patrón que Ximia hace al verificar). Idempotente
-  //    por email UNIQUE constraint. Si ya existe, refresca name + lead_status.
-  const { error: upsertErr } = await sb
-    .from('users')
-    .upsert(
-      {
-        email,
-        name,
-        source: 'catalog',
-        lead_status: 'warm',
-      },
-      { onConflict: 'email' },
-    )
-  if (upsertErr) {
-    console.error('[requestOTP] upsert users:', upsertErr.message)
+  // 1) Resolver la identidad canónica (mismo resolvedor que usan Ximia y el OCR
+  //    UOCRA). Crea/encuentra UNA fila en users y colapsa duplicados si un
+  //    identificador los cruza. Acá sólo hay email (el DNI llega más tarde, en
+  //    el cálculo financiero) → crea/encuentra por email.
+  const { error: resolveErr } = await sb.rpc('resolve_user', {
+    p_email: email,
+    p_name: name,
+    p_source: 'catalog',
+  })
+  if (resolveErr) {
+    console.error('[requestOTP] resolve_user:', resolveErr.message)
     return { ok: false, error: 'No pudimos guardar tu registro. Probá de nuevo.' }
   }
+  // Marca intención (warm) — igual que antes.
+  await sb.from('users').update({ lead_status: 'warm' }).eq('email', email)
 
   // 2) Generar código + guardar en email_verifications con TTL.
   const code = generateCode()
