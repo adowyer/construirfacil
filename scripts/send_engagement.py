@@ -38,73 +38,87 @@ VERIFY_BASE = "https://www.construirfacil.com/verify?u="
 #  TEMPLATES — copy final aprobado. {nombre} = primer nombre del lead.
 #  El footer (logo + disclaimer + baja one-click) lo agrega _WRAP en render().
 # ════════════════════════════════════════════════════════════════════════
+# Botón "Verificar mi cuenta" + link de respaldo. Va EN EL CUERPO (donde el
+# doc de los SH lo ubica): después del "último paso", antes de "elegí el modelo".
+_BTN = ('<div style="text-align:center;margin:28px 0">'
+        '<a href="{verify_url}" style="display:inline-block;padding:14px 32px;background:#ff003d;'
+        'color:#ffffff;font-weight:bold;font-size:16px;text-decoration:none;border-radius:6px">'
+        'Verificar mi cuenta</a></div>'
+        '<div style="margin:30px 36px;text-align:center">'
+        '<p style="font-size:12px;color:#999;line-height:1.5;margin:0 0 6px">Si el botón de arriba '
+        'no te direcciona a la web, copiá y pegá este link en tu navegador:</p>'
+        '<p style="font-size:12px;word-break:break-all;margin:0">'
+        '<a href="{verify_url}" style="color:#999;text-decoration:underline">{verify_url}</a></p>'
+        '</div>')
+
+# Bloque de cierre común: marketplace + contacto + firma.
+_TAIL = ('<p>Si aún no lo hiciste, podés elegir tu modelo de casa en nuestro marketplace '
+         '<a href="https://construirfacil.com" style="color:#ff003d">construirfacil.com</a> y '
+         'tener todo listo para iniciar los trámites del crédito y la compra.</p>'
+         '<p>Por cualquier consulta o inconveniente también podés escribirnos a '
+         '<a href="mailto:hola@construirfacil.com" style="color:#ff003d">hola@construirfacil.com</a> '
+         'o por <a href="https://wa.me/5491166440000" style="color:#ff003d">WhatsApp</a>.</p>'
+         '<p>Quedo atento.<br>Un saludo cordial,<br><strong>Construir Fácil</strong></p>')
+
+# Footer reusado de los mails testeados: logo + disclaimer + baja one-click.
 _WRAP = ('<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;'
-         'color:#1a1a1a;line-height:1.6;max-width:560px">'
-         '<h1 style="font-size:20px;font-weight:bold;color:#1a1a1a;line-height:1.35;'
-         'margin:0 0 20px">¡Verificá tu registro en Construir Fácil y te acercamos a la '
-         'casa de tus sueños! ⏳</h1>{body}'
-         '<div style="text-align:center;margin:28px 0">'
-         '<a href="{verify_url}" style="display:inline-block;padding:14px 32px;background:#ff003d;'
-         'color:#ffffff;font-weight:bold;font-size:16px;text-decoration:none;border-radius:6px">'
-         'Verificar mi cuenta</a></div>'
-         '<p style="font-size:13px;color:#888;margin:0 0 6px">Si el botón no te direcciona a la web, '
-         'copiá y pegá este link en tu navegador:</p>'
-         '<p style="font-size:13px;word-break:break-all;margin:0">'
-         '<a href="{verify_url}" style="color:#ff003d">{verify_url}</a></p>'
+         'color:#1a1a1a;line-height:1.6;max-width:560px">{body}'
          '<div style="margin-top:26px;padding-top:16px;border-top:1px solid #ececec;'
          'text-align:center">'
          '<img src="https://www.construirfacil.com/cf_logo_gris.png" alt="Construir Fácil" '
          'width="150" style="max-width:150px;height:auto">'
          '<p style="margin-top:14px;font-size:11px;color:#9a9a9a;line-height:1.5">'
          'Recibís este correo porque nos llegó un formulario con tus datos y tu autorización para '
-         'contactarte desde Construir Fácil. Al responder este mail confirmás tu registración. '
-         'Si no querés seguir recibiendo correos, '
+         'contactarte desde Construir Fácil. Si no querés seguir recibiendo correos, '
          '<a href="{unsub_url}" style="color:#9a9a9a;text-decoration:underline">date de baja acá</a>.'
          '</p></div></div>')
 
+# Asunto único (doc SH), las dos variantes. {nombre} = primer nombre del lead.
+_SUBJECT = "{nombre}, ¡Verificá tu registro en Construir Fácil y elegí tu nueva casa!"
+
 TEMPLATES = {
     "READY": {
-        "subject": "{nombre}, tenemos excelentes noticias sobre tu casa",
+        "subject": _SUBJECT,
         "body": (
             "<p>Hola {nombre}, ¿cómo estás?</p>"
-            "<p>Evaluamos los datos de tu solicitud en <strong>Construir Fácil</strong> y "
-            "<strong>¡tengo una excelente noticia para darte!</strong></p>"
-            "<p>Tenés las dos condiciones que más pesan para acercarte a tu nueva casa:</p>"
+            "<p><strong>¡Tengo una excelente noticia para darte!</strong></p>"
+            "<p>Evaluamos los datos de tu solicitud en <strong>Construir Fácil</strong> y tenés "
+            "las dos condiciones que más pesan para avanzar en el trámite de compra de tu nueva "
+            "casa:</p>"
             "<ul><li><strong>Buena capacidad de crédito según nuestra evaluación inicial</strong></li>"
-            "<li><strong>Terreno apto dónde construir la casa</strong></li></ul>"
-            "<p>Ahora falta <strong>elegir tu modelo de casa</strong> indicado, e iniciar los "
-            "trámites. Nos gustaría convenir los próximos pasos en una breve llamada por whatsapp.</p>"
-            "<p>¿Te queda mejor que te llamemos por la mañana o por la tarde en los próximos "
-            "días? Si tenés un horario preferido, o un día en particular en que no puedas, por "
-            "favor decímelo.</p>"
-            "<p>Un asesor de Construir Fácil se pondrá en contacto en breve para avanzar.</p>"
-            "<p style=\"margin-top:18px\">Sólo respondé este mail confirmando que querés avanzar y "
-            "un asesor de Construir Fácil se pone en contacto con vos para contarte todos los "
-            "detalles.</p>"
-            "<p>Quedo atento.<br>Un saludo cordial,<br><strong>Construir Fácil</strong></p>"
+            "<li><strong>Terreno apto donde construir la casa</strong></li></ul>"
+            "<p><strong>Último paso para completar tu postulación:</strong></p>"
+            "<p>Para confirmar tu registro y empezar a gestionar el trámite de reserva y seña de "
+            "la casa que elegiste, pulsá el botón a continuación:</p>"
+            + _BTN +
+            "<p style=\"font-size:18px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
+            "que responda a tu necesidad.</strong></p>"
+            + _TAIL
         ),
     },
     "QUALIFIES_LATER": {
-        "subject": "{nombre}, avanzamos con tu casa, ¿buscamos un lote?",
+        "subject": _SUBJECT,
         "body": (
             "<p>Hola {nombre}, ¿cómo estás?</p>"
+            "<p><strong>¡Tengo una excelente noticia para darte!</strong></p>"
             "<p>Evaluamos los datos de tu solicitud en <strong>Construir Fácil</strong> y quiero "
-            "contarte que <strong>el análisis de crédito dio muy bien</strong> y eso es un gran "
-            "paso. Lo que falta ahora es lograr la tierra para tu nueva casa.</p>"
-            "<p>Estamos trabajando para generar <strong>lotes en varias localidades de "
-            "Neuquén</strong>, junto a autoridades y gremios locales, y si ya diste el ok para "
-            "gestionar tu tierra serás de los primeros en enterarte cuando eso pase.</p>"
-            "<p>Podemos ganar tiempo ayudándote a <strong>elegir tu modelo de casa</strong> "
-            "indicado, e iniciar los trámites. Nos gustaría convenir los próximos pasos en una "
-            "breve llamada por whatsapp.</p>"
-            "<p>¿Te queda mejor que te llamemos por la mañana o por la tarde en los próximos "
-            "días? Si tenés un horario preferido, o un día en particular en que no puedas, por "
-            "favor decímelo.</p>"
-            "<p>Un asesor de Construir Fácil se pondrá en contacto en breve para avanzar.</p>"
-            "<p style=\"margin-top:18px\">Sólo respondé este mail confirmando que querés avanzar y "
-            "un asesor de Construir Fácil se pone en contacto con vos para contarte todos los "
-            "detalles.</p>"
-            "<p>Quedo atento.<br>Un saludo cordial,<br><strong>Construir Fácil</strong></p>"
+            "contarte que el análisis de crédito dio muy bien y eso es un gran paso. "
+            "<strong>Ahora nos falta lograr la tierra para tu nueva casa:</strong></p>"
+            "<ul>"
+            "<li>Estamos trabajando para generar <strong>lotes en varias localidades de "
+            "Neuquén</strong>, junto a autoridades y gremios locales.</li>"
+            "<li>Si ya diste el ok para gestionar tu tierra, serás de los primeros en enterarte "
+            "cuando eso pase.</li>"
+            "<li>Si no diste esa autorización, respondé este correo diciéndonos que te interesa "
+            "un lote.</li>"
+            "</ul>"
+            "<p><strong>Último paso para completar tu postulación:</strong></p>"
+            "<p>Para confirmar tu registro y empezar a gestionar el trámite de reserva y seña de "
+            "la casa que elegiste, pulsá el botón a continuación:</p>"
+            + _BTN +
+            "<p style=\"font-size:18px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
+            "ideal, el que responda a tu gusto y necesidad.</strong></p>"
+            + _TAIL
         ),
     },
 }
@@ -182,8 +196,8 @@ def select_targets(env, bucket_filter):
 
 def render(tpl, nombre, verify_link, unsubscribe_url):
     subj = tpl["subject"].format(nombre=nombre)
-    html = _WRAP.format(body=tpl["body"].format(nombre=nombre),
-                        verify_url=verify_link, unsub_url=unsubscribe_url)
+    body = tpl["body"].format(nombre=nombre, verify_url=verify_link)
+    html = _WRAP.format(body=body, unsub_url=unsubscribe_url)
     return subj, html
 
 

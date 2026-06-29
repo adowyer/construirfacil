@@ -47,7 +47,7 @@ async function verifyLead(leadId: string): Promise<boolean> {
   if (!lead.welcome_sent_at && lead.email && !lead.unsubscribed) {
     const res = await sendWelcomeEmail({
       to: lead.email,
-      name: lead.name,
+      name: lead.name?.split(' ')[0] ?? null, // primer nombre, igual que el mail de verificación
       unsubscribeUrl: `${SITE_URL}/unsubscribe?u=${unsubscribeToken(leadId)}`,
     })
     if (res.status === 'sent') {
