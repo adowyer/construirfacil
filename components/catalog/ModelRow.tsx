@@ -113,6 +113,11 @@ interface ModelRowProps {
   /** Callback que CatalogPage usa para mostrar el gate modal cuando un
    *  visitante no verificado intenta expandir una casa. */
   onGateRequired?: () => void
+  /** Si true, esta card arranca con isExpanded=true y hace scrollIntoView al
+   *  montar. Lo usa CatalogPage cuando llega un deep-link a /modelos/[slug] —
+   *  preserva el contexto del catálogo (header + filtros + grid) en vez de
+   *  abrir la station-overlay fullscreen. */
+  autoExpand?: boolean
 }
 
 const ZOOM_VIEWPORT_CENTER = 0.56
@@ -446,6 +451,7 @@ export default function ModelRow({
   marcaWhatsapp = null,
   isClientVerified: isClientVerifiedProp = true,
   onGateRequired,
+  autoExpand = false,
 }: ModelRowProps) {
   // Combina la prop de SSR con el hook del cliente. Cubre el caso del
   // visitante que envió un lead en otra pestaña (la cookie cf_session ya
@@ -456,7 +462,30 @@ export default function ModelRow({
   // fallback al cover default del modelo.
   const displayCoverUrl = coverUrl ?? model.cover_url
   const [hovered, setHovered] = useState(false)
+  // isExpanded arranca SIEMPRE en false. Si arrancara en true con autoExpand
+  // se rompe la hidratación: los portales (scrollhints, rotate-nudge) que
+  // gatean por `typeof document !== 'undefined'` se renderean en client pero
+  // no en server. Mejor: render collapsed (matchea server), expandir
+  // post-mount via useEffect — la diferencia visual es 1 frame.
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // Deep-link: tras el primer mount, expandir + scrollear suave al row para
+  // que el visitante vea inmediatamente la casa que vino a buscar. Si
+  // autoExpand es false (caso normal del catálogo), no hace nada.
+  useEffect(() => {
+    if (!autoExpand) return
+    if (typeof window === 'undefined') return
+    setIsExpanded(true)
+    const el = shellRef.current
+    if (!el) return
+    // requestAnimationFrame para esperar el primer layout post-expand (sino
+    // scrollIntoView puede caer en una posición pre-render).
+    const raf = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // URL sync: cuando esta card se expande, la barra cambia a /modelos/{slug}.
   // Al cerrarse vuelve atrás. Beneficios:
@@ -1014,6 +1043,7 @@ export default function ModelRow({
                   circulacion: model.circulacion,
                   morfologia: model.morfologia,
                   strategy: model.naming_strategy,
+                  floors: model.floors,
                 })
                 return (
                   <h3 className="cf-row-name cf-row-name-collapsed">
@@ -1109,6 +1139,7 @@ export default function ModelRow({
                 circulacion: model.circulacion,
                 morfologia: model.morfologia,
                 strategy: model.naming_strategy,
+                floors: model.floors,
               })
               return (
                 <h3 className="cf-row-name" style={{ marginBottom: 12, textTransform: 'uppercase', letterSpacing: '-0.01em', color: '#0a0a0a', lineHeight: 1.05 }}>
@@ -1219,6 +1250,7 @@ export default function ModelRow({
                         circulacion: model.circulacion,
                         morfologia: model.morfologia,
                         strategy: model.naming_strategy,
+                        floors: model.floors,
                       })
                       return (
                         <p className="cf-row-overlay-name">
@@ -1314,6 +1346,7 @@ export default function ModelRow({
                     circulacion: model.circulacion,
                     morfologia: model.morfologia,
                     strategy: model.naming_strategy,
+                    floors: model.floors,
                   })
                   return (
                     <>
@@ -1404,13 +1437,7 @@ export default function ModelRow({
               tabIndex={canScrollLeft && shellInView ? 0 : -1}
               onClick={() => scrollShellBy(-1)}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/arrow-scroll.png"
-                alt=""
-                aria-hidden="true"
-                className="cf-row-scrollhint-img"
-              />
+              <ScrollHintChevron />
             </button>
             <button
               type="button"
@@ -1421,13 +1448,7 @@ export default function ModelRow({
               tabIndex={canScrollRight && shellInView ? 0 : -1}
               onClick={() => scrollShellBy(1)}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/arrow-scroll.png"
-                alt=""
-                aria-hidden="true"
-                className="cf-row-scrollhint-img"
-              />
+              <ScrollHintChevron />
             </button>
           </>,
           document.body,
@@ -1484,5 +1505,26 @@ export default function ModelRow({
         />
       )}
     </div>
+  )
+}
+
+/** Chevron del scroll-hint (← / →). SVG inline para tener stroke-width:
+ *  el PNG anterior era muy fino y un usuario reportó que costaba verlo.
+ *  El --right rota 180° via CSS. La animación pulse del expanded sigue
+ *  funcionando porque toca transform sobre este elemento. */
+function ScrollHintChevron() {
+  return (
+    <svg
+      className="cf-row-scrollhint-svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
   )
 }

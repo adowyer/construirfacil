@@ -348,6 +348,7 @@ export function Panel1Description({
               circulacion: model.circulacion,
               morfologia: model.morfologia,
               strategy: model.naming_strategy,
+              floors: model.floors,
             })
             return (
               <h2 className="cf-pn-title">
@@ -1123,6 +1124,7 @@ export function PanelEstilosCompare({
               circulacion: current.circulacion,
               morfologia: current.morfologia,
               strategy: current.naming_strategy,
+              floors: current.floors,
             })
             return (
               <h3 className="cf-pn-estilos-aside-title">
@@ -1164,6 +1166,7 @@ export function PanelEstilosCompare({
             circulacion: current.circulacion,
             morfologia: current.morfologia,
             strategy: current.naming_strategy,
+            floors: current.floors,
           })
           return (
             <h3 className="cf-pn-estilos-aside-title">
@@ -2100,6 +2103,7 @@ function PanelRelated({
                 circulacion: model.circulacion,
                 morfologia: model.morfologia,
                 strategy: model.naming_strategy,
+                floors: model.floors,
               })
               return (
                 <h3 className="cf-pn-related-title">
@@ -2151,6 +2155,7 @@ function PanelRelated({
                           circulacion: r.circulacion,
                           morfologia: r.morfologia,
                           strategy: r.naming_strategy,
+                          floors: r.floors,
                         })
                         return (
                           <span className="cf-pn-related-card-name">
@@ -2238,7 +2243,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {hasAxos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-narrow">
           <GatedSlide
-            teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver las perspectivas axonométricas.`}
+            teaser={`Registrate para ver las perspectivas de la ${props.model.display_name}`}
             onGateRequired={props.onGateRequired}
             ssrIdentified={props.isClientVerified}
           >
@@ -2293,7 +2298,7 @@ export default function ExpandedPanels(props: PanelsProps) {
         data-panel="comparativo"
       >
         <GatedSlide
-          teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver el precio de cada variante.`}
+          teaser={`Registrate para ver el precio de la ${props.model.display_name}`}
           onGateRequired={props.onGateRequired}
           ssrIdentified={props.isClientVerified}
         >
@@ -2316,7 +2321,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {props.attributesForCatalogIds.length > 0 && (
         <div className="cf-station-slide cf-slide-text cf-slide-text-wide">
           <GatedSlide
-            teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver el equipamiento incluido.`}
+            teaser={`Registrate para ver el equipamiento de la ${props.model.display_name}`}
             onGateRequired={props.onGateRequired}
             ssrIdentified={props.isClientVerified}
           >
@@ -2333,7 +2338,7 @@ export default function ExpandedPanels(props: PanelsProps) {
       {hasPlanos && (
         <div className="cf-station-slide cf-slide-image cf-slide-image-medium">
           <GatedSlide
-            teaser={`¿Te gustó la ${props.model.display_name}? Registrate para ver los planos de cada variante.`}
+            teaser={`Registrate para ver los planos de la ${props.model.display_name}`}
             onGateRequired={props.onGateRequired}
             ssrIdentified={props.isClientVerified}
           >

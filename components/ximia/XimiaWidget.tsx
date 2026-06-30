@@ -35,8 +35,9 @@ type AuthStep = 'idle' | 'request' | 'verify'
 // modelos/precios. `white-space: pre-wrap` en la burbuja ya cubre los \n.
 function renderInline(text: string): React.ReactNode {
   const parts: React.ReactNode[] = []
-  // image ![alt](url)  |  bold **x**  |  italic *x*  (image first so it isn't eaten by *)
-  const re = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*/g
+  // image ![alt](url)  |  link [text](url)  |  bold **x**  |  italic *x*
+  // (image first so its [alt](url) isn't eaten by the link rule; link before * so it isn't eaten)
+  const re = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*/g
   let last = 0
   let m: RegExpExecArray | null
   let i = 0
@@ -60,8 +61,21 @@ function renderInline(text: string): React.ReactNode {
           }}
         />,
       )
-    } else if (m[3] !== undefined) parts.push(<strong key={i++}>{m[3]}</strong>)
-    else if (m[4] !== undefined) parts.push(<em key={i++}>{m[4]}</em>)
+    } else if (m[4] !== undefined) {
+      // m[3] = texto, m[4] = url — link al catálogo (abre en pestaña nueva)
+      parts.push(
+        <a
+          key={i++}
+          href={m[4]}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#2563eb', textDecoration: 'underline' }}
+        >
+          {m[3]}
+        </a>,
+      )
+    } else if (m[5] !== undefined) parts.push(<strong key={i++}>{m[5]}</strong>)
+    else if (m[6] !== undefined) parts.push(<em key={i++}>{m[6]}</em>)
     last = m.index + m[0].length
   }
   if (last < text.length) parts.push(text.slice(last))

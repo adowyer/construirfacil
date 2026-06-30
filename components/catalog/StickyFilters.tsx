@@ -255,7 +255,9 @@ export default function StickyFilters({
 
       {/* VER — CTA al final. Scroll smooth a la grilla del listado: si el
           usuario está arriba, baja al primer modelo; si está en el medio,
-          el scrollIntoView del top de la grilla lo sube al inicio. */}
+          el scrollIntoView del top de la grilla lo sube al inicio.
+          Copy fijo "VER →" sin contador — el conteo no agrega valor al
+          CTA y compite con la jerarquía visual del amarillo. */}
       <button
         type="button"
         className="cf-stf-pill cf-stf-pill-ver"
@@ -264,9 +266,7 @@ export default function StickyFilters({
           if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }}
       >
-        {resultsCount != null
-          ? `Ver ${resultsCount} ${resultsCount === 1 ? 'modelo' : 'modelos'} →`
-          : 'Ver →'}
+        VER →
       </button>
     </>
   )

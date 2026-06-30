@@ -74,7 +74,7 @@ export default function GatedSlide({
           onClick={onGateRequired}
           className="cf-gated-slide-cta"
         >
-          Ver con mi mail →
+          Registrarme
         </button>
         <p className="cf-gated-slide-fineprint">
           Sólo te va tomar 30 segundos. Te pedimos mail y nombre y desbloqueás toda la información de precios por localidad, planos y características técnicas.

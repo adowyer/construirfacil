@@ -77,6 +77,9 @@ export type CatalogModel = {
   beds_min: number | null
   beds_max: number | null
   floors_options: string                 // "1" | "1 ó 2" | "2"
+  /** Post-split por variante, constante por grupo. Usado para sufijar el hero
+   *  con "II"/"III" cuando floors ≥ 2 (consumido por splitModelTitle). */
+  floors: number | null
   price_from: number | null
 
   // Disponibilidad
@@ -219,11 +222,21 @@ function styleToken(style_name: string): string {
     .replace(/[̀-ͯ]/g, '')
     .replace(/['’`´]/g, '')
 }
-function groupSlug(linea: string, style_name: string, tipologia_code: string): string {
-  return [lineaToken(linea), styleToken(style_name), `t${tipologia_code}`]
+function groupSlug(
+  linea: string,
+  style_name: string,
+  tipologia_code: string,
+  variante: string | null | undefined,
+): string {
+  const base = [lineaToken(linea), styleToken(style_name), `t${tipologia_code}`]
     .join('-')
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '')
+  // Variante 1 (o sin variante) NO sufija — preserva los slugs históricos.
+  // Variante ≥2 sufija `-v{N}` para que cada planta tenga su card y URL propia.
+  const varBase = (variante ?? '').split('.')[0]
+  if (!varBase || varBase === '1' || varBase === '0') return base
+  return `${base}-v${varBase}`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,7 +281,7 @@ export async function getGroupedCatalog(
   }>()
 
   for (const row of (rows ?? [])) {
-    const key = groupSlug(row.linea, row.style_name, row.tipologia_code)
+    const key = groupSlug(row.linea, row.style_name, row.tipologia_code, row.variante)
     if (!groupMap.has(key)) {
       groupMap.set(key, [])
       groupMeta.set(key, {
@@ -515,6 +528,9 @@ export async function getGroupedCatalog(
     // al legacy basado en tipologia_code_new ("CASA NODO PAMPA"). Y si la
     // línea ni siquiera tiene tipologia_code_new, fallback duro a "Casa Pampa".
     const hasNew = meta.circulacion && meta.morfologia
+    // Post-split por variante, todos los SKUs del grupo comparten floors.
+    // Tomamos el mayor por defensive (no debería diferir).
+    const floorsForName = floors_all.length ? Math.max(...floors_all) : null
     const displayNameComposed = (hasNew || meta.tipologia_code_new)
       ? displayModelTitle({
           style_name: meta.style_name,
@@ -522,8 +538,11 @@ export async function getGroupedCatalog(
           circulacion: meta.circulacion,
           morfologia: meta.morfologia,
           strategy,
+          floors: floorsForName,
         })
-      : displayName(meta.style_name)
+      : floorsForName && floorsForName >= 2
+        ? `${displayName(meta.style_name)} ${floorsForName === 3 ? 'III' : 'II'}`
+        : displayName(meta.style_name)
 
     models.push({
       group_slug: key,
@@ -546,6 +565,7 @@ export async function getGroupedCatalog(
       beds_min: beds_min_all.length ? Math.min(...beds_min_all) : null,
       beds_max: beds_max_all.length ? Math.max(...beds_max_all) : null,
       floors_options,
+      floors: floorsForName,
       price_from: prices.length ? Math.min(...prices) : null,
       systems: uniqueSystems,
       variantes_count: uniqueVariantes.length,

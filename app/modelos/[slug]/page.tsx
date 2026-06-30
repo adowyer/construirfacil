@@ -2,27 +2,31 @@
  * app/modelos/[slug]/page.tsx
  *
  * Deep-link a un modelo del catálogo via slug canónico `casa-<tipo>-<style>`
- * (ej. `/modelos/casa-nodo-pampa`). Server component que:
+ * (ej. `/modelos/casa-nodo-pampa`). Lo usan el botón Compartir y los enlaces
+ * vivos en WhatsApp/Email/Instagram.
  *
- *   1. Carga el mismo bag que `/` (loadHomeData) — mismo CatalogPage.
- *   2. Resuelve el slug contra los modelos para 404 temprano (no se renderean
- *      catálogos rotos por slugs inexistentes).
- *   3. Genera <metadata> con el display_name + cover_url del modelo para
- *      share/SEO.
- *   4. Renderea CatalogPage con `initialModelSlug={slug}` → la página arranca
- *      en modo catálogo y abre el station-overlay del modelo en mount.
+ * Comportamiento:
+ *   1. Carga el bag completo del agregador (loadHomeData) — mismo que `/`.
+ *   2. Resuelve el slug contra los modelos:
+ *      - Match → renderea CatalogPage con initialModelSlug={slug}; CatalogPage
+ *        abre la station-overlay del modelo en mount.
+ *      - Sin match (slug viejo, modelo renombrado/eliminado) → redirect 308
+ *        a `/catalogo`. El visitante llega a un catálogo abierto en vez de
+ *        un 404 que rompe el share que ya circuló.
+ *   3. Genera <metadata> con display_name + cover_url para el preview de
+ *      share/SEO. Para slugs inexistentes, metadata genérica.
  *
- * Intercepting Routes (preservar la URL al expandir desde el catálogo) queda
- * como refinamiento posterior — requiere parallel routes en app/layout.
+ * NO hay hard gate acá: el visitante anónimo ve el catálogo abierto + el
+ * soft gate per-slide (planos/precio/perspectivas) cuando intenta abrir lo
+ * protegido. La idea es maximizar "venía por una casa, terminó viendo todas".
  */
 
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadHomeData } from '@/lib/content/home-data'
 import CatalogPage from '@/components/catalog/CatalogPage'
 import { modelGroupSlug } from '@/lib/content/model-slug'
-import ModelGateClient from '@/components/auth/ModelGateClient'
 import { currentClientEmail } from '@/lib/auth/get-current-client'
 
 export const dynamic = 'force-dynamic'
@@ -34,13 +38,31 @@ interface PageProps {
 async function findModel(slug: string) {
   const supabase = await createClient()
   const data = await loadHomeData(supabase)
-  const model = data.models.find(
-    (m) =>
-      modelGroupSlug({
-        style_name: m.style_name,
-        tipologia_code_new: m.tipologia_code_new,
-      }) === slug,
-  )
+  // Slug normalizado a minúsculas: en el catálogo siempre lo generamos así,
+  // pero shares pegados a mano podrían venir con mayúsculas.
+  const target = slug.toLowerCase()
+  // Backward-compat: matcheamos contra DOS variantes del slug del modelo:
+  //   - Nuevo (post-0090): incluye circulacion + morfologia
+  //     → `casa-ejes-cubo-copahue`
+  //   - Legacy: sólo tipologia_code_new
+  //     → `casa-cubo-copahue`
+  // ModelRow pushea el nuevo cuando ambos campos están seteados; el botón
+  // Compartir todavía usa solo tipologia_code_new. Los shares viejos
+  // circulando en WhatsApp pueden estar en cualquiera de los dos formatos.
+  const model = data.models.find((m) => {
+    const newSlug = modelGroupSlug({
+      style_name: m.style_name,
+      tipologia_code_new: m.tipologia_code_new,
+      circulacion: m.circulacion,
+      morfologia: m.morfologia,
+    })
+    if (newSlug === target) return true
+    const legacySlug = modelGroupSlug({
+      style_name: m.style_name,
+      tipologia_code_new: m.tipologia_code_new,
+    })
+    return legacySlug === target
+  })
   return { data, model }
 }
 
@@ -50,7 +72,11 @@ export async function generateMetadata({
   const { slug } = await params
   const { model } = await findModel(slug)
   if (!model) {
-    return { title: 'Modelo no encontrado' }
+    return {
+      title: 'Catálogo — ConstruirFácil',
+      description:
+        'Explorá modelos de casas industrializadas en ConstruirFácil.',
+    }
   }
   const title = `${model.display_name} — ConstruirFácil`
   const desc =
@@ -71,51 +97,22 @@ export async function generateMetadata({
 
 export default async function ModeloPage({ params }: PageProps) {
   const { slug } = await params
-  // Buscar el modelo PRIMERO: si no existe, 404 limpio (no gate roto con
-  // "Modelo no encontrado" detrás). Si existe, podemos enriquecer el gate
-  // con un teaser de la casa concreta — el visitante que llega de un
-  // anuncio entiende QUÉ está bloqueado.
   const { data, model } = await findModel(slug)
-  if (!model) notFound()
+
+  // Slug stale (modelo renombrado/desactivado): preservamos la promesa de
+  // share — el visitante igual aterriza en un catálogo navegable. notFound()
+  // rompía links que ya circulaban en WhatsApp/Instagram sin recurso.
+  if (!model) redirect('/catalogo')
 
   const clientEmail = await currentClientEmail()
-  if (!clientEmail) {
-    const areaLabel = model.area_min ? `${Math.round(model.area_min)} m²` : null
-    const bedsLabel = model.beds_min ? `${model.beds_min} dorm.` : null
-    const metaLine = [areaLabel, bedsLabel].filter(Boolean).join(' · ')
-    return (
-      <div className="cf-model-gate-wrap">
-        <div className="cf-model-gate-teaser" aria-hidden="true">
-          {model.cover_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={model.cover_url}
-              alt=""
-              className="cf-model-gate-teaser-img"
-            />
-          )}
-          <div className="cf-model-gate-teaser-meta">
-            <p className="cf-model-gate-teaser-eyebrow">Modelo del catálogo</p>
-            <h1 className="cf-model-gate-teaser-title">{model.display_name}</h1>
-            {metaLine && (
-              <p className="cf-model-gate-teaser-line">{metaLine}</p>
-            )}
-            {model.concept_blurb && (
-              <p className="cf-model-gate-teaser-blurb">{model.concept_blurb}</p>
-            )}
-          </div>
-        </div>
-        <ModelGateClient modelName={model.display_name} />
-      </div>
-    )
-  }
 
   return (
     <CatalogPage
       {...data}
       selectedMarca={null}
       initialHomeMode={false}
-      initialModelSlug={slug}
+      initialModelSlug={slug.toLowerCase()}
+      isClientVerified={!!clientEmail}
     />
   )
 }

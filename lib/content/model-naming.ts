@@ -103,6 +103,15 @@ export type DisplayModelNameInput = {
   feature_delta?: string | null
   /** Estrategia de naming de la línea (default tipologia-first). */
   strategy?: NamingStrategy
+  /** Cantidad de pisos. Si ≥2 el hero se sufija con romanos ("AMBA'Y II"). */
+  floors?: number | null
+}
+
+function floorsSuffix(floors: number | null | undefined): string {
+  if (!floors || floors <= 1) return ''
+  if (floors === 2) return ' II'
+  if (floors === 3) return ' III'
+  return ''
 }
 
 function hasNewAxes(input: DisplayModelNameInput): boolean {
@@ -138,23 +147,24 @@ export function displayModelTitle(input: DisplayModelNameInput): string {
 export function splitModelTitle(
   input: DisplayModelNameInput,
 ): { eyebrow: string; hero: string } {
+  const suf = floorsSuffix(input.floors)
   if (hasNewAxes(input)) {
     const circ = (input.circulacion ?? '').toUpperCase()
     const morfo = (input.morfologia ?? '').toUpperCase()
     const heroNew = (input.style_name ?? '').toUpperCase()
     if (!heroNew) return { eyebrow: '', hero: '' }
-    return { eyebrow: `CASA ${circ} ${morfo}`, hero: heroNew }
+    return { eyebrow: `CASA ${circ} ${morfo}`, hero: `${heroNew}${suf}` }
   }
   // Legacy
   const strategy = input.strategy ?? DEFAULT_NAMING_STRATEGY
   const styleRaw = (input.style_name ?? '').toUpperCase()
   const tipo = (input.tipologia_code_new ?? '').toUpperCase()
   if (!styleRaw && !tipo) return { eyebrow: '', hero: '' }
-  if (!tipo) return { eyebrow: 'CASA', hero: styleRaw }
+  if (!tipo) return { eyebrow: 'CASA', hero: `${styleRaw}${suf}` }
   if (strategy.order === 'style-first') {
-    return { eyebrow: `CASA ${styleRaw}`, hero: tipo }
+    return { eyebrow: `CASA ${styleRaw}${suf}`, hero: tipo }
   }
-  return { eyebrow: `CASA ${tipo}`, hero: styleRaw }
+  return { eyebrow: `CASA ${tipo}`, hero: `${styleRaw}${suf}` }
 }
 
 /**

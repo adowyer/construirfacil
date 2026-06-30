@@ -33,13 +33,18 @@ export default function ShareModelButton({
     style_name: styleName,
     tipologia_code_new: tipologiaCode,
   })
-  // Texto del preview en WhatsApp / cuerpo de mail. El nombre del modelo NO va
-  // acá porque ya aparece en el preview del link (Open Graph metadata del
-  // page /modelos/[slug] genera title + image). El subject del mail sí lo lleva.
-  const shareText = 'Mirá esta casa que encontré en ConstruirFácil'
+  // Texto del mensaje en WhatsApp / cuerpo de mail / contenido copiado al
+  // portapapeles. El nombre del modelo NO va acá porque ya aparece en el
+  // preview del link (Open Graph metadata del page /modelos/[slug] genera
+  // title + image). El subject del mail sí lo lleva.
+  const shareText = 'Mirá la casa que encontré en ConstruirFácil'
 
   const buildUrl = () =>
     typeof window === 'undefined' ? '' : `${window.location.origin}/modelos/${slug}`
+  // Mensaje completo que va en TODOS los canales (copy, WhatsApp, email).
+  // Línea en blanco entre texto y URL para que el preview del link quede
+  // visualmente separado en WhatsApp y mail.
+  const buildMessage = () => `${shareText}\n\n${buildUrl()}`
 
   const handleClick = () => {
     // Antes intentábamos navigator.share (Web Share API nativo), pero en desktop
@@ -51,7 +56,7 @@ export default function ShareModelButton({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(buildUrl())
+      await navigator.clipboard.writeText(buildMessage())
       setCopied(true)
       setTimeout(() => {
         setCopied(false)
@@ -63,14 +68,14 @@ export default function ShareModelButton({
   }
 
   const handleWhatsApp = () => {
-    const wa = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${buildUrl()}`)}`
+    const wa = `https://wa.me/?text=${encodeURIComponent(buildMessage())}`
     window.open(wa, '_blank', 'noopener,noreferrer')
     setOpen(false)
   }
 
   const handleEmail = () => {
     const subject = encodeURIComponent(`Mirá esta casa: ${modelName}`)
-    const body = encodeURIComponent(`${shareText}\n\n${buildUrl()}\n`)
+    const body = encodeURIComponent(`${buildMessage()}\n`)
     window.location.href = `mailto:?subject=${subject}&body=${body}`
     setOpen(false)
   }

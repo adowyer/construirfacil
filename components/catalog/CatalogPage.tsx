@@ -16,7 +16,7 @@
  */
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import type { BrandContent, LineContent } from './HeroSlider'
 import SiteHeader from '@/components/SiteHeader'
 import HeroRow, { type GrowthPair, type LineaModelo } from './HeroRow'
@@ -31,6 +31,7 @@ import type { LineaRow } from '@/lib/supabase/queries/lineas'
 import type { ProvinciaRow } from '@/lib/supabase/queries/zones'
 import type { MarcaZonaRule, EffectiveZoneRule } from '@/lib/content/zones'
 import { resolveZoneRule, applyZonePricing } from '@/lib/content/zones'
+import { useProvincia } from '@/components/providers/ProvinciaProvider'
 import type { Marca } from '@/types/database'
 import type {
   FooterCardRow,
@@ -239,33 +240,52 @@ export default function CatalogPage({
 
   const [activeModel, setActiveModel] = useState<CatalogModel | null>(null)
 
-  // Deep-link a /modelos/[slug]: al montar buscamos el modelo cuyo slug nuevo
-  // matchea el initialModelSlug y lo abrimos. Una vez (no re-corre si el
-  // usuario navega manualmente después).
-  useEffect(() => {
-    if (!initialModelSlug || activeModel) return
-    const target = models.find((m) =>
-      modelGroupSlug({
+  // Deep-link a /modelos/[slug]: en lugar de abrir la station-overlay
+  // fullscreen (que tapa el catálogo entero + el SiteHeader), expandimos la
+  // card inline en el grid y scrolleamos a su posición. Así el visitante que
+  // viene de un share aterriza CON contexto del catálogo (header, filtros,
+  // demás casas) en vez de un takeover que se siente como otra página.
+  //
+  // Matching del slug: incluimos circulacion + morfologia (el formato nuevo
+  // post-0090) además del legacy tipologia_code_new — el ModelRow al
+  // expandirse pushea el slug nuevo, así que tenemos que poder resolverlo
+  // en sentido inverso. La harness fallback queda igual: si no hay
+  // circulacion+morfologia, modelSlug cae a tipologia_code_new.
+  const autoExpandSlug = useMemo(() => {
+    if (!initialModelSlug) return null
+    const lower = initialModelSlug.toLowerCase()
+    // Mismo matching backward-compat que findModel en /modelos/[slug]/page.tsx:
+    // probamos slug nuevo (con circulacion+morfologia) y legacy (sólo
+    // tipologia_code_new). Shares viejos pueden estar en cualquier formato.
+    const target = models.find((m) => {
+      const newSlug = modelGroupSlug({
         style_name: m.style_name,
         tipologia_code_new: m.tipologia_code_new,
-      }) === initialModelSlug,
-    )
-    if (target) setActiveModel(target)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialModelSlug])
+        circulacion: m.circulacion,
+        morfologia: m.morfologia,
+      })
+      if (newSlug === lower) return true
+      const legacySlug = modelGroupSlug({
+        style_name: m.style_name,
+        tipologia_code_new: m.tipologia_code_new,
+      })
+      return legacySlug === lower
+    })
+    return target?.group_slug ?? null
+  }, [initialModelSlug, models])
 
-  // URL sync: cuando se expande un modelo, la barra del browser cambia a
-  // /modelos/{slug} via pushState. Beneficios:
-  //  - El usuario ve y puede copiar/compartir la URL de la casa.
-  //  - El back del browser cierra el modelo (popstate listener abajo).
-  //  - Refresh recarga la misma casa (server-side via /modelos/[slug]).
-  // No re-corre por initialModelSlug porque éste ya viene desde la URL.
+  // URL sync para la station-overlay fullscreen (activeModel): cuando algún
+  // CTA externo (ej. CatalogFooter "Casas similares") abre la overlay, la
+  // barra del browser cambia a /modelos/{slug}. El expand inline de las
+  // cards lo maneja ModelRow por su cuenta — esta useEffect NO duplica eso.
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!activeModel) return
     const slug = modelGroupSlug({
       style_name: activeModel.style_name,
       tipologia_code_new: activeModel.tipologia_code_new,
+      circulacion: activeModel.circulacion,
+      morfologia: activeModel.morfologia,
     })
     const target = `/modelos/${slug}`
     if (window.location.pathname === target) return
@@ -292,7 +312,9 @@ export default function CatalogPage({
   const [bedFilters, setBedFilters] = useState<string[]>([])
   const [sizeFilters, setSizeFilters] = useState<string[]>([])
   const [priceFilter, setPriceFilter] = useState<string | null>(null)
-  const [provinciaId, setProvinciaId] = useState<string | null>(null)
+  // Provincia: estado global vía ProvinciaProvider (cookie + autodetect geo).
+  // Reemplaza el useState/localStorage local. setProvinciaId persiste en cookie.
+  const { provinciaId, setProvinciaId } = useProvincia()
   const [onlyOffers, setOnlyOffers] = useState<boolean>(false)
   // Filtro Lote — diferenciador estructural del producto. 'si' (tiene lote),
   // 'no' (busca casa+lote), null (no eligió → hero banner activo).
@@ -380,22 +402,16 @@ export default function CatalogPage({
   // Orden fijo a "recommended" — sacamos el selector del UI (decisión del cliente).
   // El sort por featured_rank vive inline en el .sort() del listado.
 
-  // Persistencia de la provincia entre sesiones (la ubicación es contexto del
-  // usuario, no estado efímero). Si la página recibe initialProvinciaId
-  // (campañas /casa-financiada/[localidad]) y no hay valor previo, lo usamos
-  // como semilla (y se persiste vía el otro effect).
+  // Semilla desde landing de campaña (/casa-financiada/[localidad]): si la
+  // página recibe initialProvinciaId y el context todavía no tiene valor
+  // (ni cookie previa), pisamos con esa semilla. La persistencia en cookie
+  // la hace el provider via setProvinciaId.
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const stored = window.localStorage.getItem('cf-provincia-id')
-    if (stored) setProvinciaId(stored)
-    else if (initialProvinciaId) setProvinciaId(initialProvinciaId)
+    if (provinciaId) return
+    if (!initialProvinciaId) return
+    setProvinciaId(initialProvinciaId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (provinciaId) window.localStorage.setItem('cf-provincia-id', provinciaId)
-    else window.localStorage.removeItem('cf-provincia-id')
-  }, [provinciaId])
 
   // Persistencia del filtro Lote — mismo patrón que provincia. El valor sólo
   // puede ser 'si' / 'no' / null, así que filtramos cualquier basura.
@@ -1066,6 +1082,7 @@ export default function CatalogPage({
                   }
                   isClientVerified={isClientVerified}
                   onGateRequired={requestGate}
+                  autoExpand={autoExpandSlug === model.group_slug}
                 />
               )
             })}

@@ -1058,37 +1058,41 @@ body:has(.cf-row.cf-expanded) {
   left: 26px;
 }
 
-/* Flecha fina (asset PNG). El archivo apunta a la IZQUIERDA; el chevron
-   derecho lo rota 180° (es simétrico vertical, así que rotar = espejar).
-   Sombra sutil para que se lea sobre fotos claras u oscuras. */
-.cf-row-scrollhint-img {
+/* Chevron SVG (reemplazó el PNG fino que costaba ver). stroke-width
+   controlable, color manejado por currentColor del botón. El --right rota
+   180° (chevron-left espejado = chevron-right).
+   Tamaño: 56x76 cubre similar mancha visual al PNG anterior renderizado a
+   scale(0.7), pero con stroke 3.2 lee mucho más nítido. Drop-shadow más
+   fuerte para que pinte contra fotos claras del catálogo. */
+.cf-row-scrollhint-svg {
   display: block;
-  height: 112px;
-  width: auto;
-  /*filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));*/
+  width: 56px;
+  height: 76px;
+  color: #fff;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
 }
 
-.cf-row-scrollhint--right .cf-row-scrollhint-img {
+.cf-row-scrollhint--right .cf-row-scrollhint-svg {
   transform: rotate(180deg);
 }
 
 .cf-row-scrollhint-visible {
   opacity: 1;
-  transform: translateY(-50%) scale(0.7);
+  transform: translateY(-50%) scale(1);
   pointer-events: auto;
 }
 
 .cf-row-scrollhint-visible:hover {
-  transform: translateY(-50%) scale(0.9);
+  transform: translateY(-50%) scale(1.1);
 }
 
 /* Pulse animación que sugiere "hay más por acá" — apunta hacia la dirección
    del chevron. El derecho conserva el rotate(180deg) en cada keyframe. */
-.cf-row-scrollhint--right.cf-row-scrollhint-visible .cf-row-scrollhint-img {
+.cf-row-scrollhint--right.cf-row-scrollhint-visible .cf-row-scrollhint-svg {
   animation: cfScrollHintPulseRight 1.2s ease-in-out infinite;
 }
 
-.cf-row-scrollhint--left.cf-row-scrollhint-visible .cf-row-scrollhint-img {
+.cf-row-scrollhint--left.cf-row-scrollhint-visible .cf-row-scrollhint-svg {
   animation: cfScrollHintPulseLeft 1.2s ease-in-out infinite;
 }
 
@@ -4225,7 +4229,10 @@ body:has(.cf-row.cf-expanded) {
 .cf-sticky-filters-inner {
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* Gap fluido: ~12px en 1025px (igual a antes, sin riesgo de overflow al
+     entrar/salir del media query hamburguesa) y crece hasta 20px en >=1700px.
+     Da aire en desktop ancho sin comprimir en laptops chicas. */
+  gap: clamp(12px, 1.2vw, 20px);
   padding: 14px 18px;
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -4467,24 +4474,28 @@ body:has(.cf-row.cf-expanded) {
   color: #fff;
 }
 
-/* "Ver →" — CTA al final que hace scroll suave a la grilla del listado.
-   Negro sobre rojo del sticky: mismo lenguaje visual que las pills activas
-   (que también son negras). Destaca por contraste sin romper el palette. */
+/* "VER →" — CTA final que hace scroll suave a la grilla del listado.
+   Amarillo + texto negro: el negro ya está reservado para "pill activo",
+   y el verde para Ofertas. El amarillo es el único acento que NO colide
+   con ningún otro estado y pop al máximo contra el rojo del sticky.
+   Un toque más alto (padding +) y shadow para que pese visualmente sin
+   recurrir a hover-pulse (que rompe en touch). */
 .cf-stf-pill.cf-stf-pill-ver {
-  background: #0a0a0a;
-  color: #fff;
+  background: #ffd400;
+  color: #0a0a0a;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 6px 18px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  padding: 9px 20px;
+  font-size: 15px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
 .cf-stf-pill.cf-stf-pill-ver:hover {
-  background: #1a1a1a;
-  color: #fff;
+  background: #ffe04d;
+  color: #0a0a0a;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 /* Disabled: combinaciones que vaciarían el listado. No clickeable. */
@@ -9769,13 +9780,20 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
 }
 
 .cf-gated-slide-teaser {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   color: #1a1a1a;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   margin: 0;
-  max-width: 380px;
-  line-height: 1.3;
+  max-width: 560px;
+  line-height: 1.25;
+}
+
+@media (max-width: 640px) {
+  .cf-gated-slide-teaser {
+    font-size: 22px;
+    max-width: 90%;
+  }
 }
 
 .cf-gated-slide-cta {
@@ -9805,95 +9823,6 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
   max-width: 600px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Hard gate /modelos/[slug] — teaser blureado del modelo detrás del modal
-   Para que el visitante anónimo (típicamente desde anuncio/email) vea QUÉ
-   casa está intentando abrir antes de decidir entregar el mail. El modal
-   del gate va encima con su propio backdrop sutil.
-   ───────────────────────────────────────────────────────────────────────── */
-.cf-model-gate-wrap {
-  position: relative;
-  min-height: 100vh;
-  background: #f3f3f5;
-  overflow: hidden;
-}
-
-.cf-model-gate-teaser {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 0;
-  align-items: stretch;
-  filter: blur(6px) saturate(0.85);
-  transform: scale(1.04); /* compensa el bleed del blur en los bordes */
-  pointer-events: none;
-  user-select: none;
-}
-
-.cf-model-gate-teaser-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.cf-model-gate-teaser-meta {
-  padding: 80px 64px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: linear-gradient(135deg, #1a1a1c 0%, #2a2a2e 100%);
-  color: #f6f6f8;
-}
-
-.cf-model-gate-teaser-eyebrow {
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #b8b8be;
-  margin: 0 0 12px;
-  font-weight: 500;
-}
-
-.cf-model-gate-teaser-title {
-  font-size: 48px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 0 0 16px;
-  line-height: 1.05;
-}
-
-.cf-model-gate-teaser-line {
-  font-size: 16px;
-  color: #d4d4d8;
-  margin: 0 0 24px;
-  font-weight: 500;
-}
-
-.cf-model-gate-teaser-blurb {
-  font-size: 18px;
-  line-height: 1.5;
-  color: #e8e8ea;
-  margin: 0;
-  max-width: 520px;
-}
-
-@media (max-width: 900px) {
-  .cf-model-gate-teaser {
-    grid-template-columns: 1fr;
-    grid-template-rows: 40vh 1fr;
-  }
-  .cf-model-gate-teaser-meta {
-    padding: 40px 28px;
-  }
-  .cf-model-gate-teaser-title {
-    font-size: 32px;
-  }
-  .cf-model-gate-teaser-blurb {
-    font-size: 15px;
-  }
-}
 
 /* ─────────────────────────────────────────────────────────────────────────
    ShareModelButton — botón "Compartir esta casa" con popover de opciones.
@@ -9988,4 +9917,178 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
 .cf-share-option:focus-visible {
   outline: 2px solid #0092b3;
   outline-offset: -2px;
+}
+
+/* ── ProvinciaConfirmModal — onboarding de primer ingreso ────────────── */
+.cf-provincia-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 22, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+  animation: cf-provincia-modal-fade 180ms ease-out;
+}
+
+@keyframes cf-provincia-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cf-provincia-modal-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 36px 32px 24px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: cf-provincia-modal-pop 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Variante ancha para la vista waitlist (form 2-col nombre/email).
+   Reutiliza los estilos cf-cotizar-modal-* del componente WaitlistContent;
+   solo necesita más ancho que el picker de provincia. */
+.cf-provincia-modal-card-wide {
+  max-width: 560px;
+  position: relative;
+}
+
+.cf-provincia-modal-card-wide .cf-cotizar-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+}
+.cf-provincia-modal-card-wide .cf-cotizar-modal-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0a0a0a;
+}
+
+@keyframes cf-provincia-modal-pop {
+  from { transform: translateY(12px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.cf-provincia-modal-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.cf-provincia-modal-sub {
+  font-size: 14px;
+  color: #5b6066;
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.cf-provincia-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.cf-provincia-modal-btn {
+  padding: 14px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  border: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: inherit;
+  text-align: center;
+}
+
+.cf-provincia-modal-btn-primary {
+  background: #ff003d;
+  color: #fff;
+}
+.cf-provincia-modal-btn-primary:hover:not(:disabled) {
+  background: #d80035;
+}
+.cf-provincia-modal-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cf-provincia-modal-btn-secondary {
+  background: #fff;
+  color: #0a0a0a;
+  border: 1.5px solid #d4d4d4;
+}
+.cf-provincia-modal-btn-secondary:hover {
+  border-color: #0a0a0a;
+}
+
+.cf-provincia-modal-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cf-provincia-modal-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5b6066;
+  font-weight: 600;
+}
+
+.cf-provincia-modal-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #d4d4d4;
+  font-size: 16px;
+  font-family: inherit;
+  background: #fff;
+  color: #0a0a0a;
+  cursor: pointer;
+}
+.cf-provincia-modal-select:focus {
+  outline: none;
+  border-color: #0a0a0a;
+}
+
+.cf-provincia-modal-skip {
+  background: transparent;
+  border: 0;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+  padding: 8px;
+  font-family: inherit;
+  align-self: center;
+  text-decoration: underline;
+}
+.cf-provincia-modal-skip:hover {
+  color: #0a0a0a;
 }
