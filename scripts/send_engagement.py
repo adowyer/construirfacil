@@ -33,6 +33,9 @@ from pathlib import Path
 CF = Path.home() / "Projects" / "CONSTRUIRFACIL"
 UNSUB_BASE = "https://www.construirfacil.com/unsubscribe?u="
 VERIFY_BASE = "https://www.construirfacil.com/verify?u="
+# HubSpot "Registro manual → Dirección CCO (saliente)": al ir en BCC, HubSpot adjunta el mail
+# al contacto que matchea por email (queda en 'Interacciones recientes'). Solo en envíos reales.
+HUBSPOT_LOG_BCC = "51568289@bcc.hubspot.com"
 
 # ════════════════════════════════════════════════════════════════════════
 #  TEMPLATES — copy final aprobado. {nombre} = primer nombre del lead.
@@ -51,11 +54,9 @@ _BTN = ('<div style="text-align:center;margin:28px 0">'
         '<a href="{verify_url}" style="color:#999;text-decoration:underline">{verify_url}</a></p>'
         '</div>')
 
-# Bloque de cierre común: marketplace + contacto + firma.
-_TAIL = ('<p>Si aún no lo hiciste, podés elegir tu modelo de casa en nuestro marketplace '
-         '<a href="https://construirfacil.com" style="color:#ff003d">construirfacil.com</a> y '
-         'tener todo listo para iniciar los trámites del crédito y la compra.</p>'
-         '<p>Por cualquier consulta o inconveniente también podés escribirnos a '
+# Bloque de cierre común: contacto + firma. (El marketplace y el "elegí tu modelo" ahora
+# viven en el bloque {credito_casas} de arriba — se quitaron de acá para no repetir.)
+_TAIL = ('<p>Por cualquier consulta o inconveniente también podés escribirnos a '
          '<a href="mailto:hola@construirfacil.com" style="color:#ff003d">hola@construirfacil.com</a> '
          'o por <a href="https://wa.me/5491166440000" style="color:#ff003d">WhatsApp</a>.</p>'
          '<p>Quedo atento.<br>Un saludo cordial,<br><strong>Construir Fácil</strong></p>')
@@ -87,12 +88,11 @@ TEMPLATES = {
             "casa:</p>"
             "<ul><li><strong>Buena capacidad de crédito según nuestra evaluación inicial</strong></li>"
             "<li><strong>Terreno apto donde construir la casa</strong></li></ul>"
+            "{credito_casas}"
             "<p style=\"font-size:22px;margin:0 0 16px\"><strong>Último paso para completar tu postulación:</strong></p>"
             "<p>Para confirmar tu registro y empezar a gestionar el trámite de reserva y seña de "
             "la casa que elegiste, pulsá el botón a continuación:</p>"
-            + _BTN +
-            "<p style=\"font-size:22px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
-            "que responda a tu necesidad.</strong></p>"
+            + _BTN
             + _TAIL
         ),
     },
@@ -112,12 +112,11 @@ TEMPLATES = {
             "<li>Si no diste esa autorización, respondé este correo diciéndonos que te interesa "
             "un lote.</li>"
             "</ul>"
+            "{credito_casas}"
             "<p style=\"font-size:22px;margin:0 0 16px\"><strong>Último paso para completar tu postulación:</strong></p>"
             "<p>Para confirmar tu registro y empezar a gestionar el trámite de reserva y seña de "
             "la casa que elegiste, pulsá el botón a continuación:</p>"
-            + _BTN +
-            "<p style=\"font-size:22px;margin:36px 0 12px\"><strong>ELEGÍ el modelo de casa "
-            "ideal, el que responda a tu gusto y necesidad.</strong></p>"
+            + _BTN
             + _TAIL
         ),
     },
@@ -177,8 +176,140 @@ def http(url, headers, method="GET", body=None):
         return e.code, e.read().decode()
 
 
+# ── Crédito + casas por lead (motor = fuente única; RPC read-only) ──────────
+def rpc(env, name, payload):
+    h = {"apikey": env["SUPABASE_SERVICE_KEY"],
+         "Authorization": f"Bearer {env['SUPABASE_SERVICE_KEY']}",
+         "Content-Type": "application/json"}
+    return http(f"{env['SUPABASE_URL']}/rest/v1/rpc/{name}", h, "POST", payload)
+
+
+def esc(s):
+    s = "" if s is None else str(s)
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+             .replace('"', "&quot;").replace("'", "&#39;"))
+
+
+def _usd(n):
+    return f"USD {round(n):,.0f}".replace(",", ".") if n else "—"
+
+
+def _ars(n):
+    return f"${round(n):,.0f}".replace(",", ".") if n else "—"
+
+
+def _dorm(mn, mx):
+    if not mn and not mx:
+        return None
+    if mn and mx and mn != mx:
+        return f"{mn}-{mx} dorm"
+    return f"{mn or mx} dorm"
+
+
+def _match_houses(env, province, budget_usd, area_cap, limit=2):
+    """Casas del catálogo de la provincia que ENTRAN en el presupuesto (precio ≤ budget) y
+    respetan el tope de área de la línea (ADUS 90 m²). Dedup por modelo, las 2 mejores (más
+    caras dentro del presupuesto = las que más aprovechan el crédito)."""
+    if not province or not budget_usd:
+        return []
+    st, rows = rpc(env, "province_catalog", {"p_province": province})
+    if st != 200 or not isinstance(rows, list):
+        return []
+    best_by_slug = {}
+    for r in rows:
+        precio = r.get("precio_contado_usd")
+        slug = r.get("model_slug")
+        if precio is None or slug is None or r.get("contact_only"):
+            continue
+        if precio > budget_usd:
+            continue
+        if area_cap is not None and (r.get("area_m2") or 0) > area_cap:
+            continue
+        if slug not in best_by_slug or precio < best_by_slug[slug]["precio_contado_usd"]:
+            best_by_slug[slug] = r
+    return sorted(best_by_slug.values(),
+                  key=lambda r: r["precio_contado_usd"], reverse=True)[:limit]
+
+
+def credit_and_houses_html(env, lead):
+    """Bloque HTML {credito_casas}: caja de crédito (monto/plazo/cuota/línea) + casas que entran
+    en el presupuesto. Todo del motor (evaluate_property_options) y el catálogo (province_catalog).
+    Devuelve '' si no hay crédito computable → el mail sale igual, sin el bloque (degradación segura)."""
+    if not lead.get("monthly_income_ars"):
+        return ""
+    st, rows = rpc(env, "evaluate_property_options", {
+        "savings_usd": lead.get("savings_amount") or 0,
+        "monthly_income_ars": lead.get("monthly_income_ars"),
+        "p_bedrooms": 2, "p_destination": "primera_vivienda",
+        "p_province": lead.get("province"),
+        "p_residency_years": lead.get("residency_years"),
+        "p_employment_type": lead.get("employment_type") or "self_employed_simplified",
+        "p_savings_currency": lead.get("savings_currency") or "ARS",
+        "p_has_lot": True,  # READY tiene lote; QUALIFIES_LATER lo asumimos (aspiracional)
+    })
+    if st != 200 or not isinstance(rows, list):
+        return ""
+    lines = [r for r in rows if (r.get("loan_possible_usd") or 0) > 0]
+    if not lines:
+        return ""
+    best = max(lines, key=lambda r: r["loan_possible_usd"])
+    monto, cuota, plazo = best["loan_possible_usd"], best.get("monthly_payment_ars"), best.get("loan_term_years")
+    linea = best.get("bank_name") or ""
+    budget = best.get("total_budget_usd") or monto
+    is_ql = lead.get("bucket") == "QUALIFIES_LATER"
+
+    box_title = "Tu crédito estimado" + (
+        " <span style=\"font-weight:normal;color:#4d7c56\">(cuando sumes el terreno)</span>" if is_ql else "")
+    box = (
+        '<div style="background:#f6fbf7;border:1px solid #cfe8d6;border-radius:10px;padding:16px 20px;margin:16px 0">'
+        f'<p style="margin:0 0 10px;font-weight:bold;color:#1b7a3d">{box_title}</p>'
+        f'<p style="margin:0 0 4px">💰 Monto: hasta <strong>{_usd(monto)}</strong></p>'
+        + (f'<p style="margin:0 0 4px">📅 Plazo: <strong>{plazo} años</strong></p>' if plazo else '')
+        + f'<p style="margin:0 0 4px">🏦 Línea: <strong>{esc(linea)}</strong></p>'
+        + (f'<p style="margin:0">💳 Cuota aproximada: <strong>{_ars(cuota)} por mes</strong></p>' if cuota else '')
+        + '</div>')
+    intro = ('<p>Este es el crédito estimado al que podés acceder para tu futura casa 👇</p>' if is_ql
+             else '<p><strong>Y acá está lo mejor:</strong> con esos datos ya pudimos estimar el crédito '
+                  'al que podés acceder para construir tu casa 👇</p>')
+    disclaimer = ('<p style="font-size:13px;color:#777;font-style:italic;margin:0 0 8px">'
+                  'Es una estimación inicial en base a lo que nos contaste. El número final se confirma '
+                  'cuando avancemos con el trámite.</p>')
+
+    casas = _match_houses(env, lead.get("province"), budget, best.get("max_area_m2"))
+    houses_html = ""
+    if casas:
+        head = 'Y mirá lo que vas a poder construir.' if is_ql else 'Pero no terminan ahí las buenas noticias.'
+        sub = ('Estas casas entran en ese presupuesto 👇' if is_ql
+               else 'Tenemos varias casas que entran en ese presupuesto. ¡Mirá! 👇')
+        cards = ""
+        for c in casas:
+            marca = c.get("marca_name") or c.get("brand") or "Hausind"
+            model = c.get("style_name") or (c.get("linea") or "").replace("LÍNEA ", "").title()
+            parts = [f"{marca} {model}".strip()]
+            if c.get("area_m2"):
+                parts.append(f"{round(c['area_m2'])} m²")
+            d = _dorm(c.get("min_bedrooms"), c.get("max_bedrooms"))
+            if d:
+                parts.append(d)
+            meta = " · ".join(parts)
+            url = f"https://construirfacil.com/modelos/{c['model_slug']}"
+            cards += (f'<p style="margin:0 0 2px">🏠 <strong>{esc(meta)}</strong> — desde '
+                      f'<strong>{_usd(c["precio_contado_usd"])}</strong></p>'
+                      f'<p style="margin:0 0 14px">Mirala acá → '
+                      f'<a href="{url}" style="color:#ff003d">construirfacil.com/modelos/{esc(c["model_slug"])}</a></p>')
+        houses_html = (f'<p style="font-size:22px;margin:28px 0 8px"><strong>{head}</strong></p>'
+                       f'<p style="margin:0 0 14px">{sub}</p>' + cards)
+    marketplace = ('<p>Podés ver todos los modelos disponibles en nuestro marketplace: '
+                   '<a href="https://construirfacil.com" style="color:#ff003d">construirfacil.com</a></p>')
+    return intro + box + disclaimer + houses_html + marketplace
+
+
+LEAD_FIELDS = ("id,name,email,bucket,dni,savings_amount,savings_currency,"
+               "monthly_income_ars,residency_years,employment_type,province,has_lot")
+
+
 def select_targets(env, bucket_filter):
-    sel = "id,name,email,bucket,dni"
+    sel = LEAD_FIELDS
     flt = ("source=eq.sindicato_uocra&consent_captured_at=not.is.null"
            "&email=not.is.null&engagement_sent_at=is.null&unsubscribed=is.false")
     if bucket_filter:
@@ -194,14 +325,14 @@ def select_targets(env, bucket_filter):
     return [r for r in rows if r.get("bucket") in ALLOWED_BUCKETS]
 
 
-def render(tpl, nombre, verify_link, unsubscribe_url):
+def render(tpl, nombre, verify_link, unsubscribe_url, credito_casas=""):
     subj = tpl["subject"].format(nombre=nombre)
-    body = tpl["body"].format(nombre=nombre, verify_url=verify_link)
+    body = tpl["body"].format(nombre=nombre, verify_url=verify_link, credito_casas=credito_casas)
     html = _WRAP.format(body=body, unsub_url=unsubscribe_url)
     return subj, html
 
 
-def send_resend(env, to_email, subject, html, unsubscribe_url):
+def send_resend(env, to_email, subject, html, unsubscribe_url, bcc=None):
     h = {"Authorization": f"Bearer {env['RESEND_API_KEY']}", "Content-Type": "application/json"}
     body = {"from": env["RESEND_FROM_EMAIL"], "to": [to_email], "subject": subject, "html": html,
             # reply-to a hola@construirfacil.com (buzón propio ya operativo). El "respondé este
@@ -212,6 +343,8 @@ def send_resend(env, to_email, subject, html, unsubscribe_url):
                 "List-Unsubscribe": f"<{unsubscribe_url}>, <mailto:hola@construirfacil.com?subject=BAJA>",
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
             }}
+    if bcc:  # BCC a HubSpot (CCO) para loguear el mail en el contacto. Solo en envíos reales.
+        body["bcc"] = [bcc]
     st, resp = http("https://api.resend.com/emails", h, "POST", body)
     return st in (200, 201), (resp if st not in (200, 201) else None)
 
@@ -245,22 +378,42 @@ def mask(s, keep=4):
     return ("*" * max(0, len(s) - keep)) + s[-keep:] if s else "(vacío)"
 
 
-def run_test(env, recipients, sample="Hola"):
-    """Muestra de CADA bucket a direcciones de prueba. Formato por destinatario:
-    'email' o 'email|Nombre' (para previsualizar el saludo personalizado). No toca la DB.
-    En PRODUCCIÓN cada lead recibe SU propio nombre (no este sample)."""
+def sample_lead(env, bucket):
+    """Un lead REAL del bucket (con datos financieros) para previsualizar el bloque de
+    crédito+casas con números de verdad. No filtra por engagement_sent_at (es solo muestra)."""
+    flt = (f"source=eq.sindicato_uocra&bucket=eq.{bucket}"
+           "&monthly_income_ars=not.is.null&province=not.is.null&limit=1")
+    url = f"{env['SUPABASE_URL']}/rest/v1/leads?select={LEAD_FIELDS}&{flt}"
+    h = {"apikey": env["SUPABASE_SERVICE_KEY"],
+         "Authorization": f"Bearer {env['SUPABASE_SERVICE_KEY']}"}
+    st, rows = http(url, h)
+    return rows[0] if (st == 200 and rows) else None
+
+
+def run_test(env, recipients, sample="Andrea", bcc=None):
+    """Muestra de CADA bucket a direcciones de prueba, renderizada con el crédito+casas de un
+    lead REAL de ese bucket (números y slugs de verdad). Saludo con nombre de muestra; NO toca
+    la DB. Formato por destinatario: 'email' o 'email|Nombre'."""
     zero = "00000000-0000-0000-0000-000000000000"
     test_url = unsub_url(env, zero)
     test_verify = verify_url(env, zero)
-    print(f"=== ENVÍO DE PRUEBA (muestra de cada bucket, nombre real por destinatario) ===")
+    print("=== ENVÍO DE PRUEBA (muestra REAL por bucket; nada se escribe en la base) ===")
     for bucket in ("READY", "QUALIFIES_LATER"):
+        lead = sample_lead(env, bucket)
+        if not lead:
+            print(f"  {bucket:16s}: sin lead de muestra con datos financieros")
+            continue
+        block = credit_and_houses_html(env, lead)
+        casas = "con casas" if "🏠" in block else "SIN casas (crédito < casa más barata)"
+        estado = f"bloque {'OK' if block else 'VACÍO'} · {casas}" if block else "sin bloque de crédito"
+        print(f"  {bucket:16s}: lead {mask(lead.get('email'),6)} prov={lead.get('province')} → {estado}")
         for spec in recipients:
             to, _, nm = spec.partition("|")
             nombre = nm or sample
-            subj, html = render(TEMPLATES[bucket], nombre, test_verify, test_url)
-            ok, err = send_resend(env, to, subj, html, test_url)
-            print(f"  {bucket:16s} -> {to} (Hola {nombre}): {'OK' if ok else 'FALLÓ ' + str(err)}")
-    print("\n(Prueba: nada se escribió en la base. En PRODUCCIÓN cada lead recibe SU propio nombre.)")
+            subj, html = render(TEMPLATES[bucket], nombre, test_verify, test_url, block)
+            ok, err = send_resend(env, to, subj, html, test_url, bcc=bcc)
+            print(f"       -> {to} (Hola {nombre}): {'OK' if ok else 'FALLÓ ' + str(err)}")
+    print("\n(Prueba: nada se escribió en la base. En PRODUCCIÓN cada lead recibe SU nombre y SUS números.)")
 
 
 def main():
@@ -270,7 +423,8 @@ def main():
         bf = sys.argv[sys.argv.index("--bucket") + 1]
     env = load_envs()
     if "--test" in sys.argv:
-        run_test(env, sys.argv[sys.argv.index("--test") + 1].split(","))
+        bcc = HUBSPOT_LOG_BCC if "--with-bcc" in sys.argv else None
+        run_test(env, sys.argv[sys.argv.index("--test") + 1].split(","), bcc=bcc)
         return
     rows = select_targets(env, bf)
 
@@ -295,8 +449,9 @@ def main():
         nombre = (r.get("name") or "").split()[0] if r.get("name") else "Hola"
         uurl = unsub_url(env, r["id"])
         vurl = verify_url(env, r["id"])
-        subj, html = render(TEMPLATES[r["bucket"]], nombre, vurl, uurl)
-        ok, err = send_resend(env, r["email"], subj, html, uurl)
+        block = credit_and_houses_html(env, r)  # crédito + casas por lead (motor + catálogo)
+        subj, html = render(TEMPLATES[r["bucket"]], nombre, vurl, uurl, block)
+        ok, err = send_resend(env, r["email"], subj, html, uurl, bcc=HUBSPOT_LOG_BCC)
         if ok and mark_sent(env, r["id"]):
             log_hubspot(env, r.get("dni"))
             sent += 1

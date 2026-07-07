@@ -60,6 +60,44 @@ La **ubicación manda**: disponibilidad, cupo, financiación y precio dependen d
   dominio: `horizonte_compra` (3m/6m/12m) es driver de tier de precio (lista/cupo/pozo). Score = FIT×INTENT.
   Campos: migración `0083`.
 
+## Motor de financiación — `evaluate_property_options` (⚠️ UNA sola función)
+Firma canónica: **10 args** (`…, p_has_lot, p_income_currency`). Históricamente se acumularon overloads
+(7/8/9/10 args) porque `create or replace` NO reemplaza si cambia la aridad → **consolidado a UNO en
+`0095`** (dropea 7/8/9, deja el de 10). **No recrear overloads:** cualquier cambio de firma debe DROPear
+las viejas explícitamente. Consumidores: `qualify_leads` (10 args), `send_engagement`/`reconcile` vía
+PostgREST RPC (9 params → `income_currency` default), n8n.
+- **Bug fixeado en `0095`:** `monthly_payment_ars` se devolvía como `income×rci` (techo de capacidad) aun
+  cuando el loan quedaba TOPEADO (150M ADUS / tope UVA) → cuota inflada para leads de ingreso alto. Ahora se
+  re-deriva del loan final (amortización). Los afford-limitados no cambian.
+- **Limitaciones conocidas (follow-up, no bug):** `total_budget = loan + ahorro` ignora `max_financing_pct`
+  → sobreestima presupuesto para las 3 líneas <100% (Nación 1ra/2da 90%, Hipotecario UVA 80%); el ingreso
+  individual se trata como familiar.
+
+## Engagement mail a leads — `scripts/send_engagement.py` (mailer OFICIAL)
+Primer touch comercial a leads UOCRA consentidos, por **Resend** (NO n8n, NO Gmail). Lo dispara el asistente.
+Segmentado por bucket (READY / QUALIFIES_LATER), idempotente (`engagement_sent_at`), respeta `unsubscribed`
++ consentimiento (Ley 25.326).
+- **Bloque crédito + casas por lead:** lee del motor en vivo (`evaluate_property_options` + `province_catalog`)
+  → monto/plazo/cuota/línea + 2 casas que entran en el presupuesto (tope 90m² si ADUS). Si el crédito no llega
+  a la casa más barata, muestra crédito + link al marketplace, sin casas (no miente).
+- **Creds:** `.env.local` → `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`ConstruirFácil <hola@construirfacil.com>`,
+  dominio verificado). ⚠️ Cloudflare bloquea el UA de urllib → mandar `User-Agent` normal (si no, 403/1010).
+- **Log en HubSpot:** en `--commit` va BCC a la dirección CCO del CRM (`51568289@bcc.hubspot.com`) → el mail
+  queda en el timeline del contacto. **Solo en envíos reales**, nunca en `--test` (crearía contactos basura).
+- Uso: `--test <email>` (dry, sin BCC) · `--test <email> --with-bcc` (probar el log) · `--commit` (real).
+- Envío masivo real = op con OK de Andrea + Guillermo.
+
+## HubSpot — ficha del lead para las gestoras
+Las propiedades de calificación se sincronizan desde `XIMIA/scripts/reconcile_hubspot_sync.py` (upsert por
+`dni`). Nombres internos en inglés (`bucket`, `credit_now_usd`, `credit_with_lot_usd`, `income_ars`,
+`union_section`=seccional, `union_delegate`=delegado, `localidad`, …), agrupadas en HubSpot bajo el grupo
+**"🏠 Ficha de créditos"** (labels ES, valores de bucket en criollo). La ficha del contacto se armó con una
+tarjeta "Lista de propiedades" ancha en el centro (layout guardado como default del equipo).
+- **División de tareas:** primer mail rico (crédito+casas) = nuestro código (HubSpot no puede calcular el
+  match de casas); nurture / follow-ups = automatizaciones de HubSpot usando esas propiedades como tokens.
+- **Backfill pendiente:** seccional/delegado/localidad en los 292 ya sincronizados (reset `synced_hubspot_at`
+  + re-run reconcile; op masivo).
+
 ## Convenciones
 - Migraciones: `NNNN_nombre.sql`, secuencial. Nunca renumerar las existentes.
 - Next.js: ver el bloque importado de `AGENTS.md` (versión con breaking changes; leer
