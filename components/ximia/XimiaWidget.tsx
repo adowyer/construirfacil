@@ -5,7 +5,21 @@
  *
  * Contrato con n8n (ver docs/XIMIA_WIDGET_MIGRATION.md):
  *   POST construirfacil.app.n8n.cloud/webhook/ximia-v2-lab/chat
- *   body: { chatInput, sessionId, user_id, email, name, phone }   ← PLANO
+ *   body: {
+ *     chatInput, sessionId,
+ *     user_id, email, name, phone,     ← identidad (JOIN vs public.users en n8n)
+ *     context: {                        ← contexto del catálogo (NUEVO)
+ *       path,                           ← window.location.pathname vigente
+ *       provincia_id, provincia_name,
+ *       model_slug,                     ← si el path matchea /modelos/{slug}
+ *       tiene_lote                      ← 'si' | 'no' | null (localStorage)
+ *     }
+ *   }
+ *   Se manda en CADA turno (no snapshot) — Ximia refleja lo que el
+ *   visitante está mirando ahora, incluso si navega mientras chatea.
+ *   n8n hace el JOIN de model_slug → house_catalog para enriquecer
+ *   name/line si necesita, igual que hace con user_id/email para name/phone.
+ *
  *   first turn (al abrir): chatInput = "__START__" → n8n abre con saludo.
  *   response: { reply }   ← lo que renderizamos.
  *
@@ -19,6 +33,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { requestOTP, verifyOTP } from '@/app/(auth)/gate/actions'
+import { useProvincia } from '@/components/providers/ProvinciaProvider'
 import styles from './XimiaWidget.module.css'
 
 const WEBHOOK_URL =
@@ -82,8 +97,56 @@ function renderInline(text: string): React.ReactNode {
   return parts
 }
 
+/**
+ * Snapshot del contexto del catálogo al momento de mandar el turno.
+ * Se arma inline (no en state) para reflejar el estado real del navegador
+ * — el visitante puede haber navegado, cambiado provincia o toggleado lote
+ * entre turnos, y queremos que Ximia siempre reciba lo actual.
+ */
+type CatalogContext = {
+  path: string | null
+  provincia_id: string | null
+  provincia_name: string | null
+  model_slug: string | null
+  tiene_lote: 'si' | 'no' | null
+}
+
+const MODEL_SLUG_RE = /^\/modelos\/([^/?#]+)/
+
+function buildCatalogContext(
+  provinciaId: string | null,
+  provinciaName: string | null,
+): CatalogContext {
+  // Leemos window.location.pathname en vez de usePathname porque el catálogo
+  // usa history.pushState directo (ModelRow al expandirse cambia la URL a
+  // /modelos/{slug} sin pasar por el router de Next) → usePathname queda
+  // desactualizado. window.location.pathname siempre refleja lo real.
+  const path = typeof window !== 'undefined' ? window.location.pathname : null
+  const m = path?.match(MODEL_SLUG_RE) ?? null
+  const model_slug = m?.[1] ?? null
+
+  let tiene_lote: 'si' | 'no' | null = null
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('cf-tiene-lote')
+      if (v === 'si' || v === 'no') tiene_lote = v
+    } catch {
+      /* private browsing */
+    }
+  }
+
+  return {
+    path,
+    provincia_id: provinciaId,
+    provincia_name: provinciaName,
+    model_slug,
+    tiene_lote,
+  }
+}
+
 export default function XimiaWidget() {
   const pathname = usePathname()
+  const { provinciaId, provincias } = useProvincia()
   const [open, setOpen] = useState(false)
   const [identity, setIdentity] = useState<Identity>({ user_id: null, email: null })
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -183,6 +246,12 @@ export default function XimiaWidget() {
       setTyping(true)
       const t0 = performance.now()
       try {
+        // Contexto vivo: se re-arma en cada turno para reflejar navegación,
+        // cambio de provincia o toggle de lote posterior a __START__. n8n lo
+        // usa como "dato ambiental" — la historia sigue guardada por sessionId.
+        const provinciaName =
+          provincias.find((p) => p.id === provinciaId)?.name ?? null
+        const context = buildCatalogContext(provinciaId, provinciaName)
         const body = {
           chatInput: text,
           sessionId,
@@ -190,6 +259,7 @@ export default function XimiaWidget() {
           email: id.email,
           name: null,
           phone: null,
+          context,
         }
         const res = await fetch(WEBHOOK_URL, {
           method: 'POST',
@@ -225,7 +295,7 @@ export default function XimiaWidget() {
         setTyping(false)
       }
     },
-    [sessionId, identity, pathname],
+    [sessionId, identity, pathname, provinciaId, provincias],
   )
 
   // __START__ la primera vez que se abre el chat en esta sesión (no en cada reload).

@@ -69,8 +69,11 @@ export default async function RootLayout({
           nonOperativeProvinciaIds={nonOperativeIds}
         >
           {children}
+          {/* XimiaWidget vive DENTRO del ProvinciaProvider para poder leer
+              provincia via useProvincia() y mandarla a n8n como parte del
+              context de la conversación. */}
+          <XimiaWidget />
         </ProvinciaProvider>
-        <XimiaWidget />
       </body>
     </html>
   )

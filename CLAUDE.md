@@ -19,6 +19,31 @@ Supabase** (`gvuzjbbgxefbtiuyxaoy.supabase.co`), acopladas por foreign keys.
 - **Ximia/n8n NO hace DDL** — solo lee/escribe filas.
 - Ver `XIMIA/CLAUDE.md` para el lado del agente.
 
+## Identidad cruzada catálogo ↔ Ximia (login/cookies/sesión)
+El visitante se reconoce **en las dos direcciones** entre la web y el agente. No hay SSO externo: el
+puente es la **tabla `public.users` compartida** + **cookies firmadas** que ambos runtimes leen.
+- **Fuente de verdad de identidad = `public.users`** (la misma Supabase). Todo lo demás son *pivotes*
+  (`user_id`, `email`) que resuelven a esa fila.
+- **3 fuentes del lado catálogo** (prioridad): (1) **OTP/OAuth** → cookie **`cf_client`** (`source='verified'`,
+  alto); (2) **lead form enviado** → cookie **`cf_session`** (`source='lead'`, medio); (3) **cuenta Supabase**
+  (`auth.users.id`, `source='supabase'`). Lector SSR: `lib/auth/get-current-client.ts` (`currentClient()`).
+- **Cookies firmadas (anti-tamper):** HMAC-SHA256, payload `email|firma`, **domain-tag** (`gate:` vs
+  `session:`) para que no se pueda forjar un `cf_client` desde el form de lead. `lib/auth/gate-cookie.ts`
+  + `session-cookie.ts`. HTTP-only, `cf_client` maxAge 60 días. ⚠️ Secret hoy cae a
+  `SUPABASE_SERVICE_ROLE_KEY` → **para prod definir `CF_GATE_SECRET` aparte** (lo pide el propio código).
+- **El puente = `GET /api/ximia/identity`** (`app/api/ximia/identity/route.ts`): combina cookie + sesión
+  Supabase y devuelve `{ user_id, email, source }`. **No enriquece name/phone** — eso lo hace n8n.
+- **El widget** (`components/ximia/XimiaWidget.tsx`) hace `fetch('/api/ximia/identity')` al montar y postea
+  a n8n con body PLANO `{ chatInput, sessionId, user_id, email, name, phone }`.
+- **n8n hace el JOIN**: `select name, phone, email from public.users where id = $user_id::uuid or email = $email`
+  → Ximia reconoce al visitante del catálogo. **Vuelta:** si Ximia verifica por OTP dentro del widget, setea
+  `cf_client` y refresca identidad → la próxima carga del catálogo ya lo reconoce por la misma cookie.
+- **Endpoints de estado que gatean UI del catálogo:** `/api/client-status` (¿identificado? + `source`),
+  `/api/lead-session` (¿ya dejó lead? → success state en `LeadForm`/`ReservarModal`).
+- ⚠️ Lado n8n: **`DEV_BYPASS_AUTH=true`** (`XIMIA/Decision_Engine.js` ~L18) saltea email/OTP — **prendido
+  para test, APAGAR para prod**. Ver `XIMIA/CLAUDE.md` (gotchas) + nodos `Auth_Code_Generator.js`,
+  `Google_sessionId.js` para el flujo OTP/OAuth del lado agente.
+
 ## Estado del esquema (relevamiento 2026-05-31)
 40 tablas públicas. 28 (catálogo/contenido/marketing) versionadas (migraciones 0001–0049). **12 tablas
 del lado Ximia se habían creado ad-hoc fuera del repo** → recapturadas en

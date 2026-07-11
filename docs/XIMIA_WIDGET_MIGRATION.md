@@ -39,7 +39,20 @@ Content-Type: application/json
   "user_id": "<supabase auth uid>",   // = public.users.id (ver §2). null si anónimo
   "email":   "<email>",               // null si anónimo
   "name":    "<nombre>",              // opcional
-  "phone":   "<tel>"                  // opcional
+  "phone":   "<tel>",                 // opcional
+
+  // --- CONTEXTO DEL CATÁLOGO (agregado 2026-07-10) ---
+  // Snapshot vivo de qué está mirando el visitante. Se re-arma en cada turno
+  // (no en el START) → si el visitante navega mientras chatea, Ximia lo ve.
+  // La historia sigue guardada por sessionId; context es "dato ambiental"
+  // paralelo, NO reemplaza la conversación.
+  "context": {
+    "path":            "/modelos/casa-ejes-cubo-copahue",   // window.location.pathname
+    "provincia_id":    "<uuid>",       // useProvincia() en el catálogo. null si el visitante no eligió.
+    "provincia_name":  "Neuquén",      // resuelto lado widget para ahorrarle a n8n un JOIN
+    "model_slug":      "casa-ejes-cubo-copahue",  // derivado de /modelos/{slug}. null si no está en detalle
+    "tiene_lote":      "si"            // 'si' | 'no' | null — leído de localStorage.cf-tiene-lote
+  }
 }
 ```
 - **Primer turno (al abrir el chat):** mandar `chatInput: "__START__"` → n8n lo trata como
@@ -47,6 +60,10 @@ Content-Type: application/json
 - n8n ya acepta tanto `chatInput` como `text`, y campos de identidad planos
   (`user_id`/`email`/`name`/`phone`) **o** anidados en `identity`/`user`/`contact`/`lead`.
   Recomendado: planos.
+- **`context`** viaja en TODOS los turnos incluído `__START__`. n8n puede resolver
+  `model_slug` → `house_catalog` (JOIN por slug canónico) si necesita nombre/línea/precio.
+  Si Ximia recibe un `context.model_slug` distinto entre turnos, el visitante navegó
+  a otra casa: es señal, no ruido — el prompt decide cuándo mencionarlo.
 
 **Response — lo que devuelve n8n (leer esto):**
 ```jsonc
