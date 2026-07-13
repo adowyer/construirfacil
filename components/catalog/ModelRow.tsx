@@ -468,22 +468,34 @@ export default function ModelRow({
   // no en server. Mejor: render collapsed (matchea server), expandir
   // post-mount via useEffect — la diferencia visual es 1 frame.
   const [isExpanded, setIsExpanded] = useState(false)
+  // Ref que dice "recién auto-expandimos, no cierres por scroll todavía".
+  // Necesaria porque el RAF loop del useEffect [isExpanded] arranca ni bien
+  // el row se abre; si el row está lejos del viewport (deep-link con
+  // scrollY=0 y row a 1200px), lo marca fully-out-of-view y dispara
+  // setIsExpanded(false) antes de que el browser termine de scrollear.
+  const autoExpandGraceUntil = useRef(0)
 
-  // Deep-link: tras el primer mount, expandir + scrollear suave al row para
-  // que el visitante vea inmediatamente la casa que vino a buscar. Si
-  // autoExpand es false (caso normal del catálogo), no hace nada.
+  // Deep-link: tras el primer mount, expandir + scrollear al row.
+  //
+  // Detalles no obvios:
+  //  - `html { scroll-behavior: smooth }` (globals.css) fuerza scrolls
+  //    programáticos suaves; `scrollIntoView({behavior:'instant'})` no
+  //    siempre lo override. Usamos `window.scrollTo(x, y)` directo, que
+  //    ignora la regla CSS y es sincrónico.
+  //  - Grace period de 400ms (autoExpandGraceUntil) para que el RAF loop
+  //    de close-by-viewport no cierre el row antes de que el scroll llegue.
   useEffect(() => {
     if (!autoExpand) return
     if (typeof window === 'undefined') return
+    autoExpandGraceUntil.current = performance.now() + 400
     setIsExpanded(true)
     const el = shellRef.current
     if (!el) return
-    // requestAnimationFrame para esperar el primer layout post-expand (sino
-    // scrollIntoView puede caer en una posición pre-render).
-    const raf = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-    return () => cancelAnimationFrame(raf)
+    // Scroll síncrono: el offset actual del row + el scrollY del window
+    // = posición absoluta del top del row en el documento. `window.scrollTo`
+    // con args posicionales ignora scroll-behavior:smooth del <html>.
+    const targetTop = el.getBoundingClientRect().top + window.scrollY
+    window.scrollTo(0, targetTop)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -763,7 +775,12 @@ export default function ModelRow({
         outOfViewSince = null
       }
 
-      if (outOfViewSince !== null && performance.now() - outOfViewSince > 120) {
+      // Grace period post auto-expand: el useEffect del deep-link scrollea
+      // sincrónicamente pero el layout puede tardar un frame en asentarse.
+      // Si cerramos aquí durante esa ventana, la card se abre y se cierra
+      // sola en el mismo instante.
+      const inGrace = performance.now() < autoExpandGraceUntil.current
+      if (!inGrace && outOfViewSince !== null && performance.now() - outOfViewSince > 120) {
         setIsExpanded(false)
         isLooping = false
         return
@@ -1162,6 +1179,8 @@ export default function ModelRow({
                 modelName={model.display_name}
                 styleName={model.style_name}
                 tipologiaCode={model.tipologia_code_new}
+                circulacion={model.circulacion}
+                morfologia={model.morfologia}
                 variant="inline"
               />
             </div>
@@ -1369,6 +1388,8 @@ export default function ModelRow({
               modelName={model.display_name}
               styleName={model.style_name}
               tipologiaCode={model.tipologia_code_new}
+              circulacion={model.circulacion}
+              morfologia={model.morfologia}
               variant="sticky"
             />
             {/* El sticky abre la MISMA modal que los botones "Cotizar" de la

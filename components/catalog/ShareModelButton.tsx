@@ -16,6 +16,11 @@ interface ShareModelButtonProps {
   modelName: string
   styleName: string | null | undefined
   tipologiaCode: string | null | undefined
+  /** Post-0090: circulación + morfología generan el slug canónico
+   *  `casa-<circ>-<morfo>-<estilo>`. Sin estos cae al legacy
+   *  `casa-<tipologia_code_new>-<estilo>`. */
+  circulacion?: string | null
+  morfologia?: string | null
   variant?: 'inline' | 'sticky'
 }
 
@@ -23,6 +28,8 @@ export default function ShareModelButton({
   modelName,
   styleName,
   tipologiaCode,
+  circulacion,
+  morfologia,
   variant = 'inline',
 }: ShareModelButtonProps) {
   const [open, setOpen] = useState(false)
@@ -32,6 +39,8 @@ export default function ShareModelButton({
   const slug = modelGroupSlug({
     style_name: styleName,
     tipologia_code_new: tipologiaCode,
+    circulacion,
+    morfologia,
   })
   // Texto del mensaje en WhatsApp / cuerpo de mail / contenido copiado al
   // portapapeles. El nombre del modelo NO va acá porque ya aparece en el
