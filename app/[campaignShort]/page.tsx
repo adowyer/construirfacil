@@ -128,7 +128,7 @@ export default async function CampaignShortLandingPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <CampaignTracker />
+      <CampaignTracker campaignSlug={campaign.slug} />
       <CatalogPage
         {...data}
         headerSlides={headerSlides}

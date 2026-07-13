@@ -67,11 +67,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ── atribución (compartida con el form de leads) ────────────────
-    const { campaign_slug, utm } = resolveAttribution({
+    const resolved = resolveAttribution({
       path,
       search,
       getCookie: (n) => request.cookies.get(n)?.value,
     })
+    const utm = resolved.utm
+    // Fallback para short URLs (`/spch`, `/rincon-de-los-sauces`) que
+    // slugFromPath no puede resolver del path: la landing pasa
+    // `campaign_slug` en el body del beacon (sabe qué campaña rendereó).
+    // Solo se acepta si el resolver server-side no encontró nada y el evento
+    // es `landing_view` (los siguientes ya heredan por cookie).
+    const bodyCampaignSlug =
+      typeof body?.campaign_slug === 'string' && body.campaign_slug.trim()
+        ? body.campaign_slug.trim().toLowerCase()
+        : null
+    const campaign_slug =
+      resolved.campaign_slug ??
+      (event === 'landing_view' ? bodyCampaignSlug : null)
 
     // En el primer hit persistimos slug + utm para los eventos siguientes.
     if (event === 'landing_view') {

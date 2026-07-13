@@ -27,6 +27,7 @@ export type TrackEvent =
 export function track(
   event: TrackEvent,
   meta?: Record<string, unknown>,
+  opts?: { campaignSlug?: string },
 ): void {
   if (typeof window === 'undefined') return
   try {
@@ -36,6 +37,11 @@ export function track(
       search: window.location.search,
       referrer: document.referrer || null,
       meta: meta ?? null,
+      // Fallback de atribución para short URLs (`/spch`, `/rincon-de-los-sauces`)
+      // que la regex del server no puede resolver del path. La landing lo sabe
+      // porque ya cargó la campaña; se lo pasa al tracker y el server lo usa
+      // como respaldo cuando slugFromPath() devuelve null.
+      campaign_slug: opts?.campaignSlug ?? null,
     })
     const url = '/api/track'
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {

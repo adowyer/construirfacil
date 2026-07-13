@@ -11,12 +11,12 @@
 import { useEffect, useRef } from 'react'
 import { track } from '@/lib/track/client'
 
-export function CampaignTracker() {
+export function CampaignTracker({ campaignSlug }: { campaignSlug?: string }) {
   const fired = useRef(false)
   useEffect(() => {
     if (fired.current) return
     fired.current = true
-    track('landing_view')
-  }, [])
+    track('landing_view', undefined, { campaignSlug })
+  }, [campaignSlug])
   return null
 }
