@@ -2065,7 +2065,22 @@ function PanelRelated({
   model: CatalogModel
   allModels: CatalogModel[]
 }) {
-  const candidates = allModels.filter((m) => m.group_slug !== model.group_slug)
+  // Excluir el modelo actual + dedup por (linea, style_name, tipologia_code_new).
+  // Post-#94 el catálogo tiene una fila por variante (Casas II) → sin dedup
+  // aparecen 2× "DECK Domuyo" en Casas similares. Same-style + same-tipologia +
+  // same-linea = mismo modelo; nos quedamos con la primera variante que
+  // encontramos.
+  const seenModelKeys = new Set<string>([
+    `${model.linea}::${model.style_name ?? ''}::${model.tipologia_code_new ?? ''}`,
+  ])
+  const candidates: CatalogModel[] = []
+  for (const m of allModels) {
+    if (m.group_slug === model.group_slug) continue
+    const key = `${m.linea}::${m.style_name ?? ''}::${m.tipologia_code_new ?? ''}`
+    if (seenModelKeys.has(key)) continue
+    seenModelKeys.add(key)
+    candidates.push(m)
+  }
 
   // Score: mismo estilo (3) + misma línea otra tipología (2) + nada (0).
   const scored = candidates.map((m) => {

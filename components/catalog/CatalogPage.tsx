@@ -1045,12 +1045,28 @@ export default function CatalogPage({
               // legacy `tipologia_code` (O/U/Z). El mapeo legacy → new no es 1:1
               // (un mismo "O" puede ser NODO o DECK según el SKU), así que filtrar
               // por la legacy mezcla tipologías distintas en el panel.
-              const otherStyles = models.filter(
+              //
+              // Post-#94 (split por variante): `models` tiene una fila por
+              // (linea, style_name, tipologia_code_new, variante). El panel
+              // Estilos quiere UN pill por style_name, no por variante — sino
+              // sale COPAHUE × 3, LANÍN × 3 (Casas II). Dedup first-wins por
+              // style_name; el modelo actual queda fuera antes del dedup para
+              // que su variante activa no se pierda contra otra de su misma
+              // clase.
+              const otherStylesRaw = models.filter(
                 (m) =>
                   m.linea === model.linea &&
                   m.tipologia_code_new === model.tipologia_code_new &&
-                  m.group_slug !== model.group_slug,
+                  m.style_name !== model.style_name,
               )
+              const seenStyleNames = new Set<string>()
+              const otherStyles: typeof otherStylesRaw = []
+              for (const m of otherStylesRaw) {
+                const key = m.style_name ?? ''
+                if (seenStyleNames.has(key)) continue
+                seenStyleNames.add(key)
+                otherStyles.push(m)
+              }
 
               return (
                 <ModelRow
