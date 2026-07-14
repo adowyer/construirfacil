@@ -35,6 +35,20 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
+type MatchedModel = NonNullable<Awaited<ReturnType<typeof findModel>>['model']>
+
+// Slug canónico del modelo (el que va a Google). El sitemap, el canonical y
+// el og:url deben coincidir con éste. Si falta circulación+morfología cae al
+// legacy — misma lógica que `modelGroupSlug` internamente.
+function canonicalSlug(m: MatchedModel): string {
+  return modelGroupSlug({
+    style_name: m.style_name,
+    tipologia_code_new: m.tipologia_code_new,
+    circulacion: m.circulacion,
+    morfologia: m.morfologia,
+  })
+}
+
 async function findModel(slug: string) {
   const supabase = await createClient()
   const data = await loadHomeData(supabase)
@@ -47,8 +61,8 @@ async function findModel(slug: string) {
   //   - Legacy: sólo tipologia_code_new
   //     → `casa-cubo-copahue`
   // ModelRow pushea el nuevo cuando ambos campos están seteados; el botón
-  // Compartir todavía usa solo tipologia_code_new. Los shares viejos
-  // circulando en WhatsApp pueden estar en cualquiera de los dos formatos.
+  // Compartir también usa el nuevo. Los shares viejos circulando en WhatsApp
+  // pueden estar en cualquiera de los dos formatos.
   const model = data.models.find((m) => {
     const newSlug = modelGroupSlug({
       style_name: m.style_name,
@@ -76,6 +90,9 @@ export async function generateMetadata({
       title: 'Catálogo — ConstruirFácil',
       description:
         'Explorá modelos de casas industrializadas en ConstruirFácil.',
+      // Slug muerto: no queremos que Google lo mantenga indexado.
+      alternates: { canonical: '/catalogo' },
+      robots: { index: false, follow: true },
     }
   }
   const title = `${model.display_name} — ConstruirFácil`
@@ -84,12 +101,21 @@ export async function generateMetadata({
     `Modelo ${model.display_name} ${
       model.area_min ? `desde ${Math.round(model.area_min)} m²` : ''
     }${model.beds_min ? ` · ${model.beds_min} dorm.` : ''}.`
+  // Canonical y og:url apuntan al slug NUEVO aunque el visitante haya
+  // llegado por el legacy. Consolida autoridad en una sola URL y matchea
+  // el sitemap. (El handler default redirige 308 al canónico, pero el
+  // canonical lo dejamos coherente igual para cachés/prefetch.)
+  const canonPath = `/modelos/${canonicalSlug(model)}`
   return {
     title,
     description: desc.trim(),
+    alternates: { canonical: canonPath },
     openGraph: {
+      type: 'website',
+      url: canonPath,
       title,
       description: desc.trim(),
+      siteName: 'ConstruirFácil',
       images: model.cover_url ? [{ url: model.cover_url }] : undefined,
     },
   }
@@ -103,6 +129,14 @@ export default async function ModeloPage({ params }: PageProps) {
   // share — el visitante igual aterriza en un catálogo navegable. notFound()
   // rompía links que ya circulaban en WhatsApp/Instagram sin recurso.
   if (!model) redirect('/catalogo')
+
+  // Slug legacy pero existe versión nueva: 308 al canónico. Fusiona autoridad
+  // SEO en una URL sola y evita que Google indexe dos URLs para el mismo
+  // contenido. Shares viejos siguen funcionando (via redirect).
+  const canon = canonicalSlug(model)
+  if (canon !== slug.toLowerCase()) {
+    redirect(`/modelos/${canon}`)
+  }
 
   const clientEmail = await currentClientEmail()
 

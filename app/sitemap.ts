@@ -39,7 +39,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
     // Solo modelos con tipologia_code_new → slug canónico estable. Los que
     // todavía no migraron se omiten (no rompemos sitemap si una marca queda
-    // fuera del nuevo esquema).
+    // fuera del nuevo esquema). El slug lleva circulacion+morfologia cuando
+    // están presentes (post-0090) — mismo formato que ModelRow/ShareButton
+    // pushean a la barra. Sin coherencia acá Google indexa dos URLs para el
+    // mismo contenido y partimos la autoridad.
     const seen = new Set<string>()
     modelUrls = models
       .map((m) => {
@@ -47,6 +50,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const slug = modelGroupSlug({
           style_name: m.style_name,
           tipologia_code_new: m.tipologia_code_new,
+          circulacion: m.circulacion,
+          morfologia: m.morfologia,
         })
         if (seen.has(slug)) return null
         seen.add(slug)
