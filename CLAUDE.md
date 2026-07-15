@@ -122,6 +122,29 @@ tarjeta "Lista de propiedades" ancha en el centro (layout guardado como default 
   match de casas); nurture / follow-ups = automatizaciones de HubSpot usando esas propiedades como tokens.
 - **Backfill pendiente:** seccional/delegado/localidad en los 292 ya sincronizados (reset `synced_hubspot_at`
   + re-run reconcile; op masivo).
+- **✅ Logueo de respuestas entrantes (HECHO 2026-07-15):** las respuestas de leads a `hola@` se registran
+  solas en la ficha del contacto. HubSpot NO conecta este buzón por IMAP (Hostinger no es Google/O365) →
+  se usó **Conversations Inbox → "Otra cuenta de correo" (team email) por REENVÍO**. En Hostinger hay un
+  **reenviador `hola@construirfacil.com` → `hola@construirfcil.hs-inbox.com`** (la dir. que da el asistente
+  de HubSpot; "Guardado de copias activado" = `hola@` conserva copia). HubSpot **preserva el `From:`
+  original** → asocia al contacto real del lead, no a `hola@`. ⚠️ Si el lead responde desde OTRO mail →
+  crea contacto nuevo (fusionar a mano). Probado OK con `ad@andreadowyer.com`.
+- **⏳ Responder DESDE HubSpot (pendiente, va con atribución de clics #4):** el canal muestra alerta "sin
+  autenticación" porque los servidores de HubSpot no están en el SPF (`include:_spf.mail.hostinger.com`).
+  NO afecta recibir. Para responder con la marca sin caer en spam → sumar DKIM/SPF de HubSpot al DNS
+  Hostinger. Por ahora se responde desde el webmail de Hostinger. Alerta = informativa, se puede cerrar.
+
+## Mails del catálogo a la marca — `lib/email/lead.ts`
+Server-side, vía Resend. Un solo pipe (`sendLeadEmail`) cubre TODOS los forms del catálogo que
+notifican a la marca: hoy son **"Quiero esta casa"** y **"Waitlist provincia"** (ambos por el server
+action `app/cotizar/actions.ts::submitLead`). Sale también un mail de confirmación al cliente.
+- **Destinatario a la marca:** `marcas.lead_notification_email` (editable en `/admin/marcas/[id]`).
+- **BCC de tracking al marketplace:** env opcional `LEAD_MARCA_BCC` (ej: `empresas@construirfacil.com`).
+  Casilla dedicada, NO conectada a HubSpot — a diferencia de `hola@` no debe reenviar a `hs-inbox.com`
+  o va a ensuciar el timeline con salientes. Si la env está vacía → sin copia (sin regresión). Sólo
+  BCC-eamos el mail a la marca; el mail al cliente nunca lleva copia. ⚠️ Los CTAs `Cotizar` y
+  `Conversar con Ximia` son `mailto:` — abren el cliente del visitante y salen desde SU casilla, no
+  vemos pasar el mail → BCC no aplica ahí.
 
 ## Convenciones
 - Migraciones: `NNNN_nombre.sql`, secuencial. Nunca renumerar las existentes.

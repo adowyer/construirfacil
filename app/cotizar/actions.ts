@@ -19,6 +19,7 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAttribution } from '@/lib/track/attribution'
 import { sendLeadEmail } from '@/lib/email/lead'
+import { displayModelTitle } from '@/lib/content/model-naming'
 import {
   encodeSessionCookie,
   SESSION_COOKIE_CONFIG,
@@ -310,24 +311,43 @@ async function sendLeadEmailAsync(args: AsyncEmailArgs): Promise<void> {
     if (p?.name) provinciaName = p.name
   }
 
-  // Lookup linea desde el primer SKU del modelo (model_slug).
-  if (args.model_slug && args.style_name) {
-    const { data: anySku } = await admin
+  // Lookup linea + ejes (circulacion + morfologia) desde el primer SKU del
+  // modelo. Los ejes viven a nivel de GRUPO (todas las variantes comparten
+  // tipología), así que cualquier SKU del mismo (style, tipologia) sirve.
+  // Los ejes NO viajan en el formData — se derivan acá para que el mail a
+  // la marca use el naming canónico ("CASA EJES CUBO DOMUYO", no "CASA
+  // CUBO DOMUYO"). Sin este lookup el H1/subject/fila-Modelo del mail
+  // quedaban en el legacy mientras el mensaje del cliente ya venía con el
+  // formato nuevo → inconsistencia visible.
+  let circulacion: string | null = null
+  let morfologia: string | null = null
+  if (args.style_name) {
+    let q = admin
       .from('house_catalog')
-      .select('linea')
+      .select('linea, circulacion, morfologia')
       .ilike('style_name', args.style_name)
-      .limit(1)
-      .maybeSingle()
-    if (anySku?.linea) lineaName = anySku.linea
+    if (args.tipologia_code_new) {
+      q = q.eq('tipologia_code_new', args.tipologia_code_new)
+    }
+    const { data: anySku } = await q.limit(1).maybeSingle()
+    if (anySku) {
+      lineaName = anySku.linea ?? null
+      circulacion = anySku.circulacion ?? null
+      morfologia = anySku.morfologia ?? null
+    }
   }
 
-  // Composé "modelDisplayName" — preferimos el split CASA NODO ALECRIN si
-  // tenemos los datos; si no, fallback al style_name a secas.
-  const heroBits = [
-    args.tipologia_code_new ? `CASA ${args.tipologia_code_new}` : 'CASA',
-    args.style_name?.toUpperCase() ?? '',
-  ].filter(Boolean)
-  const modelDisplayName = heroBits.join(' ')
+  // Nombre canónico del modelo. `displayModelTitle` decide solo entre modo
+  // nuevo ("CASA EJES CUBO DOMUYO") y legacy ("CASA CUBO DOMUYO") según
+  // qué campos vinieron con valor. Fallback a 'CASA' si no tenemos ni
+  // style_name ni tipologia_code_new (waitlist sin modelo, etc).
+  const modelDisplayName =
+    displayModelTitle({
+      style_name: args.style_name,
+      tipologia_code_new: args.tipologia_code_new,
+      circulacion,
+      morfologia,
+    }) || 'CASA'
 
   // Nombre completo para el email (combina name + apellido si vino separado).
   const clientFullName = [args.name, args.apellido].filter(Boolean).join(' ')

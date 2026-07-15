@@ -12,6 +12,11 @@
  *   RESEND_FROM_EMAIL     → "ConstruirFácil <noreply@construirfacil.com>"
  *                           Debe ser un dominio verificado en Resend.
  *                           Default: "onboarding@resend.dev" (sandbox).
+ *   LEAD_MARCA_BCC        → (opcional) email de tracking del marketplace,
+ *                           casilla interna que recibe BCC de cada mail a la
+ *                           marca. Ej: "empresas@construirfacil.com". Sólo
+ *                           afecta el mail a la marca — el mail al cliente
+ *                           NUNCA se BCC-ea. Si vacío, sin copia interna.
  */
 
 import { Resend } from 'resend'
@@ -72,6 +77,13 @@ function resendClient(): Resend | null {
 
 function fromAddress(): string {
   return process.env.RESEND_FROM_EMAIL || FROM_DEFAULT
+}
+
+/** Casilla interna que recibe BCC de cada mail a la marca — tracking del
+ *  marketplace. Vacío / no seteada = sin copia interna (sin regresión). */
+function marketplaceBcc(): string | null {
+  const v = process.env.LEAD_MARCA_BCC?.trim()
+  return v && v.length > 3 ? v : null
 }
 
 function fmtUsd(n: number | null): string {
@@ -298,13 +310,19 @@ export async function sendLeadEmail(
   const from = fromAddress()
   const errors: string[] = []
 
-  // Mail a la marca
+  // Mail a la marca. BCC opcional a la casilla interna del marketplace
+  // (LEAD_MARCA_BCC) — sin ella el marketplace pierde visibilidad de qué
+  // leads se pasaron a cada marca. Oculto porque no queremos ensuciar el
+  // header del mail que recibe la marca ni sugerirle que hay un tercero
+  // mirando por sobre el hombro.
   if (payload.toMarca) {
     const { subject, html } = emailToMarca(payload)
+    const bcc = marketplaceBcc()
     try {
       const { error } = await client.emails.send({
         from,
         to: [payload.toMarca],
+        ...(bcc ? { bcc: [bcc] } : {}),
         subject,
         html,
         replyTo: payload.clientEmail ?? undefined,
