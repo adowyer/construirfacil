@@ -410,6 +410,34 @@ def sample_lead(env, bucket):
     return rows[0] if (st == 200 and rows) else None
 
 
+def hs_note_mail_content(env, lead, subject, block):
+    """Nota «✉️ MAIL ENVIADO» en la ficha de HubSpot con el contenido personalizado del mail.
+    Las gestoras NO ven el objeto email (visibilidad fina de HubSpot que resistió todo debug,
+    2026-07-16) → la garantía va en una NOTA, que sí ven. Best-effort: jamás voltea el envío."""
+    tok = env.get("HUBSPOT_TOKEN")
+    if not tok or not lead.get("id"):
+        return
+    hh = {"Authorization": f"Bearer {tok}", "Content-Type": "application/json"}
+    try:
+        st, res = http("https://api.hubapi.com/crm/v3/objects/contacts/search", hh, "POST",
+                       {"filterGroups": [{"filters": [{"propertyName": "lead_id", "operator": "EQ",
+                                                       "value": lead["id"]}]}], "limit": 1})
+        results = res.get("results") if isinstance(res, dict) else None
+        if st != 200 or not results:
+            return
+        hoy = datetime.now(timezone.utc).date().isoformat()
+        body = (f"<p><strong>✉️ MAIL ENVIADO el {hoy}</strong> — asunto: «{subject}»</p>"
+                "<p><em>Contenido personalizado que recibió (para tener a la vista en el llamado):</em></p>"
+                + (block or ""))
+        http("https://api.hubapi.com/crm/v3/objects/notes", hh, "POST",
+             {"properties": {"hs_note_body": body, "hs_timestamp": int(time.time() * 1000)},
+              "associations": [{"to": {"id": results[0]["id"]},
+                                "types": [{"associationCategory": "HUBSPOT_DEFINED",
+                                           "associationTypeId": 202}]}]})
+    except Exception:
+        pass  # la nota jamás bloquea el envío
+
+
 def run_test(env, recipients, sample="Andrea", bcc=None):
     """Muestra de CADA bucket a direcciones de prueba, renderizada con el crédito+casas de un
     lead REAL de ese bucket (números y slugs de verdad). Saludo con nombre de muestra; NO toca
@@ -474,6 +502,7 @@ def main():
         ok, err = send_resend(env, r["email"], subj, html, uurl, bcc=HUBSPOT_LOG_BCC)
         if ok and mark_sent(env, r["id"]):
             log_hubspot(env, r.get("dni"))
+            hs_note_mail_content(env, r, subj, block)  # la ficha muestra QUÉ le dijimos
             sent += 1
         else:
             fail += 1
