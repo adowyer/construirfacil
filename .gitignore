@@ -87,3 +87,4 @@ INFO/
 # scratch / PII (no commitear)
 __pycache__/
 docs/*.csv
+scratchpad/

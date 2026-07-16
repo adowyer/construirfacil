@@ -142,6 +142,25 @@ def load_envs():
 
 
 # ── Unsubscribe token: MISMO HMAC que lib/auth/unsubscribe-token.ts ──
+def _click_token(env, lead_id):
+    """Token firmado para /api/track/click (HMAC dominio 'click', mismo secret que la ruta TS).
+    Un token de click NO sirve para verificar ni dar de baja (domain tags distintos)."""
+    sec = (env.get("CF_GATE_SECRET") or env.get("SUPABASE_SERVICE_ROLE_KEY") or "").encode()
+    sig = hmac.new(sec, f"click:{lead_id}".encode(), hashlib.sha256).hexdigest()[:32]
+    return f"{lead_id}.{sig}"
+
+
+def track_url(env, lead_id, to):
+    """Link trackeado. GATEADO por CLICK_TRACKING_ENABLED=1 (.env.local): hasta que la ruta
+    /api/track/click esté DEPLOYADA, los links salen directos — un mail jamás sale con links
+    rotos por depender de un deploy. (Garantía en código, no en memoria.)"""
+    if env.get("CLICK_TRACKING_ENABLED") != "1" or not lead_id:
+        return f"https://construirfacil.com{to}"
+    from urllib.parse import quote
+    return ("https://construirfacil.com/api/track/click"
+            f"?u={_click_token(env, lead_id)}&to={quote(to, safe='/')}")
+
+
 def _unsub_secret(env):
     s = (env.get("CF_GATE_SECRET") or env.get("SUPABASE_SERVICE_ROLE_KEY")
          or env.get("SUPABASE_SERVICE_KEY") or "")
@@ -292,15 +311,16 @@ def credit_and_houses_html(env, lead):
             if d:
                 parts.append(d)
             meta = " · ".join(parts)
-            url = f"https://construirfacil.com/modelos/{c['model_slug']}"
+            url = track_url(env, lead.get("id"), f"/modelos/{c['model_slug']}")
             cards += (f'<p style="margin:0 0 2px">🏠 <strong>{esc(meta)}</strong> — desde '
                       f'<strong>{_usd(c["precio_contado_usd"])}</strong></p>'
                       f'<p style="margin:0 0 14px">Mirala acá → '
                       f'<a href="{url}" style="color:#ff003d">construirfacil.com/modelos/{esc(c["model_slug"])}</a></p>')
         houses_html = (f'<p style="font-size:22px;margin:28px 0 8px"><strong>{head}</strong></p>'
                        f'<p style="margin:0 0 14px">{sub}</p>' + cards)
+    mkt_url = track_url(env, lead.get("id"), "/")
     marketplace = ('<p>Podés ver todos los modelos disponibles en nuestro marketplace: '
-                   '<a href="https://construirfacil.com" style="color:#ff003d">construirfacil.com</a></p>')
+                   f'<a href="{mkt_url}" style="color:#ff003d">construirfacil.com</a></p>')
     return intro + box + disclaimer + houses_html + marketplace
 
 
