@@ -22,8 +22,9 @@ import type { CatalogModel } from '@/lib/supabase/queries/catalog_grouped'
 import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type { EffectiveZoneRule } from '@/lib/content/zones'
-import { buildCotizarMailto, getAsesorHref } from '@/lib/cta/mailto'
+import { getAsesorHref } from '@/lib/cta/mailto'
 import { requestOpenXimiaWidget } from '@/lib/cta/open-ximia'
+import { openReservarModal } from '@/lib/cta/open-reservar'
 import CotizarModal from './CotizarModal'
 import { track } from '@/lib/track/client'
 import {
@@ -271,16 +272,23 @@ function PanelInlineCTA({
     <div className="cf-pn-cta">
       {eyebrow && <p className="cf-pn-cta-eyebrow">{eyebrow}</p>}
       <div className="cf-pn-cta-row">
-        <a
+        <button
+          type="button"
           className="cf-pn-cta-primary"
-          href={buildCotizarMailto({
-            modelName: model.display_name,
-            linea: displayLinea(model.linea),
-          })}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            openReservarModal({
+              model: model.display_name,
+              marca_id: model.marca_id ?? null,
+              marca_name: model.marca_name ?? null,
+              model_slug: model.group_slug ?? null,
+              style_name: model.style_name ?? null,
+              tipologia_code_new: model.tipologia_code_new ?? null,
+            })
+          }}
         >
           {primaryLabel ?? 'Ver precio'} →
-        </a>
+        </button>
         {XIMIA_ENABLED && (
           <a
             className="cf-pn-cta-secondary"
@@ -1508,18 +1516,31 @@ export function Panel7Comparativo({
                   Ver precio →
                 </button>
               ) : (
-                <a
+                <button
+                  type="button"
                   className="cf-pn-cta-primary"
-                  href={buildCotizarMailto({
-                    modelName: model.display_name,
-                    variante: selectedVar?.variante,
-                    sistema: currentSC ?? undefined,
-                    linea: displayLinea(model.linea),
-                  })}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    track('cotizar_open', {
+                      source: 'comparativo_no_cotizador',
+                      model: model.display_name,
+                      variante: selectedVar?.variante ?? null,
+                      sistema: currentSC,
+                    })
+                    openReservarModal({
+                      model: model.display_name,
+                      variante: selectedVar?.variante ?? null,
+                      sistema: currentSC,
+                      marca_id: model.marca_id ?? null,
+                      marca_name: model.marca_name ?? null,
+                      model_slug: model.group_slug ?? null,
+                      style_name: model.style_name ?? null,
+                      tipologia_code_new: model.tipologia_code_new ?? null,
+                    })
+                  }}
                 >
                   Ver precio →
-                </a>
+                </button>
               ))}
             {XIMIA_ENABLED && (
               <a
@@ -1983,12 +2004,18 @@ export function Panel9Datos({
         s.sistema_constructivo === model.systems[selectedSystem],
     ) ?? activeSkus[0] ?? model.skus[0]
 
-  const cotizarHref = buildCotizarMailto({
-    modelName: model.display_name,
-    variante: uniqueVars[selectedVariant]?.variante,
-    sistema: model.systems[selectedSystem],
-    linea: displayLinea(model.linea),
-  })
+  const openCotizar = () => {
+    openReservarModal({
+      model: model.display_name,
+      variante: uniqueVars[selectedVariant]?.variante ?? null,
+      sistema: model.systems[selectedSystem] ?? null,
+      marca_id: model.marca_id ?? null,
+      marca_name: model.marca_name ?? null,
+      model_slug: model.group_slug ?? null,
+      style_name: model.style_name ?? null,
+      tipologia_code_new: model.tipologia_code_new ?? null,
+    })
+  }
 
   return (
     <div className="cf-pn cf-pn-datos">
@@ -2044,13 +2071,16 @@ export function Panel9Datos({
           </>
         )}
 
-        <a
-          href={cotizarHref}
+        <button
+          type="button"
           className="cf-pn-datos-cta"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            openCotizar()
+          }}
         >
           Ver precio →
-        </a>
+        </button>
       </div>
     </div>
   )

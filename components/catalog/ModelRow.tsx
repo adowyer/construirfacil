@@ -25,7 +25,7 @@ import {
 import ExpandedPanels from './ExpandedPanels'
 import DeliveryConditionsModal from '@/components/catalog/DeliveryConditionsModal'
 import CotizarCenteredModal from '@/components/catalog/CotizarCenteredModal'
-import { buildCotizarMailto } from '@/lib/cta/mailto'
+import { openReservarModal } from '@/lib/cta/open-reservar'
 import { track } from '@/lib/track/client'
 import { useClientIdentified } from '@/lib/auth/use-client-identified'
 import { modelGroupSlug } from '@/lib/content/model-slug'
@@ -341,11 +341,8 @@ function PrecioOrCotizar({
     return (
       <span className={className} style={style}>
         {renderBadge()}
-        <a
-          href={buildCotizarMailto({
-            modelName: model.display_name,
-            linea: displayLinea(model.linea),
-          })}
+        <button
+          type="button"
           style={{
             fontSize: 14,
             fontWeight: 500,
@@ -353,14 +350,26 @@ function PrecioOrCotizar({
             textTransform: 'uppercase',
             color: '#ff003d',
             textDecoration: 'none',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
           }}
           onClick={(e) => {
             e.stopPropagation()
-            track('cotizar_open', { source: 'ficha_listado_mailto', model: model.display_name })
+            track('cotizar_open', { source: 'ficha_listado', model: model.display_name })
+            openReservarModal({
+              model: model.display_name,
+              marca_id: model.marca_id ?? null,
+              marca_name: model.marca_name ?? null,
+              model_slug: model.group_slug ?? null,
+              style_name: model.style_name ?? null,
+              tipologia_code_new: model.tipologia_code_new ?? null,
+            })
           }}
         >
           Ver <strong style={{ fontWeight: 700 }}>precio</strong>
-        </a>
+        </button>
       </span>
     )
   }
@@ -1419,13 +1428,24 @@ export default function ModelRow({
                 </span>
               </button>
             ) : (
-              <a
+              <button
+                type="button"
                 className="cf-row-sticky-cta-btn"
                 aria-label="Ver precio"
-                href={buildCotizarMailto({
-                  modelName: model.display_name,
-                  linea: displayLinea(model.linea),
-                })}
+                onClick={() => {
+                  track('cotizar_open', {
+                    source: 'row_sticky',
+                    model: model.display_name,
+                  })
+                  openReservarModal({
+                    model: model.display_name,
+                    marca_id: model.marca_id ?? null,
+                    marca_name: model.marca_name ?? null,
+                    model_slug: model.group_slug ?? null,
+                    style_name: model.style_name ?? null,
+                    tipologia_code_new: model.tipologia_code_new ?? null,
+                  })
+                }}
               >
                 <span className="cf-row-sticky-cta-btn-full">
                   Quiero <strong style={{ fontWeight: 700 }}>esta casa</strong>
@@ -1434,7 +1454,7 @@ export default function ModelRow({
                 <span className="cf-row-sticky-cta-btn-mini" aria-hidden>
                   Ver →
                 </span>
-              </a>
+              </button>
             )}
           </div>,
           document.body,

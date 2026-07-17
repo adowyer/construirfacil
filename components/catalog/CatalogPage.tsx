@@ -51,7 +51,8 @@ import { useRouter } from 'next/navigation'
 import HomeRow from './HomeRow'
 import type { HomeSlide } from '@/lib/supabase/queries/home_content'
 import CotizarModal from './CotizarModal'
-import ReservarModal from './ReservarModal'
+import ReservarModal, { type ReservarContext } from './ReservarModal'
+import { RESERVAR_OPEN_EVENT } from '@/lib/cta/open-reservar'
 import CatalogPromoBanner from './CatalogPromoBanner'
 import CatalogGridPromoCard from './CatalogGridPromoCard'
 import {
@@ -429,6 +430,20 @@ export default function CatalogPage({
   // Modal de contacto genérico (mid-CTA "¿Te ayudo a elegir?"). Reemplaza el
   // mailto que rompía sin cliente de mail configurado.
   const [contactarOpen, setContactarOpen] = useState(false)
+
+  // Modal "Cotizar" con contexto de casa — reemplaza los mailto de
+  // `buildCotizarMailto` en ModelRow, ExpandedPanels, HeroRow. Los CTAs
+  // disparan un evento global (`RESERVAR_OPEN_EVENT`) que resetea este
+  // state con el context de la casa clickeada.
+  const [cotizarContext, setCotizarContext] = useState<ReservarContext | null>(null)
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<ReservarContext>).detail
+      setCotizarContext(detail ?? {})
+    }
+    window.addEventListener(RESERVAR_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(RESERVAR_OPEN_EVENT, onOpen)
+  }, [])
 
   // Helpers de toggle — SINGLE-select. Clickear el pill activo lo
   // deselecciona; clickear otro lo reemplaza. Patrón nuevo: no tiene
@@ -1187,6 +1202,15 @@ export default function CatalogPage({
         open={contactarOpen}
         onClose={() => setContactarOpen(false)}
         context={{}}
+      />
+
+      {/* Modal "Cotizar" con contexto de casa — abierto vía evento global
+          `cf:reservar:open` desde los CTAs Cotizar del catálogo (reemplazo
+          de los `buildCotizarMailto`). */}
+      <ReservarModal
+        open={cotizarContext !== null}
+        onClose={() => setCotizarContext(null)}
+        context={cotizarContext ?? {}}
       />
 
 

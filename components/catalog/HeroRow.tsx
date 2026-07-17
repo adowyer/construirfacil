@@ -15,7 +15,6 @@ import type {
   HeaderSlideKind,
 } from '@/lib/supabase/queries/header_content'
 import { HEADER_DEFAULTS } from '@/lib/content/header-defaults'
-import { buildCotizarMailto } from '@/lib/cta/mailto'
 import { useInViewport } from '@/lib/hooks/useInViewport'
 
 type HeroBullet = { name: string; body: string }
