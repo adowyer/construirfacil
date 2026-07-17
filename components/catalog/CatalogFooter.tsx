@@ -29,6 +29,7 @@ import type {
   FooterContentRow,
 } from '@/lib/supabase/queries/footer'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { requestOpenXimiaWidget } from '@/lib/cta/open-ximia'
 import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { useInViewport } from '@/lib/hooks/useInViewport'
 import ReservarModal from './ReservarModal'
@@ -165,6 +166,9 @@ export default function CatalogFooter({
                 href={getAsesorHref()}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (requestOpenXimiaWidget('footer')) e.preventDefault()
+                }}
               >
                 {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
               </a>

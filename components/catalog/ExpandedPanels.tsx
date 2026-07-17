@@ -23,6 +23,7 @@ import { displayLinea } from '@/lib/supabase/queries/catalog_grouped'
 import type { ModelContentRow } from '@/lib/supabase/queries/models'
 import type { EffectiveZoneRule } from '@/lib/content/zones'
 import { buildCotizarMailto, getAsesorHref } from '@/lib/cta/mailto'
+import { requestOpenXimiaWidget } from '@/lib/cta/open-ximia'
 import CotizarModal from './CotizarModal'
 import { track } from '@/lib/track/client'
 import {
@@ -286,7 +287,10 @@ function PanelInlineCTA({
             href={getAsesorHref()}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (requestOpenXimiaWidget('expanded_panel_top')) e.preventDefault()
+            }}
           >
             Conversar con Ximia
           </a>
@@ -1525,7 +1529,11 @@ export function Panel7Comparativo({
                 href={getAsesorHref()}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (requestOpenXimiaWidget('expanded_panel_bottom'))
+                    e.preventDefault()
+                }}
               >
                 Conversar con Ximia
               </a>

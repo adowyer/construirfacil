@@ -34,6 +34,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { requestOTP, verifyOTP } from '@/app/(auth)/gate/actions'
 import { useProvincia } from '@/components/providers/ProvinciaProvider'
+import { XIMIA_CATALOG_WIDGET_ENABLED } from '@/lib/feature-flags'
+import { XIMIA_OPEN_EVENT } from '@/lib/cta/open-ximia'
 import styles from './XimiaWidget.module.css'
 
 const WEBHOOK_URL =
@@ -227,6 +229,18 @@ export default function XimiaWidget() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  // Puente con `lib/cta/open-ximia.ts`: los CTAs "Conversar con Ximia"
+  // disparan este evento. Llamamos preventDefault para señalar al caller que
+  // el widget abrió (así puede saltear el fallback mailto).
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      e.preventDefault()
+      setOpen(true)
+    }
+    window.addEventListener(XIMIA_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(XIMIA_OPEN_EVENT, onOpen)
+  }, [])
+
   const send = useCallback(
     async (text: string, opts?: { isStart?: boolean; identityOverride?: Identity }) => {
       if (!sessionId) return
@@ -375,11 +389,15 @@ export default function XimiaWidget() {
     }
   }
 
-  // Por ahora el widget solo se monta en las páginas de prueba (/ximia-lab*
-  // sin gate y /ximia-demo* con OTP). NO se muestra en el catálogo público
-  // hasta que decidamos el rollout. (Para volver a habilitar global, invertir
-  // la condición y skip solo en /admin/*.)
-  const allow = pathname?.startsWith('/ximia-lab') || pathname?.startsWith('/ximia-demo')
+  // Montaje del widget:
+  //   - Siempre en /ximia-lab* y /ximia-demo* (rutas de prueba).
+  //   - En el catálogo público solo si XIMIA_CATALOG_WIDGET_ENABLED=true
+  //     (rollout gradual — inicialmente off en prod hasta validar).
+  //   - Nunca en /admin/* (herramientas internas, no aplica).
+  const inLabOrDemo =
+    pathname?.startsWith('/ximia-lab') || pathname?.startsWith('/ximia-demo')
+  const inAdmin = pathname?.startsWith('/admin')
+  const allow = inLabOrDemo || (XIMIA_CATALOG_WIDGET_ENABLED && !inAdmin)
   if (!allow) return null
 
   return (

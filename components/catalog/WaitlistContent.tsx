@@ -27,6 +27,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { submitLead, type LeadResult } from '@/app/cotizar/actions'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { requestOpenXimiaWidget } from '@/lib/cta/open-ximia'
 import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { track } from '@/lib/track/client'
 import {
@@ -109,12 +110,14 @@ export function WaitlistContent({ context, detail, onClose }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               className="cf-cotizar-panel-cta-secondary"
-              onClick={() =>
+              onClick={(e) => {
+                if (requestOpenXimiaWidget('waitlist_already_identified'))
+                  e.preventDefault()
                 track('asesor_click', {
                   source: 'waitlist_already_identified',
                   ...context,
                 })
-              }
+              }}
             >
               Conversar con Ximia
             </a>
@@ -155,12 +158,13 @@ export function WaitlistContent({ context, detail, onClose }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               className="cf-cotizar-panel-cta-secondary"
-              onClick={() =>
+              onClick={(e) => {
+                if (requestOpenXimiaWidget('waitlist_success')) e.preventDefault()
                 track('asesor_click', {
                   source: 'waitlist_success',
                   ...context,
                 })
-              }
+              }}
             >
               Conversar con Ximia
             </a>
@@ -377,12 +381,13 @@ export function WaitlistContent({ context, detail, onClose }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               className="cf-cotizar-panel-cta-secondary"
-              onClick={() =>
+              onClick={(e) => {
+                if (requestOpenXimiaWidget('waitlist_form')) e.preventDefault()
                 track('asesor_click', {
                   source: 'waitlist_form',
                   ...context,
                 })
-              }
+              }}
             >
               Conversar con Ximia
             </a>

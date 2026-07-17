@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react'
 import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { requestOpenXimiaWidget } from '@/lib/cta/open-ximia'
 import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { track } from '@/lib/track/client'
 import type { CotizadorData, SkuPrices } from '@/lib/content/cotizador-data'
@@ -242,9 +243,13 @@ export default function CotizarModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="cf-cotizar-panel-cta-secondary"
-                onClick={() =>
+                onClick={(e) => {
+                  // Si el XimiaWidget está montado en esta ruta, abre el chat
+                  // in-page y evitamos abrir el cliente de mail. Si no responde
+                  // (widget no montado / flag off), cae al mailto de siempre.
+                  if (requestOpenXimiaWidget('cotizar_persiana')) e.preventDefault()
                   track('asesor_click', { source: 'cotizar_persiana', ...context })
-                }
+                }}
               >
                 Conversar con Ximia
               </a>

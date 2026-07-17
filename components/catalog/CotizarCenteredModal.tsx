@@ -25,6 +25,7 @@ import CotizadorUber from './CotizadorUber'
 import ReservarModal, { type ReservarContext } from './ReservarModal'
 import { WaitlistContent } from './WaitlistContent'
 import { getAsesorHref } from '@/lib/cta/mailto'
+import { requestOpenXimiaWidget } from '@/lib/cta/open-ximia'
 import { XIMIA_ENABLED } from '@/lib/feature-flags'
 import { track } from '@/lib/track/client'
 import type { CotizadorData, SkuPrices } from '@/lib/content/cotizador-data'
@@ -228,9 +229,10 @@ export default function CotizarCenteredModal({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="cf-cotizar-panel-cta-secondary"
-                    onClick={() =>
+                    onClick={(e) => {
+                      if (requestOpenXimiaWidget('cotizar_modal')) e.preventDefault()
                       track('asesor_click', { source: 'cotizar_modal', ...context })
-                    }
+                    }}
                   >
                     Conversar con Ximia
                   </a>
