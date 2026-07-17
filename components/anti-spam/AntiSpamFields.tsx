@@ -97,12 +97,19 @@ export function AntiSpamFields({ errorSignal, theme = 'auto' }: Props) {
         }}
       />
       {TURNSTILE_SITE_KEY && (
+        // Widget visible (badge chico abajo del form). Antes usábamos
+        // `interaction-only` que en principio auto-emite token si no hay
+        // challenge — pero en la práctica, si CF quería una challenge y el
+        // usuario submiteaba rápido, el token no llegaba y devolvíamos error
+        // "Falló la verificación anti-spam" ANTES de que el usuario supiera
+        // que había algo que hacer. Con `always` el widget es visible desde
+        // el mount y siempre hay token listo antes del submit.
         <div
           ref={turnstileRef}
           className="cf-turnstile"
           data-sitekey={TURNSTILE_SITE_KEY}
-          data-appearance="interaction-only"
           data-theme={theme}
+          data-size="flexible"
         />
       )}
     </>

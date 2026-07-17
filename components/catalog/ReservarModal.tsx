@@ -126,6 +126,12 @@ export default function ReservarModal({
   // `state.ok` cambia a true, y otra vez cuando `existingLeadEmail` se
   // popula tras el refetchClientStatus post-submit.
   const handledSuccessRef = useRef(false)
+  // Counter que incrementa cada vez que el modal se abre. Se usa en el
+  // `key` del LeadForm para forzar remount en cada apertura → `useActionState`
+  // arranca en blanco y no arrastra errores del intento anterior (ej. si el
+  // usuario cerró tras un fallo de Turnstile y volvió a abrir el modal, no
+  // debería seguir viendo el banner rojo).
+  const [openCounter, setOpenCounter] = useState(0)
   // Reseteamos el flag cuando se vuelve a abrir el modal (otro modelo, etc).
   useEffect(() => {
     if (open) {
@@ -134,6 +140,7 @@ export default function ReservarModal({
       setOtpCode('')
       setOtpError(null)
       handledSuccessRef.current = false
+      setOpenCounter((c) => c + 1)
     }
   }, [open])
 
@@ -319,7 +326,7 @@ export default function ReservarModal({
             propio success state (con botón WhatsApp) siga visible bajo la
             card de OTP. */}
         <LeadForm
-          key={message}
+          key={`${message}-${openCounter}`}
           defaultLocalidad={null}
           defaultMessage={message}
           variant="light"

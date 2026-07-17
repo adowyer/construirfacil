@@ -34,7 +34,7 @@ export async function verifyTurnstileToken(args: {
   if (!token) {
     return {
       ok: false,
-      error: 'Falló la verificación anti-spam. Recargá la página y probá de nuevo.',
+      error: 'La verificación de seguridad está cargando. Esperá un instante y probá de nuevo.',
     }
   }
 
@@ -53,7 +53,7 @@ export async function verifyTurnstileToken(args: {
     console.warn('[turnstile] verification failed:', data['error-codes'])
     return {
       ok: false,
-      error: 'Falló la verificación anti-spam. Recargá la página y probá de nuevo.',
+      error: 'La verificación de seguridad está cargando. Esperá un instante y probá de nuevo.',
     }
   } catch (err) {
     console.error('[turnstile] verify network error, fail-open:', err)
