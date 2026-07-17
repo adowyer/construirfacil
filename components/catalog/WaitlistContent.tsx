@@ -33,6 +33,7 @@ import {
   refetchClientStatus,
   useClientIdentified,
 } from '@/lib/auth/use-client-identified'
+import { AntiSpamFields } from '@/components/anti-spam/AntiSpamFields'
 
 export type WaitlistContext = {
   /** Nombre human-readable de la marca para el copy. Null en onboarding
@@ -211,6 +212,8 @@ export function WaitlistContent({ context, detail, onClose }: Props) {
       </div>
 
       <form action={formAction} style={{ display: 'block', marginTop: 4 }}>
+        {/* Anti-spam bundle (ver components/anti-spam/AntiSpamFields.tsx). */}
+        <AntiSpamFields errorSignal={state.error} theme="light" />
         <input type="hidden" name="lead_type" value="waitlist_provincia" />
         <input type="hidden" name="marca_id" value={context.marca_id ?? ''} />
         <input

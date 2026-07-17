@@ -17,6 +17,7 @@ import {
   refetchClientStatus,
   useClientIdentified,
 } from '@/lib/auth/use-client-identified'
+import { AntiSpamFields } from '@/components/anti-spam/AntiSpamFields'
 
 const FIELD = {
   dark: 'w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#ff003d] focus:ring-2 focus:ring-[#ff003d]/20 transition-colors',
@@ -159,6 +160,9 @@ export function LeadForm({
   return (
     <form action={formAction} className="space-y-5">
       <input type="hidden" name="path" ref={pathRef} />
+      {/* Anti-spam: honeypot + Turnstile (env-gated). Ver
+          `components/anti-spam/AntiSpamFields.tsx`. */}
+      <AntiSpamFields errorSignal={state.error} theme={isLight ? 'light' : 'dark'} />
       {/* Contexto del catálogo — hidden inputs que el action lee + persiste
           en columnas de `leads`. Solo se renderizan los valores presentes;
           el form genérico /cotizar (sin catalog) los omite todos. */}

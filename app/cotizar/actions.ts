@@ -15,15 +15,18 @@
  * registrado sin mail a fricción en la UX.
  */
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAttribution } from '@/lib/track/attribution'
 import { sendLeadEmail } from '@/lib/email/lead'
+import { emitEngagementEvent } from '@/lib/engagement/emit-event'
 import { displayModelTitle } from '@/lib/content/model-naming'
 import {
   encodeSessionCookie,
   SESSION_COOKIE_CONFIG,
 } from '@/lib/auth/session-cookie'
+import { verifyTurnstileToken } from '@/lib/anti-spam/turnstile'
+import { checkAndBumpLeadRateLimit } from '@/lib/anti-spam/rate-limit'
 
 export type LeadResult = { ok: boolean; error: string | null }
 
@@ -45,6 +48,14 @@ export async function submitLead(
   _prev: LeadResult,
   formData: FormData,
 ): Promise<LeadResult> {
+  // Honeypot: campo hidden que un usuario real NUNCA completa. Si viene con
+  // valor lo tratamos como bot y devolvemos éxito FAKE — al no darle feedback
+  // el bot no puede iterar para adivinar qué falló. NO escribimos a DB, NO
+  // mandamos mail, NO seteamos cookies. Ver `hp_website` en LeadForm.tsx.
+  if (optText(formData.get('hp_website'))) {
+    return { ok: true, error: null }
+  }
+
   // Tipo de lead. Default mantiene compat con el form genérico /cotizar y con
   // "Quiero esta casa" (que no manda el hidden input). 'waitlist_provincia'
   // = usuario interesado en una marca que aún no opera en su provincia.
@@ -76,6 +87,30 @@ export async function submitLead(
   // teléfono es opcional — la promesa es "te avisamos por mail cuando lleguemos".
   if (lead_type === 'quiero_esta_casa' && !phone) {
     return { ok: false, error: 'Tu teléfono es obligatorio para poder contactarte.' }
+  }
+
+  // Anti-spam. Orden: honeypot (arriba, silencioso) → Turnstile (verificación
+  // CAPTCHA CF, env-gated) → rate-limit por IP+email. Los 3 corren ANTES de
+  // cualquier write a DB — spam no toca `users`, `leads` ni Resend.
+  const h = await headers()
+  const clientIp =
+    (h.get('x-forwarded-for') || h.get('x-real-ip') || '').split(',')[0]?.trim() || null
+
+  const turnstile = await verifyTurnstileToken({
+    token: optText(formData.get('cf-turnstile-response')),
+    ip: clientIp,
+  })
+  if (!turnstile.ok) {
+    return { ok: false, error: turnstile.error ?? 'Falló la verificación anti-spam.' }
+  }
+
+  const rl = await checkAndBumpLeadRateLimit({ ip: clientIp, email })
+  if (!rl.allowed) {
+    const msg =
+      rl.reason === 'email_daily'
+        ? 'Ya enviaste varias consultas hoy con este email. Probá de nuevo mañana o escribinos directo.'
+        : 'Detectamos muchos intentos desde tu conexión. Esperá unos minutos y probá de nuevo.'
+    return { ok: false, error: msg }
   }
 
   const localidad = optText(formData.get('localidad'))
@@ -236,6 +271,19 @@ export async function submitLead(
     tiene_lote,
     timeframe,
     ahorro_ars_range,
+  })
+
+  // Segmentos B/C/D: avisamos a n8n que entró un lead. n8n hace el JOIN a
+  // marcas.plan y decide el segmento (D si marca_id null · B si plan cf_ximia ·
+  // C si plan cf) y la secuencia. Best-effort: nunca rompe el registro del lead.
+  await emitEngagementEvent({
+    event: 'lead_created',
+    lead_id: leadId,
+    email: email || null,
+    source: 'web_form',
+    lead_type,
+    marca_id: marca_id || null,
+    model_slug: model_slug || null,
   })
 
   // Emitir cookie cf_session — el visitante ya dejó sus datos, no le
