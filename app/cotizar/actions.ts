@@ -28,7 +28,16 @@ import {
 import { verifyTurnstileToken } from '@/lib/anti-spam/turnstile'
 import { checkAndBumpLeadRateLimit } from '@/lib/anti-spam/rate-limit'
 
-export type LeadResult = { ok: boolean; error: string | null }
+export type LeadResult = {
+  ok: boolean
+  error: string | null
+  /** Email + nombre del lead recién persistido. Solo se popula cuando
+   *  ok=true. Los consumidores (ReservarModal) los usan para el prompt
+   *  OTP post-success (`requestOTP({ email, name })`) sin tener que leer
+   *  el form del DOM ni esperar a que `useClientIdentified` refetchee. */
+  email?: string | null
+  name?: string | null
+}
 
 function optText(v: FormDataEntryValue | null): string | null {
   if (v === null) return null
@@ -302,7 +311,7 @@ export async function submitLead(
     })
   }
 
-  return { ok: true, error: null }
+  return { ok: true, error: null, email, name }
 }
 
 interface AsyncEmailArgs {

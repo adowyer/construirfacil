@@ -73,8 +73,12 @@ export function LeadForm({
    *  persista en `leads` y lo use para el email a la marca. */
   catalog?: LeadFormCatalogContext
   /** Se llama una vez cuando el lead se envió OK. Permite al padre
-   *  (ej. ReservarModal) reaccionar — cambiar headers, cerrar modal, etc. */
-  onSuccess?: () => void
+   *  (ej. ReservarModal) reaccionar — cambiar headers, cerrar modal, etc.
+   *  Recibe `email` + `name` del lead recién persistido cuando vienen del
+   *  server action (state.ok reciente). Cuando `onSuccess` dispara por
+   *  cf_session previa (visita reincidente), sólo llega `email` desde la
+   *  cookie firmada — no tenemos el nombre en ese path. */
+  onSuccess?: (details?: { email: string; name: string | null }) => void
 }) {
   const field = FIELD[variant]
   const lbl = LBL[variant]
@@ -108,14 +112,20 @@ export function LeadForm({
       // para que otros componentes (slides gated, CTAs) vean al usuario
       // como identificado sin recargar la página.
       refetchClientStatus().catch(() => {})
-      onSuccess?.()
+      onSuccess?.(
+        state.email
+          ? { email: state.email, name: state.name ?? null }
+          : undefined,
+      )
     }
-  }, [state.ok, onSuccess])
+  }, [state.ok, state.email, state.name, onSuccess])
 
   // Avisa al padre cuando descubrimos que el visitante ya tenía session
   // de lead, para que el modal (ReservarModal) ajuste su header.
   useEffect(() => {
-    if (existingLeadEmail) onSuccess?.()
+    if (existingLeadEmail) {
+      onSuccess?.({ email: existingLeadEmail, name: null })
+    }
   }, [existingLeadEmail, onSuccess])
 
   if (state.ok || existingLeadEmail) {

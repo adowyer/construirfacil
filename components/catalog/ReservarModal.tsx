@@ -19,6 +19,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { LeadForm, type LeadFormCatalogContext } from '@/components/LeadForm'
+import { requestOTP, verifyOTP } from '@/app/(auth)/gate/actions'
+import { useClientIdentified } from '@/lib/auth/use-client-identified'
 
 export interface ReservarContext {
   model?: string
@@ -115,11 +117,85 @@ export default function ReservarModal({
   // Después de que el LeadForm avisa onSuccess, cambiamos eyebrow + title
   // del modal — el "Contactanos / Dejanos tus datos" sonaba como si todavía
   // no se hubiera enviado.
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted, setSubmitted] = useState<null | {
+    email: string
+    name: string | null
+  }>(null)
+  // Guardamos el flag de "ya procesamos el success" para evitar disparar el
+  // pedido de OTP dos veces: LeadForm llama `onSuccess` una vez cuando
+  // `state.ok` cambia a true, y otra vez cuando `existingLeadEmail` se
+  // popula tras el refetchClientStatus post-submit.
+  const handledSuccessRef = useRef(false)
   // Reseteamos el flag cuando se vuelve a abrir el modal (otro modelo, etc).
   useEffect(() => {
-    if (open) setSubmitted(false)
+    if (open) {
+      setSubmitted(null)
+      setOtpStep('idle')
+      setOtpCode('')
+      setOtpError(null)
+      handledSuccessRef.current = false
+    }
   }, [open])
+
+  // OTP soft (post-success). El lead ya se persistió y el mail a la marca
+  // ya se despachó en `submitLead`. Este paso verifica el email para setear
+  // la cookie `cf_client` (proof alto) — el visitante entra al catálogo
+  // como identificado en su próxima interacción, sin ver el gate. Si ya
+  // tiene `cf_client` (verificó OTP en otra sesión / con Ximia) saltamos
+  // el prompt directamente al mensaje final.
+  const clientStatus = useClientIdentified()
+  const alreadyVerified = clientStatus.source === 'verified'
+  const [otpStep, setOtpStep] = useState<'idle' | 'requesting' | 'input' | 'verifying' | 'done'>(
+    'idle',
+  )
+  const [otpCode, setOtpCode] = useState('')
+  const [otpError, setOtpError] = useState<string | null>(null)
+
+  // Cuando el LeadForm nos avisa onSuccess, arrancamos el OTP (a menos que
+  // el visitante ya esté verificado por una interacción previa).
+  const handleLeadSuccess = async (details?: {
+    email: string
+    name: string | null
+  }) => {
+    if (handledSuccessRef.current) return
+    handledSuccessRef.current = true
+    setSubmitted(details ?? { email: '', name: null })
+    if (!details?.email) return
+    if (alreadyVerified) {
+      setOtpStep('done')
+      return
+    }
+    setOtpStep('requesting')
+    setOtpError(null)
+    const res = await requestOTP({
+      email: details.email,
+      name: details.name || details.email,
+    })
+    if (res.ok) {
+      setOtpStep('input')
+    } else {
+      // Si falla el envío del código, seguimos igual — el lead se persistió,
+      // el mail a la marca salió, no queremos bloquear al usuario. Solo
+      // mostramos el mensaje de éxito sin la parte del OTP.
+      setOtpStep('done')
+      setOtpError(res.error)
+    }
+  }
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!submitted?.email) return
+    if (otpCode.length !== 4) return
+    setOtpStep('verifying')
+    setOtpError(null)
+    const res = await verifyOTP({ email: submitted.email, code: otpCode })
+    if (res.ok) {
+      setOtpStep('done')
+    } else {
+      setOtpError(res.error)
+      setOtpStep('input')
+    }
+  }
 
   const resolvedEyebrow = submitted
     ? 'Gracias por contactarnos'
@@ -129,6 +205,9 @@ export default function ReservarModal({
     : (title ?? 'Dejanos tus datos y te contactamos')
   const resolvedSubmitLabel =
     submitLabel ?? (hasContext ? 'Quiero esta casa →' : 'Contactanos →')
+
+  const showOtpCard =
+    submitted && (otpStep === 'requesting' || otpStep === 'input' || otpStep === 'verifying')
 
   return (
     <dialog
@@ -159,10 +238,86 @@ export default function ReservarModal({
               .join(' · ')}
           </p>
         )}
+        {showOtpCard && (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ margin: '0 0 6px', fontSize: 14, color: '#1a1a1a', fontWeight: 600 }}>
+              Verificá tu email para que nadie más use tus datos.
+            </p>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666' }}>
+              {otpStep === 'requesting'
+                ? 'Te estamos enviando un código de 4 dígitos…'
+                : (
+                  <>
+                    Te enviamos un código a <strong>{submitted?.email}</strong>. Puede tardar
+                    un minuto.
+                  </>
+                )}
+            </p>
+            {(otpStep === 'input' || otpStep === 'verifying') && (
+              <form onSubmit={handleOtpSubmit} style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={4}
+                  placeholder="Código"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  disabled={otpStep === 'verifying'}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    border: '1px solid #E2E0D8',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    letterSpacing: '0.2em',
+                    textAlign: 'center',
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={otpCode.length !== 4 || otpStep === 'verifying'}
+                  style={{
+                    padding: '10px 18px',
+                    background: '#ff003d',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    cursor: otpCode.length === 4 ? 'pointer' : 'not-allowed',
+                    opacity: otpCode.length === 4 && otpStep !== 'verifying' ? 1 : 0.6,
+                  }}
+                >
+                  {otpStep === 'verifying' ? 'Verificando…' : 'Verificar'}
+                </button>
+              </form>
+            )}
+            {otpError && (
+              <p style={{ margin: '10px 0 0', fontSize: 13, color: '#c00000' }}>{otpError}</p>
+            )}
+            <p style={{ margin: '10px 0 0', fontSize: 12, color: '#999' }}>
+              Podés cerrar sin verificar — tu consulta ya llegó. Verificar te ahorra
+              tener que dejar tus datos de nuevo.
+            </p>
+          </div>
+        )}
+        {submitted && otpStep === 'done' && !alreadyVerified && (
+          <div style={{ marginTop: 8, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 600 }}>
+              ✓ Email verificado — la próxima vez entrás sin registrarte.
+            </p>
+          </div>
+        )}
         {/* key={message}: el textarea de LeadForm usa defaultValue (no
             controlado), que se lee una sola vez al montar. LeadForm se monta
             con ReservarModal — antes de que el usuario elija variante/tramo.
-            Cambiar el key lo remonta con el mensaje prefilled actualizado. */}
+            Cambiar el key lo remonta con el mensaje prefilled actualizado.
+            Se mantiene montado incluso después de submitted para que su
+            propio success state (con botón WhatsApp) siga visible bajo la
+            card de OTP. */}
         <LeadForm
           key={message}
           defaultLocalidad={null}
@@ -170,7 +325,7 @@ export default function ReservarModal({
           variant="light"
           submitLabel={resolvedSubmitLabel}
           catalog={contextToCatalog(context)}
-          onSuccess={() => setSubmitted(true)}
+          onSuccess={handleLeadSuccess}
         />
       </div>
     </dialog>
