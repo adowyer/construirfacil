@@ -1,0 +1,185 @@
+{
+  "name": "CF Engagement Router",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF Engagement Router — esqueleto\n\n**Qué hace:** recibe los eventos que emite CF (`lib/engagement/emit-event.ts`) y los rutea al segmento correcto. La lógica de ruteo vive ACÁ (workflow determinístico), no en el prompt del agente.\n\n**Webhook path:** `cf-engagement`\n- Production URL (workflow Active): `https://construirfacil.app.n8n.cloud/webhook/cf-engagement`\n- Test URL (mientras \"Listen for test event\"): `https://construirfacil.app.n8n.cloud/webhook-test/cf-engagement`\n- Ese valor va en la env `N8N_ENGAGEMENT_WEBHOOK_URL` de CF (Vercel + .env.local).\n\n**Ruteo:**\n- `otp_verified` → Seg A (curioso que se registró)\n- `lead_created` + `marca_id` vacío → Seg D (marketplace sin marca)\n- `lead_created` + `marca.plan = cf_ximia` → Seg B (precalifica Ximia)\n- `lead_created` + `marca.plan = cf` (o desconocido) → Seg C (bienvenida + SLA 48h)\n\n**Para completar (los 4 nodos NoOp \"Seg …\" son placeholders):**\n1. Reemplazar cada NoOp por los envíos reales (mail de bienvenida, alerta a asesora, precalif, etc.).\n2. En las ramas B/C el `$json` ya es la fila de `marcas` (perdiste el body) → para leer el lead usá:\n   `={{ $('CF Engagement Webhook').item.json.body.lead_id }}` (idem email, model_slug…).\n3. Opcional pero recomendado: validar el header `Authorization: Bearer <N8N_ENGAGEMENT_SECRET>` en el Webhook (Authentication → Header Auth) para que solo CF pueda dispararlo.\n4. Setear la credencial de Supabase en el nodo \"Get marca.plan\".",
+        "height": 520,
+        "width": 460
+      },
+      "id": "sticky_instructions",
+      "name": "LEEME — instrucciones",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-380, 120]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cf-engagement",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook_cf_engagement",
+      "name": "CF Engagement Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [140, 300],
+      "webhookId": "cf-engagement"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c_event_otp",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "otp_verified",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "if_event",
+      "name": "Route: event",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {},
+      "id": "noop_seg_a",
+      "name": "Seg A - bienvenida/nurture",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [640, 140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c_marca_empty",
+              "leftValue": "={{ $json.body.marca_id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "empty", "singleValue": true }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "if_marca",
+      "name": "Route: has marca_id",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 440]
+    },
+    {
+      "parameters": {},
+      "id": "noop_seg_d",
+      "name": "Seg D - marketplace sin marca",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "marcas",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.marca_id }}"
+            }
+          ]
+        }
+      },
+      "id": "supabase_get_marca",
+      "name": "Get marca.plan",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 560],
+      "notes": "Devuelve la fila de marcas (incluye plan). Requiere credencial Supabase."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c_plan_ximia",
+              "leftValue": "={{ $json.plan }}",
+              "rightValue": "cf_ximia",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "if_plan",
+      "name": "Route: plan cf_ximia?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1160, 560]
+    },
+    {
+      "parameters": {},
+      "id": "noop_seg_b",
+      "name": "Seg B - precalif Ximia",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1420, 460]
+    },
+    {
+      "parameters": {},
+      "id": "noop_seg_c",
+      "name": "Seg C - bienvenida + SLA 48h",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1420, 680]
+    }
+  ],
+  "connections": {
+    "CF Engagement Webhook": {
+      "main": [
+        [ { "node": "Route: event", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Route: event": {
+      "main": [
+        [ { "node": "Seg A - bienvenida/nurture", "type": "main", "index": 0 } ],
+        [ { "node": "Route: has marca_id", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Route: has marca_id": {
+      "main": [
+        [ { "node": "Seg D - marketplace sin marca", "type": "main", "index": 0 } ],
+        [ { "node": "Get marca.plan", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Get marca.plan": {
+      "main": [
+        [ { "node": "Route: plan cf_ximia?", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Route: plan cf_ximia?": {
+      "main": [
+        [ { "node": "Seg B - precalif Ximia", "type": "main", "index": 0 } ],
+        [ { "node": "Seg C - bienvenida + SLA 48h", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {}
+}

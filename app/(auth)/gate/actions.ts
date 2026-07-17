@@ -19,6 +19,7 @@ import { cookies, headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOtpEmail } from '@/lib/email/otp'
 import { encodeGateCookie, GATE_COOKIE_CONFIG } from '@/lib/auth/gate-cookie'
+import { emitEngagementEvent } from '@/lib/engagement/emit-event'
 
 const OTP_TTL_MIN = 10
 const OTP_MAX_ATTEMPTS = 3
@@ -196,6 +197,10 @@ export async function verifyOTP(args: {
     maxAge: GATE_COOKIE_CONFIG.maxAgeSeconds,
     path: '/',
   })
+
+  // Segmento A: un curioso se registró (verificó OTP) → avisamos a n8n para
+  // arrancar bienvenida/nurture. Best-effort: nunca rompe el verify.
+  await emitEngagementEvent({ event: 'otp_verified', email, source: 'catalog' })
 
   return { ok: true }
 }
