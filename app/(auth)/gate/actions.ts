@@ -70,6 +70,25 @@ export async function requestOTP(args: {
   // Marca intención (warm) — igual que antes.
   await sb.from('users').update({ lead_status: 'warm' }).eq('email', email)
 
+  // Rate-limit por email: si ya hay un código activo (< 30s) para este
+  // email, no generamos otro — devolvemos ok:true. Blindaje contra loops
+  // client-side (re-renders que disparan onSuccess en cadena) que ya
+  // ocurrieron y llenaron email_verifications con 20 filas en 15s.
+  // TTL del código = 10 min, así que reusar el reciente no expone al user.
+  const RATE_LIMIT_S = 30
+  const cutoff = new Date(Date.now() - RATE_LIMIT_S * 1000).toISOString()
+  const { data: recent } = await sb
+    .from('email_verifications')
+    .select('id')
+    .eq('email', email)
+    .is('used_at', null)
+    .gte('created_at', cutoff)
+    .limit(1)
+  if (recent && recent.length > 0) {
+    console.warn(`[requestOTP] rate-limit hit for ${email} (<${RATE_LIMIT_S}s)`)
+    return { ok: true }
+  }
+
   // 2) Generar código + guardar en email_verifications con TTL.
   const code = generateCode()
   const expiresAt = new Date(Date.now() + OTP_TTL_MIN * 60 * 1000).toISOString()

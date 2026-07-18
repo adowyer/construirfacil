@@ -17,7 +17,7 @@
  * transforms/overflow de ancestros, igual que DeliveryConditionsModal.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { LeadForm, type LeadFormCatalogContext } from '@/components/LeadForm'
 import { requestOTP, verifyOTP } from '@/app/(auth)/gate/actions'
 import { useClientIdentified } from '@/lib/auth/use-client-identified'
@@ -126,13 +126,9 @@ export default function ReservarModal({
   // `state.ok` cambia a true, y otra vez cuando `existingLeadEmail` se
   // popula tras el refetchClientStatus post-submit.
   const handledSuccessRef = useRef(false)
-  // Counter que incrementa cada vez que el modal se abre. Se usa en el
-  // `key` del LeadForm para forzar remount en cada apertura → `useActionState`
-  // arranca en blanco y no arrastra errores del intento anterior (ej. si el
-  // usuario cerró tras un fallo de Turnstile y volvió a abrir el modal, no
-  // debería seguir viendo el banner rojo).
-  const [openCounter, setOpenCounter] = useState(0)
-  // Reseteamos el flag cuando se vuelve a abrir el modal (otro modelo, etc).
+  // Reset al reabrir el modal (otro modelo, etc). El LeadForm se desmonta
+  // cuando `open` vuelve a false (gate en el JSX), así que su `useActionState`
+  // arranca en blanco solo → no hace falta forzar remount vía key.
   useEffect(() => {
     if (open) {
       setSubmitted(null)
@@ -140,7 +136,6 @@ export default function ReservarModal({
       setOtpCode('')
       setOtpError(null)
       handledSuccessRef.current = false
-      setOpenCounter((c) => c + 1)
     }
   }, [open])
 
@@ -160,7 +155,15 @@ export default function ReservarModal({
 
   // Cuando el LeadForm nos avisa onSuccess, arrancamos el OTP (a menos que
   // el visitante ya esté verificado por una interacción previa).
-  const handleLeadSuccess = async (details?: {
+  //
+  // useCallback con deps estables — necesario para que la REFERENCIA de esta
+  // función no cambie en cada render de ReservarModal. Sin esto, cada re-render
+  // (setOtpStep, setSubmitted, cambio de `useClientIdentified`) genera nueva
+  // ref → el useEffect en LeadForm `[state.ok, ..., onSuccess]` re-dispara →
+  // llama onSuccess de nuevo. El `handledSuccessRef` no siempre alcanza a
+  // cortar la carrera y termina disparando N requestOTP en loop (visto: 20 en
+  // 15s cuando esto no estaba memoizado).
+  const handleLeadSuccess = useCallback(async (details?: {
     email: string
     name: string | null
   }) => {
@@ -187,7 +190,7 @@ export default function ReservarModal({
       setOtpStep('done')
       setOtpError(res.error)
     }
-  }
+  }, [alreadyVerified])
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -324,15 +327,16 @@ export default function ReservarModal({
             la página (hoy 2: contacto genérico + cotizar bus) arranca un
             challenge de Turnstile en background al cargar el catálogo → tabs
             colgados con "Pages Unresponsive" apuntando a challenges.cloudflare.com.
-            Con el gate, Turnstile solo se monta cuando el usuario abre el modal.
+            El gate también sirve como reset del `useActionState` de LeadForm:
+            al cerrar/reabrir el modal, LeadForm desmonta y vuelve a montar
+            desde cero.
 
             key={message}: el textarea de LeadForm usa defaultValue (no
             controlado), que se lee una sola vez al montar. Cambiar el key lo
-            remonta con el mensaje prefilled actualizado. openCounter fuerza
-            además reset de useActionState en cada apertura. */}
+            remonta con el mensaje prefilled actualizado. */}
         {open && (
           <LeadForm
-            key={`${message}-${openCounter}`}
+            key={message}
             defaultLocalidad={null}
             defaultMessage={message}
             variant="light"
