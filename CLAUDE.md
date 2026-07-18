@@ -208,6 +208,11 @@ a la marca ya salió. Si `useClientIdentified().source === 'verified'` saltea el
   (<30s) para ese email, retorna `ok:true` sin insertar/enviar. Defensa en profundidad ante loops
   client-side futuros. `verifyOTP` valida contra el ÚLTIMO row activo — si Resend rate-limita mails
   del loop, el user recibe uno pero DB tiene otro → siempre falla.
+- **⚠️ Abierto (2026-07-17):** en una prueba del banner se generaron **3 códigos en 2s** (el guard de <30s
+  NO los colapsó → carrera: los 3 requests entran antes de que ninguno commitee) y el modal quedó colgado
+  en **"VERIFICANDO…"** sin mostrar el error de código incorrecto. Dos cosas a arreglar en la sesión del
+  catálogo: (a) que el guard sea atómico ante requests concurrentes, (b) que el cliente salga del estado
+  pending y muestre el error. No afecta al engagement (el emit del Seg A sólo dispara tras verify exitoso).
 
 ## Convenciones
 - Migraciones: `NNNN_nombre.sql`, secuencial. Nunca renumerar las existentes.
