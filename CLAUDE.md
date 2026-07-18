@@ -112,6 +112,35 @@ Segmentado por bucket (READY / QUALIFIES_LATER), idempotente (`engagement_sent_a
 - Uso: `--test <email>` (dry, sin BCC) · `--test <email> --with-bcc` (probar el log) · `--commit` (real).
 - Envío masivo real = op con OK de Andrea + Guillermo.
 
+## Engagement automático CF → n8n (eventos + router) — ⭐ ancla: `docs/engagement/DESIGN.md`
+El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos**; n8n **rutea y actúa**
+(GOLDEN RULE: la lógica de ruteo vive en el workflow determinístico, NO en el prompt del agente).
+- **Productor:** `lib/engagement/emit-event.ts` — best-effort, `await` con timeout 3s (AbortController),
+  nunca rompe el flujo. Enganches: `verifyOTP` → `otp_verified` (Seg A) · `submitLead` → `lead_created`
+  (Seg B/C/D). Si `N8N_ENGAGEMENT_WEBHOOK_URL` está vacía → no-op + warning (dev anda sin n8n).
+- **Consumidor:** workflow n8n **`CF Engagement Router`** (id `6OkOnL6ROx9n2kH2`, **Active**), webhook
+  `POST /webhook/cf-engagement`. Rutea por `event` + `marcas.plan` (nodo "Get marca.plan" = Supabase API
+  server-side, service_role). Los 4 nodos "Seg …" siguen siendo **NoOp placeholders**.
+- **Segmentos:** A = curioso que verificó OTP (aún sin lead) · B = "quiero esta casa" marca `plan=cf_ximia`
+  (precalifica Ximia) · C = "quiero esta casa" marca `plan=cf` (bienvenida marketplace + SLA 48h/QA) ·
+  D = lead sin `marca_id` (marketplace sin marca).
+- **Modelo de datos (mig. 0097):** `marcas.plan` enum `('cf','cf_ximia')` + `marcas.price_visibility`
+  enum `('public','gated','hidden')`. Hausind = `cf_ximia` + `gated`. `price_visibility` supersede a
+  `show_prices` (migración del código que lo lee, pendiente).
+- **Env:** `N8N_ENGAGEMENT_WEBHOOK_URL` = `https://construirfacil.app.n8n.cloud/webhook/cf-engagement`
+  (+ opcional `N8N_ENGAGEMENT_SECRET`). ✅ en `.env.local` Y en Vercel (Production, con redeploy).
+- **Path REAL del Seg D:** el CTA **"Quiero que me contacten"** del promo banner → abre `ReservarModal`
+  **genérico** (sin `marca_id`). NO es `/cotizar` (ruta huérfana: sólo `CotizadorUber` la enlaza y no
+  está montado en ninguna página → los null-marca ahí suelen ser bots/spam).
+- **Verificar SIN browser:** API de n8n `GET /api/v1/executions?workflowId=6OkOnL6ROx9n2kH2&includeData=true`
+  con header `X-N8N-API-KEY` (key en `~/Projects/XIMIA/.env` → `N8N_API_KEY` + `N8N_BASE_URL`). El `runData`
+  dice qué nodo "Seg …" corrió. Para disparar pruebas: POST directo al webhook (payload = contrato de
+  `emit-event.ts`). Nota: `n8n` NO guarda ejecuciones si el toggle "Save successful executions" está off.
+- **Estado 2026-07-17:** ruteo **A/B/C/D validado end-to-end** (local + sintético) y **producción emite en
+  vivo** (ejec. #6818, Seg D desde el sitio real). **SIGUIENTE:** reemplazar los NoOp por los envíos reales
+  (mails por segmento — Trello "Engagement · Copy de mails por segmento", necesita copy de Guillermo) y la
+  precalificación web del Seg B (cuando Ximia esté live).
+
 ## HubSpot — ficha del lead para las gestoras
 Las propiedades de calificación se sincronizan desde `XIMIA/scripts/reconcile_hubspot_sync.py` (upsert por
 `dni`). Nombres internos en inglés (`bucket`, `credit_now_usd`, `credit_with_lot_usd`, `income_ars`,
@@ -142,9 +171,43 @@ action `app/cotizar/actions.ts::submitLead`). Sale también un mail de confirmac
 - **BCC de tracking al marketplace:** env opcional `LEAD_MARCA_BCC` (ej: `empresas@construirfacil.com`).
   Casilla dedicada, NO conectada a HubSpot — a diferencia de `hola@` no debe reenviar a `hs-inbox.com`
   o va a ensuciar el timeline con salientes. Si la env está vacía → sin copia (sin regresión). Sólo
-  BCC-eamos el mail a la marca; el mail al cliente nunca lleva copia. ⚠️ Los CTAs `Cotizar` y
-  `Conversar con Ximia` son `mailto:` — abren el cliente del visitante y salen desde SU casilla, no
-  vemos pasar el mail → BCC no aplica ahí.
+  BCC-eamos el mail a la marca; el mail al cliente nunca lleva copia.
+- **CTAs migrados de mailto → in-app (2026-07-17):** "Cotizar" abre `ReservarModal` in-page (form +
+  soft OTP post-success) vía event bus `cf:reservar:open`; "Conversar con Ximia" abre el widget in-page
+  vía `cf:ximia:open`. Los helpers viven en `lib/cta/open-reservar.ts` y `lib/cta/open-ximia.ts` — usar
+  esos, no volver a `mailto:`. Beneficio: todo el lead pasa por `submitLead` → cae en `leads` con
+  atribución y llega al BCC.
+
+## Anti-spam del catálogo — Turnstile + honeypot + rate-limit
+Bundle server-side aplicado en `submitLead` (`app/cotizar/actions.ts`). Env-gated: si
+`TURNSTILE_SECRET_KEY` no está seteada, es no-op → el deploy puede subir a prod antes que las keys
+de CF. Todos los forms públicos que llaman `submitLead` embeben `<AntiSpamFields>` como hijo directo
+del `<form>`.
+- **Honeypot `hp_website`:** input invisible; si viene con valor, server devuelve éxito fake al bot.
+- **Turnstile:** widget VISIBLE (`data-size="flexible"`, no `interaction-only` — con invisible había
+  race donde el token no llegaba y devolvía "verificación cargando" antes de que el user supiera qué
+  faltaba). El token es single-use → `AntiSpamFields` resetea el widget cuando `state.error` cambia.
+- **Rate-limit:** IP 5/h y email 3/día por `checkAndBumpLeadRateLimit` (tabla `form_rate_limits`, fail-open).
+- ⭐ **Regla crítica de mount:** cualquier `<dialog>` que contenga `<AntiSpamFields>` (directo, via
+  `<LeadForm>` o via `<WaitlistContent>`) DEBE gatear su contenido en `open` (`{open && (...)}`). El
+  `<dialog>` no desmonta hijos aunque `dlg.close()`, así que N widgets Turnstile en paralelo cuelgan
+  la tab: **"Pages Unresponsive: challenges.cloudflare.com"**. Ya sucedió en `ReservarModal` y en
+  `CotizarCenteredModal` (un per ModelRow → 20+ widgets). Al crear un modal nuevo, gatear siempre.
+
+## OTP soft post-lead — `ReservarModal`
+Tras submit exitoso, el modal pide OTP para setear `cf_client` (proof alto) — el visitante entra al
+próximo catálogo como identificado. Soft = puede cerrar sin verificar; el lead ya se persistió y el mail
+a la marca ya salió. Si `useClientIdentified().source === 'verified'` saltea el prompt.
+- ⭐ **Regla del `onSuccess` callback:** `LeadForm` tiene dos `useEffect` con `onSuccess` en deps
+  (`[state.ok, ..., onSuccess]` y `[existingLeadEmail, onSuccess]`). El handler que pasa
+  `ReservarModal` (o cualquier consumer) DEBE ir con `useCallback` de referencia estable — si no,
+  cada re-render lo recrea, ambos useEffect re-disparan en cadena y llaman `onSuccess` → si arranca
+  `requestOTP`, se generan N códigos en loop (ya sucedió: 20 códigos en 15s). El `handledSuccessRef`
+  guard solo no alcanza a cortar la carrera.
+- **Rate-limit server-side en `requestOTP`** (`app/(auth)/gate/actions.ts`): si hay un código activo
+  (<30s) para ese email, retorna `ok:true` sin insertar/enviar. Defensa en profundidad ante loops
+  client-side futuros. `verifyOTP` valida contra el ÚLTIMO row activo — si Resend rate-limita mails
+  del loop, el user recibe uno pero DB tiene otro → siempre falla.
 
 ## Convenciones
 - Migraciones: `NNNN_nombre.sql`, secuencial. Nunca renumerar las existentes.
