@@ -318,22 +318,29 @@ export default function ReservarModal({
             </p>
           </div>
         )}
-        {/* key={message}: el textarea de LeadForm usa defaultValue (no
-            controlado), que se lee una sola vez al montar. LeadForm se monta
-            con ReservarModal — antes de que el usuario elija variante/tramo.
-            Cambiar el key lo remonta con el mensaje prefilled actualizado.
-            Se mantiene montado incluso después de submitted para que su
-            propio success state (con botón WhatsApp) siga visible bajo la
-            card de OTP. */}
-        <LeadForm
-          key={`${message}-${openCounter}`}
-          defaultLocalidad={null}
-          defaultMessage={message}
-          variant="light"
-          submitLabel={resolvedSubmitLabel}
-          catalog={contextToCatalog(context)}
-          onSuccess={handleLeadSuccess}
-        />
+        {/* Gate del mount al `open`: el LeadForm incluye AntiSpamFields, que
+            monta el widget de Cloudflare Turnstile. Si dejamos el form montado
+            aunque el <dialog> esté cerrado, cada instancia de ReservarModal en
+            la página (hoy 2: contacto genérico + cotizar bus) arranca un
+            challenge de Turnstile en background al cargar el catálogo → tabs
+            colgados con "Pages Unresponsive" apuntando a challenges.cloudflare.com.
+            Con el gate, Turnstile solo se monta cuando el usuario abre el modal.
+
+            key={message}: el textarea de LeadForm usa defaultValue (no
+            controlado), que se lee una sola vez al montar. Cambiar el key lo
+            remonta con el mensaje prefilled actualizado. openCounter fuerza
+            además reset de useActionState en cada apertura. */}
+        {open && (
+          <LeadForm
+            key={`${message}-${openCounter}`}
+            defaultLocalidad={null}
+            defaultMessage={message}
+            variant="light"
+            submitLabel={resolvedSubmitLabel}
+            catalog={contextToCatalog(context)}
+            onSuccess={handleLeadSuccess}
+          />
+        )}
       </div>
     </dialog>
   )
