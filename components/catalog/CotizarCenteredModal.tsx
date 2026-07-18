@@ -126,6 +126,16 @@ export default function CotizarCenteredModal({
         }}
         onClose={onClose}
       >
+        {/* Gate del contenido al `open`: cada ModelRow del catálogo monta un
+            CotizarCenteredModal, y cuando la casa está `excluded` para la
+            provincia del visitante, el children incluye <WaitlistContent> →
+            <AntiSpamFields> → widget de Cloudflare Turnstile. Si dejamos el
+            contenido montado con el <dialog> cerrado, 20+ widgets Turnstile
+            corren challenge en paralelo desde el mount y cuelgan la tab
+            ("Pages Unresponsive: challenges.cloudflare.com"). Con el gate,
+            los widgets solo aparecen cuando el user efectivamente abre el
+            modal de una casa. */}
+        {open && (
         <div className="cf-cotizar-modal-inner">
           <button
             type="button"
@@ -251,6 +261,7 @@ export default function CotizarCenteredModal({
             </>
           )}
         </div>
+        )}
       </dialog>
 
       <ReservarModal
