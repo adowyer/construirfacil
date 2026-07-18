@@ -153,6 +153,27 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
   = 1.440 ejec/día y **se comió todo el crédito de n8n**. Todo lo que dispare n8n va por **webhook**
   (evento real: ~unidades por día) o, si no hay más remedio, un schedule **diario**. Ante la duda:
   el productor (CF) emite el evento; n8n no encuesta.
+- 🚨 **ABIERTO / URGENTE — Bug `first_home` → ADUS mal otorgado (2026-07-18).** El ADUS de Neuquén
+  Habita es `vivienda_unica` ("dirigido a quienes NO posean vivienda previa"). `qualify_leads.sql`
+  tenía **`'primera_vivienda'` hardcodeado** (líneas 24 y 35) y **nunca leía `leads.first_home`** →
+  el motor daba ADUS (2%, 20a) a gente que declaró NO ser primera vivienda, en vez de Banco Nación
+  Segunda Vivienda (12%, 30a). **Script ARREGLADO, NO CORRIDO.**
+  - **7 leads de la tanda UOCRA cotizados 40-50% de más, y ya recibieron el mail con la cifra alta:**
+    Ariel Gomez (49.669→24.144, ✅verificó) · Margarita Matto (121.504→70.821, ✅verificó) ·
+    Anahí Viedma (99.338→48.287) · Marcelo Mulbayer (99.338→51.506) · Natalia Gutiérrez
+    (78.546→32.192) · Graciela Serna (74.619→30.582) · Wanda Zumelzu (99.338→45.068, `first_home`
+    SIN DATO). Dispersos en 6 listados ⇒ es transversal, no un PDF mal leído.
+  - **Orden decidido por Andrea: preguntar ANTES de recalcular** — la vivienda previa puede no estar
+    a nombre de la persona, en cuyo caso sí califica y no hay nada que corregir. Recalcular primero
+    obligaría a una segunda corrección hacia arriba que ya nadie creería.
+  - **Contaminación colateral:** 13 leads con `qualifies_adus_with_lot=true` y `first_home=false`.
+    El RADAR de negociación de tierra queda inflado ~2% (USD 537k sobre 22,1M) — el argumento de
+    "244 con demanda lista" se sostiene, pero el número no es exacto.
+  - **Lección de fondo:** el dato estaba (ficha → OCR → `leads.first_home`), la regla estaba
+    (`banks_financing.destination='vivienda_unica'`). Se perdió **en el cable entre los dos**, y
+    apareció por casualidad al ordenar por crédito y ver 2 filas fuera de la curva. **No existe
+    ningún chequeo que valide el resultado del motor contra las condiciones del producto** — eso es
+    lo que falta para que no dependa de que alguien mire bien.
 - 📋 **ABIERTO — Supabase ↔ HubSpot: quién manda cada campo.** HubSpot es la base *viva* (las asesoras
   corrigen datos por teléfono); Supabase es la DB. Hoy solo hay push Supabase→HubSpot, así que **toda
   corrección telefónica se pierde**. Decisión tomada: **NO sync bidireccional** — se reparte la

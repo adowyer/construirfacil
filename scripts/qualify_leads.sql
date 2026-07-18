@@ -1,4 +1,21 @@
 -- =============================================================================
+-- 🚨🚨 NO CORRER SIN LEER ESTO — pendiente abierto al 2026-07-18 🚨🚨
+--
+-- El bug de `first_home` está ARREGLADO en este script, pero TODAVÍA NO SE CORRIÓ.
+-- Correrlo AHORA le baja el crédito 40-50% a 7 leads de la tanda UOCRA que YA
+-- recibieron por mail la cifra alta (Gomez, Matto, Gutierrez, Zumelzu, Serna,
+-- Mulbayer, Viedma). Decisión de Andrea: **primero se les pregunta** si la vivienda
+-- previa está a su nombre — puede que varias sí califiquen y no haya nada que
+-- corregir. Recién con esa respuesta se recalcula.
+--
+-- Antes de correr:
+--   1. ¿Ya se confirmó `first_home` con esas 7 personas por teléfono?
+--   2. Si cambió, actualizar `leads.first_home` ANTES (el script lee ese campo).
+--   3. Avisar a las asesoras: los montos en HubSpot se van a mover.
+-- Además: 13 leads de toda la base tienen `qualifies_adus_with_lot=true` con
+-- first_home=false (el RADAR queda inflado ~2%: USD 537k sobre 22,1M).
+-- Contexto completo: CLAUDE.md → "Bug first_home / ADUS".
+-- =============================================================================
 -- qualify_leads.sql — Califica leads con el motor (doble escenario) y los bucketea.
 -- PROCESO repetible de Fase 0 (correr cuando entra una tanda de leads).
 -- Requiere: 0074 (leads enriquecida) + 0079 (columnas ADUS-con-lote). Read/write a leads.
@@ -21,7 +38,14 @@ now_best as (   -- escenario AHORA: con su has_lot real (null→false, conservad
          e.loan_possible_usd loan_usd, e.monthly_payment_ars
   from public.leads l
   cross join lateral public.evaluate_property_options(
-    coalesce(l.savings_amount,0), l.monthly_income_ars, 2, 'primera_vivienda', l.province,
+    coalesce(l.savings_amount,0), l.monthly_income_ars, 2,
+    -- ⚠️ NO hardcodear 'primera_vivienda'. El ADUS (Neuquén Habita) es `vivienda_unica`:
+    -- "dirigido a personas que NO posean vivienda previa". Hasta 2026-07-18 este literal
+    -- estaba fijo y el motor daba ADUS a gente con first_home=false → 7 leads de la tanda
+    -- UOCRA cotizados 40-50% de más. null → 'segunda_vivienda' (conservador: preferimos
+    -- subcotizar y corregir para arriba, antes que prometer un crédito que no existe).
+    case when coalesce(l.first_home,false) then 'primera_vivienda' else 'segunda_vivienda' end,
+    l.province,
     l.residency_years, coalesce(l.employment_type,'self_employed_simplified'),
     coalesce(l.savings_currency,'ARS'), coalesce(l.has_lot,false), 'ARS') e
   where l.monthly_income_ars is not null
@@ -32,7 +56,10 @@ adus_lot as (   -- escenario CON LOTE: ¿aparece ADUS?
          max(case when e.bank_name='Neuquén Habita' then e.loan_possible_usd end) adus_loan_usd
   from public.leads l
   cross join lateral public.evaluate_property_options(
-    coalesce(l.savings_amount,0), l.monthly_income_ars, 2, 'primera_vivienda', l.province,
+    coalesce(l.savings_amount,0), l.monthly_income_ars, 2,
+    -- mismo criterio que arriba: si ya tiene vivienda, el lote no lo vuelve elegible al ADUS
+    case when coalesce(l.first_home,false) then 'primera_vivienda' else 'segunda_vivienda' end,
+    l.province,
     l.residency_years, coalesce(l.employment_type,'self_employed_simplified'),
     coalesce(l.savings_currency,'ARS'), true, 'ARS') e
   where l.monthly_income_ars is not null
@@ -60,7 +87,13 @@ update public.leads l set
     else null end,
   -- distancia / "lo que le falta": income vs el ingreso necesario para la casa más barata
   -- (loan escala lineal con income → needed_income = casa_min × income / loan_now)
-  profile_json = coalesce(l.profile_json,'{}'::jsonb) || jsonb_build_object('qualification', jsonb_build_object(
+  profile_json = coalesce(l.profile_json,'{}'::jsonb)
+    -- si la ficha no dice si es primera vivienda, el crédito sale conservador PERO hay que
+    -- preguntarlo: es la diferencia entre ADUS al 2% y Banco Nación al 12%.
+    || case when l.first_home is null
+            then jsonb_build_object('needs_review','primera_vivienda sin dato — confirmar en la llamada')
+            else '{}'::jsonb end
+    || jsonb_build_object('qualification', jsonb_build_object(
       'best_line_now', n.bank_name||' · '||n.product_name,
       'credit_now_usd', round(n.loan_usd),
       'adus_with_lot_usd', round(a.adus_loan_usd),
