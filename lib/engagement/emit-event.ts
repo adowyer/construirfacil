@@ -11,6 +11,12 @@
  *   lead_created + marca_id null          → Segmento D (marketplace sin marca)
  *   lead_created + marca.plan 'cf_ximia'  → Segmento B (precalifica Ximia)
  *   lead_created + marca.plan 'cf'        → Segmento C (bienvenida + SLA 48h)
+ *   lead_verified                         → push a HubSpot (estado_registro = verificado)
+ *
+ * `lead_verified` NO es `otp_verified`: el Segmento A es un curioso que verificó
+ * y todavía NO tiene fila en `leads`. Acá hay lead (DNI, crédito calculado) y la
+ * verificación llegó por el magic link firmado del mail (app/verify/route.ts),
+ * que es un camino distinto del OTP del catálogo.
  *
  * Garantías (en código):
  *   - NUNCA tira error: si el webhook falla o no está configurado, loguea y
@@ -38,6 +44,13 @@ export type EngagementEvent =
       lead_type: string
       marca_id: string | null
       model_slug: string | null
+    }
+  | {
+      event: 'lead_verified'
+      lead_id: string
+      email: string | null
+      source: string
+      verified_at: string
     }
 
 const TIMEOUT_MS = 3000

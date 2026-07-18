@@ -14,11 +14,13 @@ import { verifyVerificationToken } from '@/lib/auth/verify-token'
 import { unsubscribeToken } from '@/lib/auth/unsubscribe-token'
 import { SITE_URL } from '@/lib/seo/site'
 import { sendWelcomeEmail } from '@/lib/email/welcome'
+import { emitEngagementEvent } from '@/lib/engagement/emit-event'
 
 type LeadRow = {
   id: string
   name: string | null
   email: string | null
+  source: string | null
   email_verified_at: string | null
   welcome_sent_at: string | null
   unsubscribed: boolean | null
@@ -30,7 +32,7 @@ async function verifyLead(leadId: string): Promise<boolean> {
 
   const { data, error } = await admin
     .from('leads')
-    .select('id, name, email, email_verified_at, welcome_sent_at, unsubscribed')
+    .select('id, name, email, source, email_verified_at, welcome_sent_at, unsubscribed')
     .eq('id', leadId)
     .maybeSingle()
   if (error || !data) return false
@@ -39,8 +41,17 @@ async function verifyLead(leadId: string): Promise<boolean> {
   const now = new Date().toISOString()
 
   // Marca la verificación (idempotente: solo la primera vez fija el timestamp).
+  // El evento se emite DENTRO del if: re-clickear el link no vuelve a disparar
+  // n8n (n8n se paga por ejecución — ver CLAUDE.md, regla de créditos).
   if (!lead.email_verified_at) {
     await admin.from('leads').update({ email_verified_at: now }).eq('id', leadId)
+    await emitEngagementEvent({
+      event: 'lead_verified',
+      lead_id: leadId,
+      email: lead.email,
+      source: lead.source ?? 'unknown',
+      verified_at: now,
+    })
   }
 
   // Dispara la bienvenida una sola vez, si hay email y no se dio de baja.

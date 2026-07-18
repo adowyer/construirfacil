@@ -132,6 +132,37 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
 - **Path REAL del Seg D:** el CTA **"Quiero que me contacten"** del promo banner → abre `ReservarModal`
   **genérico** (sin `marca_id`). NO es `/cotizar` (ruta huérfana: sólo `CotizadorUber` la enlaza y no
   está montado en ninguna página → los null-marca ahí suelen ser bots/spam).
+- **`lead_verified` → push a HubSpot (2026-07-18).** El magic link del mail (`/verify?u=<HMAC>`,
+  `app/verify/route.ts`) **NO pasa por el OTP del catálogo** → el Seg A nunca se disparaba para los
+  del sindicato. `verifyLead()` emite `lead_verified` **dentro del `if (!lead.email_verified_at)`**
+  (idempotente: re-clickear no re-dispara n8n). Rama en el router: `Route: lead_verified?` →
+  `HS: buscar por lead_id` → `¿Está en HubSpot?` → `HS: marcar verificado` (`estado_registro` +
+  `email_verified_at`). Probado end-to-end (ejec. #6823).
+  - **Matchear por `lead_id`, NUNCA por email** — los mails se tipean mal y se corrigen (caso Matto:
+    HubSpot `mattogrise@` vs Supabase `mattogrisel@`). `lead_id` está cargado 40/40 en HubSpot.
+  - ⚠️ **Nodos NATIVOS de HubSpot, no HTTP Request**: n8n prohíbe la credencial `hubspotOAuth2Api`
+    dentro de HTTP Request ("configured to prevent use…") y **no hay toggle que lo destrabe**.
+  - ⚠️ El nodo nativo usa la **API v1** → las props `date` quieren **epoch ms**, no `YYYY-MM-DD`
+    (`new Date(x.slice(0,10)).getTime()`). Con string da `Bad request - please check your parameters`.
+- **Propiedad `estado_registro`** («🚦 Estado del registro»: `verificado` / `mail_enviado` /
+  `sin_contacto`) — la columna que escanean las asesoras. `email_verified_at` («✉️ Registro
+  verificado») queda como el **cuándo**, fuera de las columnas de la vista para que nadie la cargue
+  a mano. Backfill 2026-07-18: 40 contactos (6 + 34).
+- 🚨 **REGLA DURA — n8n se paga por ejecución: NUNCA un `scheduleTrigger` de minutos.** El workflow
+  **`CF Leads → HubSpot Sync`** (id `NeCgwr0mM6wCI0W8`, **OFF y así se queda**) corría **cada 1 min**
+  = 1.440 ejec/día y **se comió todo el crédito de n8n**. Todo lo que dispare n8n va por **webhook**
+  (evento real: ~unidades por día) o, si no hay más remedio, un schedule **diario**. Ante la duda:
+  el productor (CF) emite el evento; n8n no encuesta.
+- 📋 **ABIERTO — Supabase ↔ HubSpot: quién manda cada campo.** HubSpot es la base *viva* (las asesoras
+  corrigen datos por teléfono); Supabase es la DB. Hoy solo hay push Supabase→HubSpot, así que **toda
+  corrección telefónica se pierde**. Decisión tomada: **NO sync bidireccional** — se reparte la
+  propiedad de cada campo y cada uno viaja en una sola dirección. Manda **Supabase**: `email_verified_at`,
+  `engagement_sent_at`, `welcome_sent_at`, `unsubscribed`, clics y todo lo derivado del motor (`bucket`,
+  `qualifies`, crédito, cuota). Manda **HubSpot**: `email`, `phone`, `assigned_advisor`, `next_step`,
+  `has_lot` y el grupo Discovery. Así el loop de eco se previene solo (el push jamás escribe un campo
+  de HubSpot). El camino de vuelta va por **webhook de HubSpot → ruta de CF en Vercel**, NO por n8n
+  (créditos). Caso jugoso: si la asesora corrige `has_lot`/ingreso hay que **re-correr el motor** y
+  devolver el `bucket`. Arrancar chico: `email`, `phone`, `has_lot`. Sesión propia.
 - **Verificar SIN browser:** API de n8n `GET /api/v1/executions?workflowId=6OkOnL6ROx9n2kH2&includeData=true`
   con header `X-N8N-API-KEY` (key en `~/Projects/XIMIA/.env` → `N8N_API_KEY` + `N8N_BASE_URL`). El `runData`
   dice qué nodo "Seg …" corrió. Para disparar pruebas: POST directo al webhook (payload = contrato de
