@@ -153,6 +153,15 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
   = 1.440 ejec/día y **se comió todo el crédito de n8n**. Todo lo que dispare n8n va por **webhook**
   (evento real: ~unidades por día) o, si no hay más remedio, un schedule **diario**. Ante la duda:
   el productor (CF) emite el evento; n8n no encuesta.
+- 🚨🚨 **ABIERTO — AUDITORÍA DE CALIFICACIÓN. ⭐ ancla: `docs/AUDITORIA_CALIFICACION_2026-07-18.md`**
+  **NO calificar los ~281 leads restantes ni correr `qualify_leads.sql` hasta resolverla.** Resumen:
+  (a) bug `first_home` arreglado sin ejecutar → 7 leads sobrecotizados 40-50%; (b) 🔴 **la tasa ADUS
+  está en 2% pero el propio `requirements_text` dice "6% por defecto"** → TODAS las cotizaciones ADUS
+  podrían estar 29% altas — decisión pendiente de Andrea; (c) el script ignora `partner_income_ars`
+  (el tool de n8n sí lo suma) → 3 leads con ADUS pese a superar el tope familiar de 6,5M;
+  (d) `has_escritura` no se filtra pese a ser requisito ADUS (24/40 sin escritura); (e) edad 18-65
+  no existe como condición. **El agente Ximia está BIEN** — el bug es solo del script batch, que es
+  una segunda implementación del mismo criterio. Falta un test de conformidad por línea de crédito.
 - 🚨 **ABIERTO / URGENTE — Bug `first_home` → ADUS mal otorgado (2026-07-18).** El ADUS de Neuquén
   Habita es `vivienda_unica` ("dirigido a quienes NO posean vivienda previa"). `qualify_leads.sql`
   tenía **`'primera_vivienda'` hardcodeado** (líneas 24 y 35) y **nunca leía `leads.first_home`** →
