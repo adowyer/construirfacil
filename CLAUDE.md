@@ -183,6 +183,45 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
     apareció por casualidad al ordenar por crédito y ver 2 filas fuera de la curva. **No existe
     ningún chequeo que valide el resultado del motor contra las condiciones del producto** — eso es
     lo que falta para que no dependa de que alguien mire bien.
+- ⭐ **Decisiones cerradas: `docs/DECISIONES.md` + candado en `scripts/test_conformidad.sql`.**
+  Registro append-only (D-001…D-009) con el *por qué* de cada decisión de negocio y el lugar exacto
+  donde vive. **Antes de escribir una migración que CAMBIE un valor existente, buscá ahí.** El candado
+  real no es el archivo: es el test, que afirma esos valores contra la DB viva y explota con el número
+  de decisión violado. Nació porque la `0076` revirtió en silencio la tasa ADUS que la `0058` había
+  fijado en un COMENTARIO → 40 créditos cotizados 29% de más. **Un comentario en prosa no es una
+  garantía.** Una entrada en DECISIONES sin assert en el test es una decisión sin candado.
+- 🗂️ **Legajo Nro. (D-009) — CONGELADO. ⭐ ancla: `docs/uocra/HANDOFF_2026-07-21.md`.**
+  `Letra + 5 dígitos`: `A` lote+anticipo · `B` lote sin anticipo · `C` sin lote con anticipo · `D`
+  ninguno; correlativo **global** desde `00050`. **299 emitidos** (`D00050`…`A00349`); `230` y `231`
+  quemados por duplicado — un número quemado no se reasigna nunca.
+  - **Se emite SOLO con `emitir_legajos()`** (migración `0101`, idempotente). A mano nunca: un legajo
+    cargado en una planilla o en HubSpot se desincroniza. Formato forzado por CHECK, unicidad por índice.
+  - **Inmutable de verdad:** `trg_legajo_inmutable` rechaza cualquier UPDATE de un legajo emitido. La
+    letra dice **cómo entró** la persona, no cómo está hoy (eso se lee de `has_lot`/`has_anticipo`).
+    Consecuencia: **no se puede retirar un legajo** — para anular uno hay que borrar la fila entera.
+  - **Sin `has_lot` o sin `has_anticipo` NO se emite.** La letra no se inventa. 67 leads sin legajo hoy:
+    21 del sindicato (falta solo el anticipo → 20 tareas creadas) y 46 de web_form (**el formulario del
+    catálogo no pregunta ni lote ni anticipo** — hueco estructural).
+  - ⚠️ **`has_anticipo` NO se deriva de `savings_amount`**: 7 personas declaran anticipo con el monto
+    vacío. Propiedad `¿Tiene anticipo?` creada en HubSpot el 21-jul (no existía dónde cargar la
+    respuesta); `savings_ars` renombrada a «💰 Monto del anticipo (ARS)». Propiedad `🗂️ Legajo Nro.` en
+    HubSpot es de **lectura**: la emite Supabase (`push_legajo_to_hubspot.py`), el sync de vuelta nunca
+    la lista.
+- 🚨 **ABIERTO — DUPLICADOS en `leads`: la dedup vive en el código, no en la base.**
+  `app/cotizar/actions.ts` chequea "¿ya existe este email?" antes de insertar; **la ingesta OCR (n8n)
+  entra por otro camino y no chequea nada** → el 1-jul insertó encima de filas de web_form de junio,
+  incluso con el email idéntico. Tampoco protege a la web contra sí misma (dos envíos con 2 minutos de
+  diferencia crearon dos filas: sin índice único, el chequeo en código pierde la carrera).
+  - **`resolve_user` (0093) está bien hecho pero opera sobre `users`, no sobre `leads`** — y `leads` es
+    la tabla que alimenta legajos y llamadas. Además es tan bueno como el dato que recibe: Bolañuk tenía
+    dos `users` porque el OCR le leyó el DNI con un dígito distinto en cada ficha.
+  - **Estado:** 2 duplicados con doble legajo eliminados (Bolañuk, Espina). **Quedan 7 leads de
+    `web_form` que son personas ya presentes en la tanda del sindicato** — no tienen legajo, pero
+    **siguen entrando a la lista de llamadas**. Listado completo en el handoff del 21-jul.
+  - **Falta el candado:** índice único por email normalizado + `duplicado_de uuid` que se llene solo al
+    insertar (teléfono+fecha de nacimiento, CUIL, `user_id`) + regla de que un duplicado no recibe
+    legajo ni entra a listas. **Es la GOLDEN RULE: la garantía va en la base por la que pasan todos los
+    caminos, no en el código de una sola aplicación.**
 - 📋 **ABIERTO — Supabase ↔ HubSpot: quién manda cada campo.** HubSpot es la base *viva* (las asesoras
   corrigen datos por teléfono); Supabase es la DB. Hoy solo hay push Supabase→HubSpot, así que **toda
   corrección telefónica se pierde**. Decisión tomada: **NO sync bidireccional** — se reparte la
@@ -193,6 +232,21 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
   de HubSpot). El camino de vuelta va por **webhook de HubSpot → ruta de CF en Vercel**, NO por n8n
   (créditos). Caso jugoso: si la asesora corrige `has_lot`/ingreso hay que **re-correr el motor** y
   devolver el `bucket`. Arrancar chico: `email`, `phone`, `has_lot`. Sesión propia.
+  - **✅ IMPLEMENTADO como script manual: `scripts/sync_hubspot_to_supabase.py`** (no webhook todavía).
+    Dry-run por defecto, backup antes de escribir, **nunca agendado**. Alcance `sindicato_uocra` +
+    `web_form`.
+  - ⚠️ **La versión del 20-jul matcheaba SOLO por teléfono** → enlazó 261 de 321 y dejó ~60 leads sin
+    corrección ni vínculo, **sin que apareciera en ningún reporte**. Punto ciego invisible. Corregido
+    el 21-jul con una **escalera de match** (solo candidato único):
+    `synced_hubspot_id` → teléfono → **DNI + ≥1 palabra del nombre** → nombre completo idéntico.
+    El nombre en el escalón del DNI **no es adorno**: el DNI de Supabase puede estar desactualizado y
+    coincidir con el DNI correcto de otra persona (caso Ramirez/García) → sincronizaría la ficha
+    equivocada sin que nadie se entere.
+  - **Arbitraje por dígito verificador del CUIL** cuando los dos lados discrepan en identidad: por
+    defecto manda HubSpot (acertó 25/25 en la muestra verificada), y solo se frena si el CUIL lo
+    **desmiente aritméticamente**. Aplicar D-008 a ciegas en el grupo que nadie tocó a mano pisaría
+    datos buenos con rotos. ⚠️ Hay **29 CUIL en HubSpot con verificador inválido** (a confirmar en la
+    llamada; NO recalcular el dígito solo: el prefijo 20/23/24/27 depende de la persona).
 - **Verificar SIN browser:** API de n8n `GET /api/v1/executions?workflowId=6OkOnL6ROx9n2kH2&includeData=true`
   con header `X-N8N-API-KEY` (key en `~/Projects/XIMIA/.env` → `N8N_API_KEY` + `N8N_BASE_URL`). El `runData`
   dice qué nodo "Seg …" corrió. Para disparar pruebas: POST directo al webhook (payload = contrato de
