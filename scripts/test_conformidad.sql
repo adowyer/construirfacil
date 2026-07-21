@@ -164,6 +164,55 @@ begin
 end $$;
 
 -- -----------------------------------------------------------------------------
+-- PARTE 3 — D-009 · Legajo Nro. (formato, unicidad, alcance y CONGELADO)
+-- -----------------------------------------------------------------------------
+do $$
+declare errs text[] := '{}'; n integer;
+begin
+  -- El candado del congelado. Si el trigger no está, el legajo se puede pisar y
+  -- la decisión "no cambia nunca" pasa a ser una promesa en prosa.
+  select count(*) into n from pg_trigger
+   where tgrelid = 'public.leads'::regclass and tgname = 'trg_legajo_inmutable' and not tgisinternal;
+  if n = 0 then
+    errs := errs || 'D-009: falta el trigger trg_legajo_inmutable → el legajo dejó de ser congelado.';
+  end if;
+
+  select count(*) into n from pg_proc
+   where pronamespace = 'public'::regnamespace and proname = 'emitir_legajos';
+  if n = 0 then
+    errs := errs || 'D-009: falta la función emitir_legajos() → alguien está emitiendo legajos por otro camino.';
+  end if;
+
+  select count(*) into n from public.leads
+   where legajo_nro is not null and legajo_nro !~ '^[A-D][0-9]{5}$';
+  if n > 0 then errs := errs || format('D-009: %s legajos con formato inválido (esperado Letra+5 dígitos)', n); end if;
+
+  select count(*) into n from (
+    select legajo_nro from public.leads where legajo_nro is not null
+     group by legajo_nro having count(*) > 1) d;
+  if n > 0 then errs := errs || format('D-009: %s legajos DUPLICADOS', n); end if;
+
+  select count(*) into n from public.leads
+   where legajo_nro is not null and substring(legajo_nro from 2)::integer < 50;
+  if n > 0 then errs := errs || format('D-009: %s legajos por debajo de 00050 (la numeración arranca en 50)', n); end if;
+
+  -- Alcance: web_chat es el laboratorio del agente, no son personas.
+  select count(*) into n from public.leads where legajo_nro is not null and source = 'web_chat';
+  if n > 0 then errs := errs || format('D-009: %s legajos emitidos a leads de web_chat (lab, no son personas)', n); end if;
+
+  -- Sin los dos datos no hay letra. Si aparece uno acá, alguien la inventó.
+  select count(*) into n from public.leads
+   where legajo_nro is not null and (has_lot is null or has_anticipo is null);
+  if n > 0 then errs := errs || format('D-009: %s legajos emitidos sin has_lot/has_anticipo → la letra se inventó', n); end if;
+
+  if array_length(errs,1) > 0 then
+    raise exception E'❌ CONFORMIDAD ROTA — Legajo Nro.:\n  - %\n\nVer docs/DECISIONES.md D-009.',
+      array_to_string(errs, E'\n  - ');
+  end if;
+  raise notice '✅ PARTE 3 — Legajo Nro. conforme (D-009).';
+end $$;
+
+-- -----------------------------------------------------------------------------
 -- Estado vivo, para mirar de reojo después de correr el test.
 -- -----------------------------------------------------------------------------
 select bank_name, product_name, destination,

@@ -121,6 +121,32 @@ estaba decidido debe ser preguntado puntual y claramente."*
   arregla ahí, no en la calificación. 1 de los 40 contactados (Gonzalez Ricardo Ulises) directamente
   no tiene fecha cargada.
 
+## D-009 · Legajo Nro. — Letra + 5 dígitos, CONGELADO
+
+- **Decidido:** 2026-07-21 (Andrea).
+- **Vive en:** `leads.legajo_nro` + `public.emitir_legajos()` + secuencia `legajo_seq`
+  (migración `0101`). Candado: trigger `trg_legajo_inmutable` + CHECK de formato + índice único.
+- **Formato:** 6 caracteres. `A` lote+anticipo · `B` lote sin anticipo · `C` sin lote con anticipo ·
+  `D` ninguno. Número correlativo **global** de 5 dígitos desde **00050** (arranca en 50, no en 1).
+- **CONGELADO:** emitido una vez, no cambia nunca. Si después consigue el lote, sigue siendo
+  `D00050`. La letra dice **cómo entró**, no cómo está hoy. Razón: el legajo es una identidad —
+  se anota en un cuaderno, se dice por teléfono, se manda por mail; un identificador que muta deja
+  huérfano todo lo escrito antes. La situación actual se lee de `has_lot`/`has_anticipo`.
+  Descartada la alternativa "reemitir".
+- **Alcance:** `sindicato_uocra` + `web_form`. Andrea, 2026-07-21: *"debemos empezar a llamar también
+  a esos"*. Queda afuera `web_chat` (pruebas del lab, no son personas).
+- **Sin `has_lot` o sin `has_anticipo` → NO se emite legajo.** La letra no se inventa. Se emite solo
+  en cuanto la asesora carga el dato, volviendo a llamar a `emitir_legajos()` (es idempotente).
+- **`has_anticipo` NO se deriva de `savings_amount`** — medido 2026-07-21: de 300 leads con el
+  booleano cargado, 8 no coinciden con "monto > 0", y **7 de esos 8 tienen `has_anticipo=true` con
+  el monto vacío** (dijeron que tienen anticipo sin declarar cuánto). Derivarlo les cambiaría la
+  letra por un dato que nunca dieron. Además 65 de los 74 sin booleano tampoco tienen monto: la
+  derivación ni siquiera resolvía el problema. Descartada por evidencia.
+- **Nunca a mano.** Todo legajo sale de `emitir_legajos()`. Un legajo cargado en una planilla o en
+  HubSpot se desincroniza — la misma clase de falla que D-001.
+- **Propiedad (D-008):** lo emite **Supabase**; HubSpot lo lee. `sync_hubspot_to_supabase.py` no
+  debe listarlo jamás.
+
 ## D-006 · Alcance declarado: qué NO pre-califica Ximia
 
 - **Decidido:** 2026-07-20.
