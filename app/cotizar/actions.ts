@@ -166,12 +166,20 @@ export async function submitLead(
   // él. Acá hay email (obligatorio) → resuelve por email; el DNI se enganchará
   // en el cálculo financiero y colapsará si hace falta. (phone va como dato, NO
   // como llave: las familias lo comparten.)
-  const { data: userId } = await admin.rpc('resolve_user', {
+  const { data: userId, error: resolveErr } = await admin.rpc('resolve_user', {
     p_email: email,
     p_phone: phone || null,
     p_name: name,
     p_source: 'catalog',
   })
+  if (resolveErr) {
+    // NO abortamos: acá el lead vale más que su vínculo con users. Si el
+    // resolvedor falla, seguimos con user_id: null (backfilleable por email)
+    // en vez de perder el lead. Pero LO LOGUEAMOS — tragarse este error en
+    // silencio es lo que abrió la ventana de junio (leads sin user_id sin que
+    // nadie se enterara). A diferencia del gate/OTP, que sí aborta.
+    console.error('[cotizar] resolve_user:', resolveErr.message)
+  }
 
   // Payload completo para INSERT. Para el ENRICH (lead repetido) derivamos un
   // subconjunto más abajo. user_id va en el payload → cubre insert Y enrich.

@@ -222,6 +222,21 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
     insertar (teléfono+fecha de nacimiento, CUIL, `user_id`) + regla de que un duplicado no recibe
     legajo ni entra a listas. **Es la GOLDEN RULE: la garantía va en la base por la que pasan todos los
     caminos, no en el código de una sola aplicación.**
+  - **✅ Parche parcial (2026-07-23): la falla ya no es MUDA.** `app/cotizar/actions.ts:169` se tragaba
+    en silencio el error de `resolve_user` → escribía `user_id: null` sin loguear nada. **Eso** fue lo
+    que dejó pasar la ventana de junio sin que nadie lo viera. Ahora captura `resolveErr` y lo loguea
+    (`console.error('[cotizar] resolve_user:', …)`) pero **sigue** con `user_id: null` — el lead vale
+    más que su vínculo con `users`, y el null se backfillea por email. **Esto solo hace VISIBLE la
+    falla; NO cierra el hueco de duplicados.** El candado real (índice único + `duplicado_de`) sigue
+    pendiente.
+  - 🅾️ **La ingesta OCR está EN PAUSA (2026-07-23) — no entran leads nuevos por ese camino por ahora.**
+    Es la razón por la que el hueco puede quedar abierto sin urgencia. **⚠️ ANTES de reactivar el OCR
+    de fichas (n8n), cerrar el candado de base**: (1) índice único por email normalizado + `duplicado_de`
+    autopoblado, (2) que el path OCR pase por el MISMO chequeo de dedup que `cotizar` (o mejor: que la
+    garantía viva en la base, no en cada app), (3) reprocesar/limpiar los 7 duplicados `web_form`↔sindicato
+    que aún entran a listas. **El OCR entra por otro camino que NO chequea nada** — reactivarlo sin esto
+    reproduce el 1-jul (inserts encima de filas existentes con el mismo email). No es "arreglado", es
+    "desactivado y visible".
 - 📋 **ABIERTO — Supabase ↔ HubSpot: quién manda cada campo.** HubSpot es la base *viva* (las asesoras
   corrigen datos por teléfono); Supabase es la DB. Hoy solo hay push Supabase→HubSpot, así que **toda
   corrección telefónica se pierde**. Decisión tomada: **NO sync bidireccional** — se reparte la
