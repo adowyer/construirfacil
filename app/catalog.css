@@ -10207,3 +10207,131 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
 .cf-provincia-modal-skip:hover {
   color: #0a0a0a;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Ad slots (Google Ad Manager). Wrappers que ANCLAN cada slot al layout
+ * del sitio (ancho del buscador = 1500, alto del slider = 420). Los
+ * tamaños listados abajo son los REALES (no IAB) — matchean lo que sirve
+ * GAM y lo que reserva <AdSlot>. Ver docs/media-kit.md y lib/ads/slots.ts.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.cf-ad-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* Billboard 1500×386 (IAB 970×250, ajustado al ancho del buscador). Padding
+   lateral matchea el ritmo del HeroRow abajo (clamp(24px, 5vw, 80px)); el
+   creativo se centra y toca el borde interior del buscador. */
+.cf-ad-wrap--home-top {
+  padding: 12px clamp(24px, 5vw, 80px);
+  margin-top: 8px;
+}
+.cf-ad-wrap--home-top .cf-ad-slot,
+.cf-ad-wrap--home-top .cf-ad-slot > div {
+  width: 100% !important;
+  max-width: 1500px;
+  height: auto !important;
+  aspect-ratio: 1500 / 386;
+}
+
+/* Super-leaderboard 1500×139. Mismo anclaje que home_top pero más plano —
+   pega justo arriba del StickyFilters sin cortar aire. */
+.cf-ad-wrap--catalog-top {
+  padding: 8px clamp(24px, 5vw, 80px) 12px;
+}
+.cf-ad-wrap--catalog-top .cf-ad-slot,
+.cf-ad-wrap--catalog-top .cf-ad-slot > div {
+  width: 100% !important;
+  max-width: 1500px;
+  height: auto !important;
+  aspect-ratio: 1500 / 139;
+}
+
+/* Inline 1200×148 entre grupos de líneas. Ancho al de la grilla (max 1200)
+   para no exceder los model rows. */
+.cf-ad-wrap--content-inline {
+  padding: 24px clamp(24px, 5vw, 80px);
+  margin: 16px 0;
+}
+.cf-ad-wrap--content-inline .cf-ad-slot,
+.cf-ad-wrap--content-inline .cf-ad-slot > div {
+  width: 100% !important;
+  max-width: 1200px;
+  height: auto !important;
+  aspect-ratio: 1200 / 148;
+}
+
+/* Slides-ad DENTRO del HeroRow marquee. Height = 420px (el del track) para
+   que no rompan el ritmo horizontal. Ancho = el del creativo real. Los tres
+   variantes comparten la base; solo cambia el ancho. */
+.cf-hero-row-slide-ad {
+  flex: 0 0 auto;
+  align-self: center;
+  aspect-ratio: auto;
+  height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+.cf-hero-row-slide-ad--main       { width: 210px; }  /* 300×600 → 210×420 */
+.cf-hero-row-slide-ad--secondary  { width: 112px; }  /* 160×600 → 112×420 */
+/* Stack de DOS 252×210 apilados verticalmente: 210+210=420 exactos (altura
+   del slider). Cada slot es una impresión GAM independiente — mismo slotId,
+   distinto divId. justify-content:space-between los pega arriba y abajo del
+   contenedor con cero gap para calzar los 420 sin overflow. */
+.cf-hero-row-slide-ad--half-stack {
+  width: 252px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0;
+}
+.cf-hero-row-slide-ad--half-stack .cf-ad-slot,
+.cf-hero-row-slide-ad--half-stack .cf-ad-slot > div {
+  width: 252px !important;
+  height: 210px !important;
+}
+.cf-hero-row-slide-ad:not(.cf-hero-row-slide-ad--half-stack) .cf-ad-slot,
+.cf-hero-row-slide-ad:not(.cf-hero-row-slide-ad--half-stack) .cf-ad-slot > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Placeholder de desarrollo — visible solo cuando NEXT_PUBLIC_GAM_NETWORK_ID
+   está vacía. El <AdSlot> genera el fondo rayado con inline styles; este
+   selector fuerza que herede width/height del wrapper (los inline styles
+   se sobreescriben con las reglas de arriba). */
+.cf-ad-slot--placeholder {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Mobile sticky: 300x50 fijo abajo. Oculto en desktop. Padding-bottom
+   dinámico sobre <body> queda fuera de scope acá — cuando GAM sirva ads
+   reales conviene medir si el catálogo pierde CTAs abajo, y en ese caso
+   agregar `body { padding-bottom: 60px }` bajo la misma media query. */
+.cf-ad-mobile-sticky {
+  display: none;
+}
+@media (max-width: 767px) {
+  .cf-ad-mobile-sticky {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 4px 0;
+    /* Reserva vertical: 50 (creativo) + 8 (padding) = 58px total. */
+    height: 58px;
+  }
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import { cookies, headers } from 'next/headers'
+import Script from 'next/script'
 import './globals.css'
 import XimiaWidget from '@/components/ximia/XimiaWidget'
 import { ProvinciaProvider } from '@/components/providers/ProvinciaProvider'
@@ -8,6 +9,12 @@ import { getProvinciasCached } from '@/lib/supabase/queries/provincias-cached'
 import { getNonOperativeProvinciaIds } from '@/lib/supabase/queries/operative-provincias'
 import { detectProvinciaSlug } from '@/lib/geo/detect-provincia'
 import { PROVINCIA_COOKIE } from '@/lib/cookies/provincia'
+
+// GAM (Google Ad Manager) kill-switch: si `NEXT_PUBLIC_GAM_NETWORK_ID` está
+// vacía, no cargamos gpt.js — cero bytes desperdiciados mientras Andrea
+// espera la aprobación de AdSense. Cuando llegue el Network ID, con setearla
+// alcanza: los <AdSlot> ya sembrados en el sitio se activan solos.
+const GAM_NETWORK_ID = process.env.NEXT_PUBLIC_GAM_NETWORK_ID ?? ''
 
 const geist = Geist({
   subsets: ['latin'],
@@ -74,6 +81,18 @@ export default async function RootLayout({
               context de la conversación. */}
           <XimiaWidget />
         </ProvinciaProvider>
+
+        {/* Google Publisher Tags — carga sólo si hay Network ID configurado.
+            afterInteractive: el sitio ya renderizó y es interactivo antes de
+            pedir el script (protege TTI/LCP). Sin ID → no se emite el tag. */}
+        {GAM_NETWORK_ID && (
+          <Script
+            id="gpt-loader"
+            src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
+            strategy="afterInteractive"
+            async
+          />
+        )}
       </body>
     </html>
   )

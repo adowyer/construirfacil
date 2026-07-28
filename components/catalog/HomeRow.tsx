@@ -24,6 +24,8 @@ import {
   type EffectiveHomeSlide,
 } from '@/lib/content/home-defaults'
 import { ensureHtml } from '@/lib/content/rich'
+import AdSlot from '@/components/ads/AdSlot'
+import { AD_SLOTS } from '@/lib/ads/slots'
 
 interface HomeRowProps {
   homeSlides: HomeSlide[]
@@ -170,9 +172,9 @@ export default function HomeRow({
     .map((s, i) => ({ s, i }))
     .sort((a, b) => a.s.sort_order - b.s.sort_order || a.i - b.i)
     .map(({ s }) => s)
-  // +1 por el CatalogCtaSlide hardcoded que inyectamos entre home-1 y home-2
-  // (banner rojo "Mirá nuestro catálogo"). Cada set A/B tiene N slides + 1 CTA.
-  const numSlides = slides.length + 1
+  // Conteo REAL de children del set A (rAF loop lo usa para el wraparound):
+  //   slides.length + 1 (CatalogCtaSlide rojo) + 3 (ad-main / secondary / half-stack)
+  const numSlides = slides.length + 1 + 3
 
   useEffect(() => {
     if (!trackRef.current) return
@@ -237,9 +239,26 @@ export default function HomeRow({
                 onVerCatalogo={onVerCatalogo}
               />
             )}
+            {s.slide_key === 'home-3' && (
+              <div key="a-ad-half" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack">
+                <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+                <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+              </div>
+            )}
+            {s.slide_key === 'home-4' && (
+              <div key="a-ad-secondary" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary">
+                <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
+              </div>
+            )}
+            {s.slide_key === 'home-5' && (
+              <div key="a-ad-main" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--main">
+                <AdSlot slotId={AD_SLOTS.hero_scroll_main.id} sizes={AD_SLOTS.hero_scroll_main.sizes} />
+              </div>
+            )}
             <HomeRowSlide slide={s} onVerCatalogo={onVerCatalogo} />
           </Fragment>
         ))}
+
         {slides.map((s) => (
           <Fragment key={`b-${s.key}`}>
             {s.slide_key === 'home-2' && (
@@ -247,6 +266,22 @@ export default function HomeRow({
                 key="b-catalog-cta"
                 onVerCatalogo={onVerCatalogo}
               />
+            )}
+            {s.slide_key === 'home-3' && (
+              <div key="b-ad-half" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack">
+                <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+                <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+              </div>
+            )}
+            {s.slide_key === 'home-4' && (
+              <div key="b-ad-secondary" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary">
+                <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
+              </div>
+            )}
+            {s.slide_key === 'home-5' && (
+              <div key="b-ad-main" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--main">
+                <AdSlot slotId={AD_SLOTS.hero_scroll_main.id} sizes={AD_SLOTS.hero_scroll_main.sizes} />
+              </div>
             )}
             <HomeRowSlide slide={s} onVerCatalogo={onVerCatalogo} />
           </Fragment>

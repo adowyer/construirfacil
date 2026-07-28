@@ -16,6 +16,8 @@ import type {
 } from '@/lib/supabase/queries/header_content'
 import { HEADER_DEFAULTS } from '@/lib/content/header-defaults'
 import { useInViewport } from '@/lib/hooks/useInViewport'
+import AdSlot from '@/components/ads/AdSlot'
+import { AD_SLOTS } from '@/lib/ads/slots'
 
 type HeroBullet = { name: string; body: string }
 type HeroSection = {
@@ -797,11 +799,22 @@ export default function HeroRow({
     return () => clearTimeout(t)
   }, [principalIdx, animatedCenterSlide])
 
-  // 5 singletons + N cards de línea (DB si hay, sino las hardcoded).
+  // numSlides = conteo REAL de children del set A (rAF loop lo usa como
+  // `setBStart = track.children[numSlides]` para el wraparound sin saltos).
+  // Cualquier under-count rompe el marquee: el loop cierra sobre un child
+  // del set A en vez del primero del set B → salta al principio en lugar
+  // de teleportar invisible.
+  //
+  // Componentes:
+  //   6 fijos: pasos, crece, principal, catalog-cta (rojo), flex, lineas-intro
+  //   + linea-cards (N si DB, sino LINEAS hardcoded.length = 3)
+  //   + dbBanners (M)
+  //   + 3 ads siempre (hero_scroll_main / secondary / half-stack)
   const numSlides =
-    5 +
+    6 +
     (dbLineaCards.length > 0 ? dbLineaCards.length : lineasResolved.length) +
-    dbBanners.length
+    dbBanners.length +
+    3
 
   // snapTo(i) busca la copia de slide i más cercana al scrollLeft actual
   // (set A o set B duplicado) — evita rebobinar cuando el carousel ya pasó
@@ -962,8 +975,25 @@ export default function HeroRow({
           </span>
         </div>
       </div>
+      {/* AD: hero_scroll_half — ½ altura después del CTA rojo. Rompe ritmo
+          alto/alto sin ocupar toda la altura del track. */}
+      <div
+        key={`${keyPrefix}-ad-half`}
+        className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack"
+      >
+        <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+        <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+      </div>
       <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
         <SlideFlex s={sFlex} onOpenModal={() => { if (flexSection) setModalSection(flexSection) }} onVerCatalogo={onVerCatalogo} />
+      </div>
+      {/* AD: hero_scroll_secondary — skyscraper delgado (112×420) después
+          del Flex, antes de la sección de líneas. */}
+      <div
+        key={`${keyPrefix}-ad-secondary`}
+        className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary"
+      >
+        <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
       </div>
       <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
         <SlideLineasIntro s={sLineasIntro} />
@@ -1010,6 +1040,19 @@ export default function HeroRow({
           />
         </div>
       ))}
+      {/* AD: hero_scroll_main — skyscraper 210×420 al final del set, después
+          de las líneas y banners. Es el más grande visualmente, cierra el
+          scroll con presencia. Los otros 2 skyscrapers ya están intercalados
+          arriba (half después del CTA rojo, secondary después de Flex). */}
+      <div
+        key={`${keyPrefix}-ad-main`}
+        className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--main"
+      >
+        <AdSlot
+          slotId={AD_SLOTS.hero_scroll_main.id}
+          sizes={AD_SLOTS.hero_scroll_main.sizes}
+        />
+      </div>
     </>
     )
   }

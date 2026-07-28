@@ -48,6 +48,9 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import CatalogFooter from './CatalogFooter'
 import { useRouter } from 'next/navigation'
+import AdSlot from '@/components/ads/AdSlot'
+import AdPageTargeting from '@/components/ads/AdPageTargeting'
+import { AD_SLOTS } from '@/lib/ads/slots'
 import HomeRow from './HomeRow'
 import type { HomeSlide } from '@/lib/supabase/queries/home_content'
 import CotizarModal from './CotizarModal'
@@ -877,6 +880,13 @@ export default function CatalogPage({
         }
       />
 
+      {/* ── Targeting global GAM: page_type + provincia + marca. Reactivo.
+          No renderea nada (return null). No-op sin Network ID. ── */}
+      <AdPageTargeting
+        pageType={phase === 'home' ? 'home' : 'catalog'}
+        marcaSlug={selectedMarca?.slug ?? null}
+      />
+
       {/* ── Hero row: primera fila siempre desplegada ── */}
       <HeroRow
         brandContent={brandContent}
@@ -895,6 +905,16 @@ export default function CatalogPage({
             : undefined
         }
       />
+
+      {/* ── AD SLOT: home_top (1500×386) — ENTRE los dos sliders (HeroRow
+          arriba, HomeRow abajo), sólo en phase=home. El shell del catálogo
+          está en el medio pero colapsado a 0 height cuando phase=home, así
+          que visualmente queda pegado entre los dos rows. ── */}
+      {phase === 'home' && (
+        <div className="cf-ad-wrap cf-ad-wrap--home-top">
+          <AdSlot slotId={AD_SLOTS.home_top.id} sizes={AD_SLOTS.home_top.sizes} />
+        </div>
+      )}
 
       {/* ── Catálogo en shell expandible, ARRIBA del HomeSlider.
           Cuando se abre, empuja al HomeSlider hacia abajo (flow natural).
@@ -916,6 +936,11 @@ export default function CatalogPage({
               catalogFadingOut ? ' is-out' : ''
             }`}
           >
+          {/* ── AD SLOT: catalog_top (970×90) — arriba de los filtros. ── */}
+          <div className="cf-ad-wrap cf-ad-wrap--catalog-top">
+            <AdSlot slotId={AD_SLOTS.catalog_top.id} sizes={AD_SLOTS.catalog_top.sizes} />
+          </div>
+
           <StickyFilters
             bedFilters={bedFilters}
             sizeFilters={sizeFilters}
@@ -1118,6 +1143,19 @@ export default function CatalogPage({
               )
             })}
 
+            {/* AD SLOT: content_inline (728×90 desktop, 300×250 mobile) —
+                cada 3 líneas del catálogo, después del último modelo del grupo.
+                gi es el índice del grupo (0-based). */}
+            {(gi + 1) % 3 === 0 && (
+              <div className="cf-ad-wrap cf-ad-wrap--content-inline">
+                <AdSlot
+                  slotId={AD_SLOTS.content_inline.id}
+                  sizes={AD_SLOTS.content_inline.sizes}
+                  targeting={{ position: `after_group_${gi + 1}` }}
+                />
+              </div>
+            )}
+
             {/* Banners intermedios entre líneas (variant='inline'). Solo
                 renderean si el founder agregó un admin promo para ese slot
                 desde /admin/promos. No hay fallback hardcoded — los inline
@@ -1289,6 +1327,13 @@ export default function CatalogPage({
           router.refresh() y la cookie reactiva todo. Acá pasamos onClose
           para que el visitante pueda volver al listado sin verificarse. */}
       {showGate && <CatalogGate onClose={() => setShowGate(false)} />}
+
+      {/* ── AD SLOT: mobile_sticky (300×50) — persistente en el borde inferior
+          del viewport, MOBILE-ONLY (oculto en desktop vía CSS). Debe estar
+          fuera del shell del catálogo para sobrevivir cambios de fase. ── */}
+      <div className="cf-ad-mobile-sticky">
+        <AdSlot slotId={AD_SLOTS.mobile_sticky.id} sizes={AD_SLOTS.mobile_sticky.sizes} />
+      </div>
     </>
   )
 }
