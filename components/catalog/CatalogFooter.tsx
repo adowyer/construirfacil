@@ -121,6 +121,10 @@ interface CatalogFooterProps {
    *  de marca del marquee. Esas cards solo tienen sentido cuando el visitante
    *  está dentro del catálogo de una marca específica. */
   hideMarcaCards?: boolean
+  /** Si true, oculta el bloque "Diseñamos tu casa a medida." + CTAs.
+   *  Se usa en la home para no duplicar CTA de contacto con los banners
+   *  de arriba; el cierre queda solo cuando el visitante entró al catálogo. */
+  hideCierre?: boolean
   /** Cierre + institucional editable (singleton CF). null → hardcoded. */
   footerContent?: FooterContentRow | null
 }
@@ -132,6 +136,7 @@ export default function CatalogFooter({
   institutionalFooterCards = [],
   onOpenModel,
   hideMarcaCards = false,
+  hideCierre = false,
   footerContent = null,
 }: CatalogFooterProps) {
   // Modal genérico de contacto (reemplaza el mailto del CTA primario y del
@@ -141,41 +146,45 @@ export default function CatalogFooter({
   return (
     <footer className="cf-footer">
       {/* ── Capa "cemento": cierre con CTAs, ancho restringido (no full-bleed),
-          sin copy descriptivo. ─────────────────────────────────────────── */}
-      <section className="cf-footer-cierre cf-footer-cierre-narrow">
-        <div className="cf-footer-cierre-inner">
-          {footerContent?.eyebrow && (
-            <p className="cf-footer-cierre-eyebrow">
-              {footerContent.eyebrow}
-            </p>
-          )}
-          <h2 className="cf-footer-cierre-title">
-            {footerContent?.title || 'Diseñamos tu casa a medida.'}
-          </h2>
-          <div className="cf-footer-cierre-ctas">
-            <button
-              type="button"
-              className="cf-footer-cta-primary"
-              onClick={() => setContactarOpen(true)}
-            >
-              {footerContent?.cta_primary_label || 'Contactanos →'}
-            </button>
-            {XIMIA_ENABLED && (
-              <a
-                className="cf-footer-cta-secondary"
-                href={getAsesorHref()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (requestOpenXimiaWidget('footer')) e.preventDefault()
-                }}
-              >
-                {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
-              </a>
+          sin copy descriptivo. En la home se oculta (hideCierre) porque los
+          banners rojos de arriba ya cubren el CTA "Mirá nuestro catálogo".
+          Queda solo cuando el visitante entró al catálogo. ─────────────── */}
+      {!hideCierre && (
+        <section className="cf-footer-cierre cf-footer-cierre-narrow">
+          <div className="cf-footer-cierre-inner">
+            {footerContent?.eyebrow && (
+              <p className="cf-footer-cierre-eyebrow">
+                {footerContent.eyebrow}
+              </p>
             )}
+            <h2 className="cf-footer-cierre-title">
+              {footerContent?.title || 'Diseñamos tu casa a medida.'}
+            </h2>
+            <div className="cf-footer-cierre-ctas">
+              <button
+                type="button"
+                className="cf-footer-cta-primary"
+                onClick={() => setContactarOpen(true)}
+              >
+                {footerContent?.cta_primary_label || 'Contactanos →'}
+              </button>
+              {XIMIA_ENABLED && (
+                <a
+                  className="cf-footer-cta-secondary"
+                  href={getAsesorHref()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    if (requestOpenXimiaWidget('footer')) e.preventDefault()
+                  }}
+                >
+                  {footerContent?.cta_secondary_label || 'Conversar con Ximia'}
+                </a>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <ReservarModal
         open={contactarOpen}

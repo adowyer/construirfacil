@@ -31,11 +31,14 @@ type SlideVariant =
 
 // Estilos por slide (index-based). Mezcla fondos sólidos + fotos + anchos
 // variables para que el slider tenga ritmo visual estilo HeroRow.
+// TODOS los slides llevan CTA "Ver catálogo": la home tiene que empujar al
+// catálogo desde cualquier tarjeta, no solo desde 3 de 5. Testeos de user
+// mostraban que el CTA se perdía cuando algunos slides no tenían salida.
 const SLIDE_VARIANTS: SlideVariant[] = [
   { variant: 'dark-wide', showCta: true },              // 0. Todo en Uno
-  { variant: 'photo', photoUrl: '/home/4.jpeg' },       // 1. Atención 24/7
+  { variant: 'photo', photoUrl: '/home/4.jpeg', showCta: true },       // 1. Atención 24/7
   { variant: 'olive', showCta: true },                  // 2. Garantía Real
-  { variant: 'cream-wide' },                            // 3. Financiación
+  { variant: 'cream-wide', showCta: true },             // 3. Financiación
   { variant: 'photo-cta', photoUrl: '/home/1.jpeg', showCta: true }, // 4. Elegí tu casa
 ]
 

@@ -193,7 +193,13 @@ function StepsFooter() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Slide 1: Pasos (Olive Solid)
-function SlidePasos({ s }: { s?: HeaderSlide }) {
+// El diseño ya está saturado con el flow visual de 4 columnas + flechas
+// de color; no cabe un CTA extra sin romper el ritmo. En cambio, el
+// PRIMER step ("ELEGÍ >") sí actúa como link al catálogo cuando estamos
+// en modo home — la flecha roja + "Elegí la línea..." del copy lo hace
+// leerse como CTA implícito, y así no confundimos con "es solo texto".
+// Los steps 2-4 siguen siendo divs (son pasos posteriores del flow).
+function SlidePasos({ s, onVerCatalogo }: { s?: HeaderSlide, onVerCatalogo?: () => void }) {
   return (
     <div className="cf-hero-slide-card cf-slide-base cf-slide-solid cf-slide-solid-olive cf-slide-solid-pasos">
       <h2 className="cf-slide-title-pasos">
@@ -204,7 +210,17 @@ function SlidePasos({ s }: { s?: HeaderSlide }) {
           <p className="cf-pasos-text">
             Elegí la línea de la casa que te gusta y nuestro Agente de Inteligencia Artificial te ayudará a alcanzarla.
           </p>
-          <div className="cf-step-item">ELEGÍ <img src="/Flecha-Roja.png" className="cf-step-arrow-img" alt="" /></div>
+          {onVerCatalogo ? (
+            <button
+              type="button"
+              className="cf-step-item cf-step-item--btn"
+              onClick={onVerCatalogo}
+            >
+              ELEGÍ <img src="/Flecha-Roja.png" className="cf-step-arrow-img" alt="" />
+            </button>
+          ) : (
+            <div className="cf-step-item">ELEGÍ <img src="/Flecha-Roja.png" className="cf-step-arrow-img" alt="" /></div>
+          )}
         </div>
 
         <div className="cf-paso-col">
@@ -286,6 +302,10 @@ function SlideCrece({ growthPairs, onOpenModal, onVerCatalogo, s }: { growthPair
 // izquierda en cascada continua (CSS).
 const PRINCIPAL_TEXT = HEADER_DEFAULTS.principal?.title ?? ''
 
+// El slide Principal es full-clickable (el div contenedor tiene
+// onClick={onVerCatalogo}). No metemos botón visible acá porque
+// competía con el StepsFooter y pisaba el diseño — el diseño mismo
+// invita al click en el card entero.
 function SlidePrincipal({ s }: { s?: HeaderSlide }) {
   const text = s?.title || PRINCIPAL_TEXT
   const boldTerm = s?.bold_term ?? null
@@ -889,7 +909,7 @@ export default function HeroRow({
     return (
     <>
       <div key={`${keyPrefix}-pasos`} className="cf-hero-row-slide cf-hero-row-slide-section">
-        <SlidePasos s={sPasos} />
+        <SlidePasos s={sPasos} onVerCatalogo={onVerCatalogo} />
       </div>
       <div key={`${keyPrefix}-crece`} className="cf-hero-row-slide cf-hero-row-slide-split">
         <SlideCrece growthPairs={growthPairs} s={sCrece} onOpenModal={() => { if (creceSection) setModalSection(creceSection) }} onVerCatalogo={onVerCatalogo} />
@@ -913,6 +933,34 @@ export default function HeroRow({
         style={onVerCatalogo ? { cursor: 'pointer' } : undefined}
       >
         <SlidePrincipal s={sPrincipal} />
+      </div>
+      <div
+        key={`${keyPrefix}-catalog-cta`}
+        className="cf-hero-row-slide cf-catalog-cta-slide"
+        onClick={onVerCatalogo}
+        role={onVerCatalogo ? 'button' : undefined}
+        tabIndex={onVerCatalogo ? 0 : undefined}
+        aria-label={onVerCatalogo ? 'Ver catálogo' : undefined}
+        onKeyDown={
+          onVerCatalogo
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onVerCatalogo()
+                }
+              }
+            : undefined
+        }
+      >
+        <div className="cf-catalog-cta-content">
+          <p className="cf-catalog-cta-eyebrow">Elegí tu casa</p>
+          <h3 className="cf-catalog-cta-title">
+            Mirá nuestro catálogo
+          </h3>
+          <span className="cf-catalog-cta-arrow" aria-hidden="true">
+            →
+          </span>
+        </div>
       </div>
       <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
         <SlideFlex s={sFlex} onOpenModal={() => { if (flexSection) setModalSection(flexSection) }} onVerCatalogo={onVerCatalogo} />

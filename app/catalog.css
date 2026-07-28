@@ -4457,7 +4457,7 @@ body:has(.cf-row.cf-expanded) {
    blancos de filtros. Activo = verde más oscuro. Compound selector para
    ganarle a .cf-stf-pill:hover (que también es 0,2,0). */
 .cf-stf-pill.cf-stf-pill-ofertas {
-  background: #00b070;
+  background: #ff003d;
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -4593,37 +4593,112 @@ body:has(.cf-row.cf-expanded) {
   max-height: 420px;
 }
 
-/* Botón "Ver más" reutilizable (sobre fondo claro). Variante -light para */
-/* fondos oscuros (slide principal sobre SVG dark).                         */
+/* ── Banner rojo "Mirá nuestro catálogo" ─────────────────────────────────────
+   Slide chico full-red intercalado en HeroRow (después de "La casa que
+   querés…") y en HomeRow (antes de "Atención 24/7"). Full-clickable — no
+   compite con un botón interno. Ancho angosto (mismo clamp que los slides
+   narrow del HomeRow) para que se lea como un CTA acentuado, no como un
+   card editorial más. */
+.cf-catalog-cta-slide {
+  aspect-ratio: auto !important;
+  width: clamp(240px, 22vw, 290px);
+  max-height: 420px;
+  background: #ff003d;
+  border-radius: 14px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s ease;
+}
+
+.cf-catalog-cta-slide:hover {
+  background: #d80035;
+}
+
+.cf-catalog-cta-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 26px;
+  color: #ffffff;
+}
+
+.cf-catalog-cta-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.cf-catalog-cta-title {
+  margin: 0;
+  font-size: clamp(32px, 4vw, 50px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.cf-catalog-cta-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 26px;
+  line-height: 1;
+  align-self: flex-end;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.cf-catalog-cta-slide:hover .cf-catalog-cta-arrow {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(4px);
+}
+
+/* Botón CTA reutilizable en slides del HeroRow (Slide Crece + Slide Flex).
+   Rojo CF #ff003d — acento histórico del catálogo, mismo tono que el
+   header (modo home) y el HomeSlider para armar una paleta "acción CF"
+   consistente. Tamaño moderado: los slides Crece/Flex son cards con
+   glass-card centered — si el botón crece mucho se sale del contenedor.
+   No pusimos CTA en Pasos/Principal/LineasIntro porque esos diseños
+   están saturados y el CTA compite con el contenido; la salida al
+   catálogo se resuelve por el Header y por Crece/Flex/HomeSlider. */
 .cf-hero-more-btn {
   align-self: flex-start;
   margin-top: auto;
-  padding: 9px 16px;
-  background: #0a0a0a;
-  color: #fff;
+  padding: 10px 20px;
+  background: #ff003d;
+  color: #ffffff;
   border: 0;
   border-radius: 999px;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background 0.2s, transform 0.2s;
 }
 
 .cf-hero-more-btn:hover {
-  background: #ff003d;
+  background: #d80035;
   transform: translateX(2px);
 }
 
 .cf-hero-more-btn-light {
-  background: #fff;
-  color: #0a0a0a;
+  background: #ff003d;
+  color: #ffffff;
 }
 
 .cf-hero-more-btn-light:hover {
-  background: #ff003d;
-  color: #fff;
+  background: #d80035;
+  color: #ffffff;
 }
 
 /* ── Slide CASA QUE CRECE: fondo con fade entre fotos + glass overlay ── */
@@ -6086,6 +6161,36 @@ body:has(.cf-row.cf-expanded) {
   font-size: 22px;
   display: flex;
   align-items: center;
+}
+
+/* Primer step ("ELEGÍ >") como link al catálogo en modo home. Reset del
+   default de <button> para que se lea exactamente igual que los otros
+   3 steps (que siguen siendo <div>). Hover mínimo: la flecha roja se
+   desplaza un touch para que se sienta "clickeable" sin romper la
+   consistencia visual del flow. */
+.cf-pasos-grid .cf-step-item--btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 22px;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.cf-pasos-grid .cf-step-item--btn:hover {
+  color: #ff003d;
+}
+
+.cf-pasos-grid .cf-step-item--btn:hover .cf-step-arrow-img {
+  transform: translateX(4px);
+}
+
+.cf-pasos-grid .cf-step-item--btn .cf-step-arrow-img {
+  transition: transform 0.2s ease;
 }
 
 .cf-pasos-text {
@@ -8434,23 +8539,24 @@ body:has(.cf-row.cf-expanded) {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 11px 22px;
-  margin-top: 8px;
+  gap: 6px;
+  padding: 15px 30px;
+  margin-top: 10px;
   background: #ff003d;
   color: #ffffff;
   border: 0;
   border-radius: 999px;
   font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .cf-home-slider-cta:hover {
-  background: #e6003a;
+  background: #d80035;
   transform: translateY(-1px);
 }
 
@@ -9413,7 +9519,6 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s, transform 0.2s;
-  box-shadow: 0 4px 12px rgba(255, 0, 61, 0.15);
 }
 
 .cf-header-catalog-btn:hover {
@@ -9425,15 +9530,24 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
   transform: translateY(0);
 }
 
-/* Modo home: CTA primario del header (reemplaza al breadcrumb).
-   Más grande y con sombra reforzada para no perderse en el ruido
-   visual de la home. Testeos con usuarios mostraron que el acceso
-   al catálogo escondido en los CTAs de los sliders se perdía. */
+/* Modo home: CTA primario del header. Rojo CF #ff003d — el acento
+   histórico del catálogo. Iteramos amarillo → celeste → rojo; los dos
+   primeros se leían suaves y perdían presencia contra el header claro.
+   El header sube de padding y min-width para dar más volumen visible
+   al CTA sin cambiar la paleta. */
 .cf-header-catalog-btn--home {
-  padding: 14px 30px;
-  font-size: 14px;
+  background: #ff003d;
+  color: #ffffff;
+  padding: 18px 44px;
+  font-size: 17px;
+  font-weight: 800;
   letter-spacing: 0.09em;
-  box-shadow: 0 7px 20px rgba(255, 0, 61, 0.28);
+  min-width: 220px;
+  justify-content: center;
+}
+
+.cf-header-catalog-btn--home:hover {
+  background: #d80035;
 }
 
 @media (max-width: 480px) {
@@ -9443,9 +9557,10 @@ body:has(.cf-row.cf-expanded) .cf-rotate-nudge {
     letter-spacing: 0.04em;
   }
   .cf-header-catalog-btn--home {
-    padding: 10px 20px;
-    font-size: 12px;
+    padding: 12px 24px;
+    font-size: 13px;
     letter-spacing: 0.06em;
+    min-width: 0;
   }
 }
 

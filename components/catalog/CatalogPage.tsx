@@ -1194,6 +1194,7 @@ export default function CatalogPage({
         footerContent={footerContent}
         onOpenModel={openDetail}
         hideMarcaCards={!selectedMarca}
+        hideCierre={phase === 'home'}
       />
 
       {/* Modal genérico de contacto (mid-CTA + futuro: cualquier CTA del

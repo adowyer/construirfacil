@@ -12,7 +12,7 @@
  * B2B hereda B2C (resuelto en getResolvedHomeSlides).
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type {
   HomeSlide,
   HomeVariant,
@@ -29,6 +29,32 @@ interface HomeRowProps {
   homeSlides: HomeSlide[]
   variant: HomeVariant
   onVerCatalogo: () => void
+}
+
+function CatalogCtaSlide({ onVerCatalogo }: { onVerCatalogo: () => void }) {
+  return (
+    <div
+      className="cf-hero-row-slide cf-catalog-cta-slide"
+      onClick={onVerCatalogo}
+      role="button"
+      tabIndex={0}
+      aria-label="Ver catálogo"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onVerCatalogo()
+        }
+      }}
+    >
+      <div className="cf-catalog-cta-content">
+        <p className="cf-catalog-cta-eyebrow">Elegí tu casa</p>
+        <h3 className="cf-catalog-cta-title">Mirá nuestro catálogo</h3>
+        <span className="cf-catalog-cta-arrow" aria-hidden="true">
+          →
+        </span>
+      </div>
+    </div>
+  )
 }
 
 function HomeRowSlide({
@@ -144,18 +170,31 @@ export default function HomeRow({
     .map((s, i) => ({ s, i }))
     .sort((a, b) => a.s.sort_order - b.s.sort_order || a.i - b.i)
     .map(({ s }) => s)
-  const numSlides = slides.length
+  // +1 por el CatalogCtaSlide hardcoded que inyectamos entre home-1 y home-2
+  // (banner rojo "Mirá nuestro catálogo"). Cada set A/B tiene N slides + 1 CTA.
+  const numSlides = slides.length + 1
 
   useEffect(() => {
     if (!trackRef.current) return
     const SPEED = 1.4
     let rafId = 0
 
+    // Posición inicial: arrancamos en el CTA rojo del set B (buscándolo por
+    // clase — la posición varía según el sort_order de la DB, así que no la
+    // podemos hardcodear por índice). Motivo: el HeroRow arranca centrando
+    // su "Principal" con el CTA rojo a la derecha; si el HomeRow arrancara
+    // en home-1, los dos rojos quedarían en la misma columna X y se verían
+    // uno arriba del otro. Arrancar en el CTA del set B lo pega al borde
+    // izquierdo del viewport, con "Atención 24/7" a su derecha — misma
+    // información visual, desalineado.
     const initialPosition = () => {
       const t = trackRef.current
       if (!t) return
-      const firstB = t.children[numSlides] as HTMLElement | undefined
-      if (firstB) t.scrollLeft = firstB.offsetLeft
+      const ctas = t.querySelectorAll<HTMLElement>('.cf-catalog-cta-slide')
+      // El primero es set A, el segundo set B — arrancamos en el segundo
+      // (o en el primero como fallback si sólo hay uno por alguna razón).
+      const ctaB = ctas[1] ?? ctas[0]
+      if (ctaB) t.scrollLeft = ctaB.offsetLeft
     }
     initialPosition()
 
@@ -191,18 +230,26 @@ export default function HomeRow({
     >
       <div ref={trackRef} className="cf-hero-row-track">
         {slides.map((s) => (
-          <HomeRowSlide
-            key={`a-${s.key}`}
-            slide={s}
-            onVerCatalogo={onVerCatalogo}
-          />
+          <Fragment key={`a-${s.key}`}>
+            {s.slide_key === 'home-2' && (
+              <CatalogCtaSlide
+                key="a-catalog-cta"
+                onVerCatalogo={onVerCatalogo}
+              />
+            )}
+            <HomeRowSlide slide={s} onVerCatalogo={onVerCatalogo} />
+          </Fragment>
         ))}
         {slides.map((s) => (
-          <HomeRowSlide
-            key={`b-${s.key}`}
-            slide={s}
-            onVerCatalogo={onVerCatalogo}
-          />
+          <Fragment key={`b-${s.key}`}>
+            {s.slide_key === 'home-2' && (
+              <CatalogCtaSlide
+                key="b-catalog-cta"
+                onVerCatalogo={onVerCatalogo}
+              />
+            )}
+            <HomeRowSlide slide={s} onVerCatalogo={onVerCatalogo} />
+          </Fragment>
         ))}
       </div>
     </div>
