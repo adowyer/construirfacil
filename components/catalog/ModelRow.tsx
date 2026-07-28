@@ -515,8 +515,22 @@ export default function ModelRow({
   //  - Refresh recarga la misma casa (SSR via app/modelos/[slug]).
   // Sólo la card actualmente expandida hace push/pop — las demás filas no
   // interfieren (sus useEffect están en isExpanded=false).
+  //
+  // Skip del primer mount: si el deep-link entra por SSR (`/modelos/<slug>`),
+  // la URL YA es la correcta. Sin este skip, la card cuya pathname coincide
+  // ejecutaba `replaceState('/')` en el mount con `isExpanded=false` — a los
+  // pocos ms el auto-expand setea `isExpanded=true` y hace pushState de
+  // vuelta, pero ya la barra parpadea a `/` y (si `autoExpand` no matchea
+  // por algún race de hidratación) queda en `/` con la card cerrada. Este
+  // efecto solo debe actuar en TRANSICIONES de isExpanded, no en el estado
+  // inicial.
+  const urlSyncMounted = useRef(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!urlSyncMounted.current) {
+      urlSyncMounted.current = true
+      return
+    }
     const slug = modelGroupSlug({
       style_name: model.style_name,
       tipologia_code_new: model.tipologia_code_new,
