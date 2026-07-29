@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
       { source: '/ximia-lab.html', destination: '/ximia-lab' },
       // Demo "real" con OTP habilitado — gemelo de /ximia-lab pero sin modo test.
       { source: '/ximia-demo.html', destination: '/ximia-demo' },
+      // Simulador de costos (Construir Fácil + Ximia) — HTML estático en /public/simulador.html.
+      { source: '/simulador', destination: '/simulador.html' },
     ]
   },
 }

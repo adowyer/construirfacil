@@ -1,0 +1,3315 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ximia — Calculadora de Costos</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #ffffff;
+      --surface: #f8fafc;
+      --surface2: #f1f5f9;
+      --surface3: #e2e8f0;
+      --border: #e2e8f0;
+      --border2: #cbd5e1;
+      --text: #0f172a;
+      --text2: #334155;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --accent: #0092B3;
+      --accent-l: #eefcfe;
+      --accent2: #0e7490;
+      --btn-bg: #0f172a;
+      --green: #059669;
+      --green-l: #d1fae5;
+      --amber: #d97706;
+      --font: 'Plus Jakarta Sans', sans-serif;
+      --font-h: 'Outfit', sans-serif;
+      --radius: 18px;
+      --radius-sm: 10px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      font-size: 20px;
+    }
+
+    /* ── Layout ── */
+    .wrap {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* ── Header ── */
+    .calc-header {
+      margin-bottom: 48px;
+    }
+
+    /* ── Lockup co-brand: Ximia (izq) + Construir Fácil (der), como el header del sitio CF ── */
+    .cobrand-band {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 34px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cobrand-ximia-logo {
+      height: 58px;
+      width: auto;
+      display: block;
+    }
+    .cobrand-cf {
+      height: 56px; /* misma medida que en construirfacil.com (.cf-site-header-cf) */
+      width: auto;
+      display: block;
+    }
+
+    .calc-eyebrow {
+      font-family: var(--font);
+      font-size: 17px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    .calc-eyebrow::before {
+      content: '';
+      width: 30px;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .calc-header h1 {
+      font-size: clamp(38px, 6.6vw, 72px);
+      font-weight: 800;
+      letter-spacing: -.03em;
+      margin-bottom: 14px;
+      line-height: 1.05;
+      font-family: var(--font-h);
+    }
+
+    .calc-header h1 span {
+      color: var(--accent);
+    }
+
+    .calc-subtitle {
+      font-size: 20px;
+      color: var(--muted);
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    /* ── Setup banner ── */
+    .setup-banner {
+      background: var(--text);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .setup-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #06b6d4, #7c3aed);
+    }
+
+    .setup-left {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .setup-tag {
+      font-family: var(--font);
+      font-size: 14px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .setup-title {
+      font-size: 40px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .setup-desc {
+      font-size: 16px;
+      color: #cbd5e1;
+      max-width: 580px;
+      line-height: 1.6;
+      margin-top: 2px;
+    }
+
+    .setup-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .setup-chip {
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      color: #94a3b8;
+    }
+
+    /* ── Main layout: single column ──
+       Todo lo que el cliente OBTIENE va arriba (controls-col);
+       los precios caen al final en su propia sección (.sticky-col). */
+    .main-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .controls-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Sección de precios (al pie, ya no sticky a la derecha) ── */
+    .sticky-col {
+      position: static;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-dark {
+      background: var(--text);
+      border-radius: var(--radius);
+      padding: 40px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-dark::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), #06b6d4);
+    }
+
+    .card-teal {
+      background: var(--accent-l);
+      border: 1.5px solid rgba(8, 145, 178, 0.2);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .card-title {
+      font-family: var(--font-h);
+      font-size: 32px;
+      letter-spacing: -.02em;
+      text-transform: none;
+      color: var(--text);
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 800;
+    }
+
+    .step-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Field blocks ── */
+    .field {
+      margin-bottom: 32px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .field-label {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 14px;
+      letter-spacing: -.015em;
+      font-family: var(--font-h);
+    }
+
+    .field-note {
+      font-family: var(--font);
+      font-size: 18px;
+      color: var(--muted);
+      font-weight: 500;
+      margin-left: 10px;
+    }
+
+    /* ── Market grid ── */
+    .market-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media(max-width:500px) {
+      .market-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* ── Grilla de 3 columnas reutilizable (inputs alineados · orden visual uniforme) ── */
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+    @media(max-width: 760px) {
+      .grid3 { grid-template-columns: 1fr; }
+    }
+    /* Tráfico: las 3 celdas (propio | campaña | Leads) a igual altura */
+    .traffic-grid { align-items: stretch; }
+
+    /* ── Comparativa de precios (3 planes, estilo pricing) ── */
+    .price-grid { align-items: stretch; margin-bottom: 0; }
+    .price-col {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 22px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .price-col:hover { border-color: var(--accent); }
+    .price-col.selected {
+      border: 2px solid var(--accent);
+      background: var(--accent-l);
+      box-shadow: 0 10px 30px rgba(8,145,178,0.15);
+    }
+    .price-badge {
+      display: none;
+      position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #fff;
+      font-family: var(--font-h); font-size: 11px; font-weight: 800;
+      padding: 4px 14px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    }
+    .price-col.selected .price-badge { display: block; }
+    .price-plan { font-family: var(--font-h); font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 10px; }
+    .price-total { font-family: var(--font-h); font-size: 38px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; line-height: 1; }
+    .price-per { font-family: var(--font); font-size: 12px; color: var(--muted); margin: 4px 0 18px; }
+    .price-break { border-top: 1px solid var(--border); padding-top: 14px; margin-top: auto; }
+    .price-col.selected .price-break { border-top-color: rgba(8,145,178,0.25); }
+    .pb-row { display: flex; justify-content: space-between; font-family: var(--font); font-size: 13px; color: var(--text2); margin-bottom: 7px; }
+    .pb-row b { color: var(--text); font-weight: 700; }
+    /* Línea de campaña — diferenciada (difusión ConstruirFácil, no fee de Ximia) */
+    .pb-camp { color: var(--amber) !important; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .pb-camp b { color: var(--amber) !important; }
+    .price-motor { font-family: var(--font); font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+    /* ── Tarjetas de plan unificadas (features + subtotales + total) — sección 3 ── */
+    .plan-grid { align-items: stretch; margin-bottom: 0; }
+    .plan-card {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px 24px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .plan-card:hover { border-color: var(--accent); }
+    .plan-card.selected {
+      border: 2px solid var(--accent);
+      background: var(--accent-l);
+      box-shadow: 0 10px 30px rgba(8,145,178,0.15);
+    }
+    .plan-name { font-family: var(--font-h); font-size: 21px; font-weight: 800; color: var(--text); margin-bottom: 18px; }
+    /* 3 items facturables — categoría + costo (arriba) y qué incluye (abajo) */
+    .plan-lines { display: flex; flex-direction: column; gap: 16px;margin-bottom: 15px; }
+    .plan-line-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .plan-line-cat { font-family: var(--font); font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .plan-line-head b { font-family: var(--font-h); font-weight: 800; font-size: 15px; color: var(--text); white-space: nowrap; }
+    .plan-line-desc { font-family: var(--font); font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .plan-incl { list-style: none; margin: 7px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+    .plan-incl li { font-family: var(--font); font-size: 11.5px; color: var(--muted); line-height: 1.35; padding-left: 16px; position: relative; }
+    .plan-incl li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--accent); font-size: 10px; font-weight: 700; }
+    .plan-incl li em { font-style: normal; color: var(--text); font-weight: 600; }
+    .plan-line.pb-camp .plan-line-cat, .plan-line.pb-camp b { color: var(--amber); }
+    .plan-line.pb-camp { padding-top: 12px; border-top: 1px dashed var(--border); }
+    /* Línea de voz: apagada/gris por default, se prende (accent) con el switch general */
+    .plan-line.pb-voice { padding-top: 12px; border-top: 1px dashed var(--border); opacity: 0.55; transition: opacity .2s; }
+    .plan-line.pb-voice.on { opacity: 1; }
+    .plan-line.pb-voice .plan-line-cat, .plan-line.pb-voice b { color: var(--muted2); }
+    .plan-line.pb-voice.on .plan-line-cat, .plan-line.pb-voice.on b { color: var(--accent); }
+    .plan-total { margin-top: auto; padding-top: 18px; border-top: 1.5px solid var(--border); }
+    .plan-card.selected .plan-total { border-top-color: rgba(8,145,178,0.25); }
+    .plan-total-amount { font-family: var(--font-h); font-size: 40px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; line-height: 1; }
+    .plan-total-per { font-family: var(--font); font-size: 12px; color: var(--muted); margin-top: 4px; }
+    /* Columna de plan = tarjeta + pill de ROI abajo (afuera del card, del mismo ancho) */
+    .plan-col { display: flex; flex-direction: column; }
+    .plan-col > .plan-card { flex: 1; }
+    /* Pill de ROI por plan — SEPARADO, abajo, full-width, grande. Fondo azul oscuro, letras verdes */
+    .plan-roi {
+      margin-top: 14px;
+      background: #0f172a;
+      border: 1.5px solid rgba(5,150,105,0.4);
+      border-radius: 16px;
+      padding: 22px 20px;
+      text-align: center;
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--green);
+      line-height: 1.4;
+    }
+    .plan-roi b {
+      font-family: var(--font-h); font-weight: 800; font-size: 55px;
+      color: var(--green); display: block; margin-bottom: 6px; letter-spacing: -0.02em; line-height: 1;
+    }
+    @media(max-width: 600px) { .plan-roi b { font-size: 34px; } }
+
+    /* Tráfico propio: 3 canales (WhatsApp / Web / Teléfono) como tarjetas con input numérico visible */
+    .own-channels { display: flex; flex-direction: column; gap: 8px; }
+    .own-ch {
+      display: flex; flex-direction: column; justify-content: center; gap: 5px;
+      min-height: 132px;
+      padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px;
+      background: var(--surface); transition: border-color .2s;
+    }
+    /* Forzar misma altura que las tarjetas de canal (alinean fila por fila) */
+    .tier-btn[data-pkg] { min-height: 132px; }
+    .own-ch:focus-within { border-color: var(--accent); }
+    .own-ch-top { font-family: var(--font-h); font-size: 15px; font-weight: 800; color: var(--text); }
+    .own-ch-field { display: flex; align-items: center; gap: 9px; margin: 3px 0; }
+    .own-ch-input {
+      width: 120px; text-align: right;
+      background: #fff; border: 1.5px solid var(--border2); border-radius: 8px; padding: 7px 12px;
+      font-family: var(--font-h); font-weight: 500; font-size: 20px; color: var(--accent); outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .own-ch-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(8,145,178,0.12); }
+    .own-ch-unit { font-family: var(--font); font-size: 12px; color: var(--muted); }
+    .own-ch-note { font-family: var(--font); font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .own-total { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border2); font-family: var(--font); font-size: 14.5px; color: var(--text2); }
+    .own-total b { font-family: var(--font-h); font-weight: 800; font-size: 22px; color: var(--accent); margin: 0 4px; }
+
+    /* Precio del paquete de campaña (visible al seleccionar, arriba) */
+    .pkg-price { font-family: var(--font-h); font-weight: 800; font-size: 18px; color: var(--accent); display: block; margin: 3px 0 6px; letter-spacing: -0.01em; }
+    .pkg-price .pkg-per { font-family: var(--font); font-weight: 500; font-size: 11.5px; color: var(--muted); letter-spacing: 0; }
+
+    /* Link (?) de ayuda de campañas + modal */
+    .pkg-help-link {
+      margin-top: 14px; background: none; border: none; padding: 0;
+      color: var(--accent); font-family: var(--font); font-size: 14.5px; font-weight: 600;
+      cursor: pointer; text-align: left; display: block;
+    }
+    .pkg-help-link:hover { text-decoration: underline; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.6);
+      display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: var(--radius); max-width: 640px; width: 100%;
+      max-height: 85vh; overflow-y: auto; padding: 32px; box-shadow: 0 30px 80px rgba(0,0,0,0.35); position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 18px; color: var(--muted); line-height: 1;
+    }
+    .modal-title { font-family: var(--font-h); font-size: 22px; font-weight: 800; color: var(--text); margin: 0 0 16px; }
+    .pkg-row { padding: 16px 0; border-top: 1px solid var(--border); }
+    .pkg-row:first-of-type { border-top: none; }
+    .pkg-row h4 { font-family: var(--font-h); font-size: 16px; font-weight: 800; color: var(--accent2); margin: 0 0 4px; }
+    .pkg-row .imp { font-family: var(--font); font-size: 12px; color: var(--muted); font-weight: 600; }
+    .pkg-row p { font-family: var(--font); font-size: 14px; color: var(--text2); line-height: 1.6; margin: 6px 0 0; }
+    .pkg-row ul { margin: 10px 0 0; padding-left: 18px; }
+    .pkg-row li { font-family: var(--font); font-size: 13.5px; color: var(--text2); line-height: 1.55; margin-bottom: 5px; }
+
+    .mkt-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 8px;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .mkt-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .mkt-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-l);
+    }
+
+    .mkt-flag {
+      font-size: 22px;
+    }
+
+    .mkt-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Sliders ── */
+    .slider-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 14px;
+    }
+
+    .slider-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -.015em;
+      font-family: var(--font-h);
+    }
+
+    .slider-val {
+      font-family: var(--font);
+      font-size: 29px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: -.04em;
+    }
+
+    .slider-range {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font);
+      font-size: 10px;
+      color: var(--muted2);
+      margin-top: 7px;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 3px;
+      background: var(--surface3);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Foco de teclado visible (accesibilidad) */
+    input[type=range]:focus-visible::-webkit-slider-thumb {
+      box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent);
+    }
+
+    button:focus-visible,
+    .ts-wrap:focus-within,
+    .strategy-toggle:focus-within {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      margin-top: -8.5px;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.12);
+    }
+
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 6px rgba(8, 145, 178, 0.18);
+    }
+
+    /* ── Tier grid ── */
+    .tier-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    @media(max-width:420px) {
+      .tier-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .tier-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 13px 11px;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tier-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .tier-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-l);
+    }
+
+    .tier-icon {
+      font-size: 19px;
+    }
+
+    .tier-label {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .tier-note {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ── Toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toggle-name {
+      font-size: 25px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .toggle-sub {
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .ts-wrap {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .ts-wrap input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .ts-track {
+      position: absolute;
+      inset: 0;
+      background: var(--surface3);
+      border-radius: 26px;
+      border: 1.5px solid var(--border2);
+      transition: all .2s;
+    }
+
+    .ts-thumb {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      top: 2px;
+      left: 2px;
+      background: var(--muted2);
+      border-radius: 50%;
+      transition: transform .2s, background .2s;
+    }
+
+    .ts-wrap input:checked~.ts-track {
+      background: var(--accent-l);
+      border-color: var(--accent);
+    }
+
+    .ts-wrap input:checked~.ts-track .ts-thumb {
+      transform: translateX(22px);
+      background: var(--accent);
+    }
+
+    /* ── Engagement selector ── */
+    .engage-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      background: var(--btn-bg);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 40px;
+      font-size: 20.4px;
+    }
+
+    /* ── Voice stack ── */
+    .vs-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+      margin-top: 14px;
+      animation: fadeUp .2s ease;
+    }
+
+    .vs-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 12px;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .vs-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .vs-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-l);
+    }
+
+    .vs-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .vs-note {
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Opt tabs (SLA) ── */
+    .opt-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .opt-tab {
+      font-family: var(--font);
+      font-size: 16px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border2);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .opt-tab:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .opt-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+      font-weight: 500;
+    }
+
+    /* ── Lang counter ── */
+    .lang-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .lang-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lang-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .lang-num {
+      font-size: 26px;
+      font-weight: 800;
+      font-family: var(--font);
+      color: var(--accent);
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .lang-lbl {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Two col ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media(max-width:460px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Derived note ── */
+    .derived-note {
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--accent2);
+      background: var(--accent-l);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: block;
+    }
+
+    /* ── Result card (dark) ── */
+    .res-tag {
+      font-family: var(--font-h);
+      font-size: 14px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 18px;
+      font-weight: 800;
+    }
+
+    .res-amount {
+      font-size: 75px;
+      font-weight: 800;
+      letter-spacing: -.05em;
+      color: #fff;
+      line-height: 0.9;
+      transition: all .25s;
+    }
+
+    .res-period {
+      font-family: var(--font);
+      font-size: 16px;
+      color: var(--muted2);
+      margin-top: 10px;
+      margin-bottom: 32px;
+      letter-spacing: .02em;
+    }
+
+    .res-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .rr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 17px;
+    }
+
+    .rr-label {
+      font-family: var(--font);
+      color: var(--muted2);
+    }
+
+    .rr-val {
+      font-family: var(--font);
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -.02em;
+    }
+
+    .rr-val.teal {
+      color: var(--accent);
+    }
+
+    /* ── Result card (teal) ── */
+    .rl-tag {
+      font-family: var(--font-h);
+      font-size: 14px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 18px;
+      font-weight: 800;
+    }
+
+    .rl-amount {
+      font-size: 60px;
+      font-weight: 800;
+      letter-spacing: -.06em;
+      color: var(--text);
+      line-height: 0.9;
+      transition: all .25s;
+    }
+
+    .rl-period {
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--accent2);
+      opacity: .9;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .rl-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(8, 145, 178, 0.25);
+    }
+
+    .rl-chip {
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(8, 145, 178, 0.15);
+      border: 1.5px solid rgba(8, 145, 178, 0.3);
+      color: var(--text);
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    /* ── Lead pricing card ── */
+    .lead-card-tag {
+      font-family: var(--font-h);
+      font-size: 18px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-weight: 800;
+    }
+
+    .lead-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .lead-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 22px 28px;
+      /* Un poco más de aire para el diseño premium */
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      transition: transform 0.2s ease;
+    }
+
+    .row-calc {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: -0.01em;
+      opacity: 0.8;
+      margin-top: 4px;
+      /* Espacio bajo el precio */
+    }
+
+    .row-total {
+      font-weight: 800;
+      font-family: var(--font-h);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .lead-price {
+      display: flex;
+      flex-direction: column;
+      /* Apilado vertical */
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .lead-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+      font-family: var(--font-h);
+    }
+
+    .lead-desc {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .lead-price {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      letter-spacing: -.02em;
+    }
+
+    .lead-price.q .row-total {
+      color: var(--accent);
+    }
+
+    .lead-price.p .row-total {
+      color: var(--amber);
+    }
+
+    .lead-price.z .row-total {
+      color: var(--muted2);
+      font-size: 20px;
+    }
+
+    /* ── Funnel section ── */
+    .funnel-section {
+      margin-top: 16px;
+      background: var(--text);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .funnel-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--green), var(--accent));
+    }
+
+    .funnel-header {
+      padding: 32px 48px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .funnel-title-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .funnel-sub-text {
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 4px;
+    }
+
+    .funnel-conv-badge {
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(8, 145, 178, 0.15);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1.5px solid rgba(8, 145, 178, 0.3);
+    }
+
+    .funnel-body {
+      padding: 32px 48px 48px;
+    }
+
+    .funnel-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .f-row {
+      display: grid;
+      grid-template-columns: 240px 1fr 120px;
+      align-items: center;
+      gap: 24px;
+    }
+
+    @media(max-width:580px) {
+      .f-row {
+        grid-template-columns: 1fr auto 70px;
+      }
+    }
+
+    .f-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .f-name {
+      font-size: 16px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .f-desc {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--muted2);
+    }
+
+    .f-pct {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .f-bar-wrap {
+      height: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .f-bar {
+      height: 100%;
+      border-radius: 8px;
+      transition: width .4s ease;
+    }
+
+    .f-num {
+      font-family: var(--font-h);
+      font-size: 24px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .f-row-hl {
+      background: rgba(5, 150, 105, 0.1);
+      border-radius: 12px;
+      padding: 8px 12px;
+      margin: 0 -12px;
+    }
+
+    /* ── ROI section ── */
+    .roi-section {
+      margin-top: 16px;
+    }
+
+    .roi-title-row {
+      margin: 51px 14px 20px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .roi-title-text {
+      font-size: 33px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .roi-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media(max-width:680px) {
+      .roi-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .roi-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .roi-card-tag {
+      font-family: var(--font);
+      font-size: 11px;
+      letter-spacing: .01em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      font-weight: 600;
+    }
+
+    .roi-card-main {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -.05em;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .roi-card-main.accent {
+      color: var(--accent);
+    }
+
+    .roi-card-main.green {
+      color: var(--green);
+    }
+
+    .roi-card-sub {
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .roi-compare {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .roi-compare-label {
+      font-family: var(--font);
+      font-size: 10px;
+      color: var(--muted2);
+    }
+
+    .roi-compare-val {
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted2);
+      text-decoration: line-through;
+    }
+
+    /* ── Tech breakdown ── */
+    .tech-section {
+      margin-top: 16px;
+    }
+
+    .tech-toggle {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all .15s;
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+
+    .tech-toggle:hover {
+      border-color: var(--accent);
+    }
+
+    .tt-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tt-title {
+      font-size: 18px;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .tt-sub {
+      font-family: var(--font);
+      font-size: 10px;
+      color: var(--muted);
+      text-align: left;
+    }
+
+    .tt-arrow {
+      color: var(--muted);
+      transition: transform .2s;
+      font-size: 12px;
+    }
+
+    .tt-arrow.open {
+      transform: rotate(180deg);
+    }
+
+    .tech-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 32px 40px;
+      display: none;
+    }
+
+    .tech-body.open {
+      display: block;
+      animation: fadeUp .2s ease;
+    }
+
+    .tech-thead {
+      display: grid;
+      grid-template-columns: 1fr 160px;
+      gap: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border2);
+      margin-bottom: 8px;
+    }
+
+    .tech-thead span {
+      font-family: var(--font);
+      font-size: 12px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      text-align: right;
+    }
+
+    .tech-thead span:first-child {
+      text-align: left;
+    }
+
+    .tech-row {
+      display: grid;
+      grid-template-columns: 1fr 160px;
+      gap: 20px;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 16px;
+    }
+
+    .tech-row:last-child {
+      border-bottom: none;
+    }
+
+    .tr-label {
+      font-family: var(--font);
+      color: var(--muted);
+    }
+
+    .tr-raw {
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--muted2);
+      text-align: right;
+      min-width: 70px;
+    }
+
+    .tr-marked {
+      font-family: var(--font);
+      font-weight: 600;
+      color: var(--text);
+      text-align: right;
+      min-width: 70px;
+    }
+
+    .tech-total-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: var(--accent-l);
+      border: 1px solid rgba(8, 145, 178, 0.2);
+      border-radius: var(--radius-sm);
+    }
+
+    .tech-total-label {
+      font-family: var(--font);
+      font-size: 16px;
+      color: var(--accent2);
+    }
+
+    .tech-total-val {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: var(--font);
+      letter-spacing: -.04em;
+    }
+
+    .tech-note {
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      line-height: 1.8;
+    }
+
+    /* ── Final CTA ── */
+    .final-cta {
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .cta-label {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.015em;
+    }
+
+    .cta-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--btn-bg);
+      color: #fff;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .2s;
+      white-space: nowrap;
+      letter-spacing: -.01em;
+    }
+
+    .btn-primary:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(8, 145, 178, 0.4);
+    }
+
+    .btn-glow {
+      box-shadow: 0 0 15px rgba(8, 145, 178, 0.25);
+      animation: pulseGlow 3s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0% {
+        box-shadow: 0 0 10px rgba(8, 145, 178, 0.2);
+      }
+
+      50% {
+        box-shadow: 0 0 25px rgba(8, 145, 178, 0.4);
+      }
+
+      100% {
+        box-shadow: 0 0 10px rgba(8, 145, 178, 0.2);
+      }
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(-6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes numPop {
+      0% {
+        opacity: .3;
+        transform: translateY(-3px) scale(.97)
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1)
+      }
+    }
+
+    .na {
+      animation: numPop .22s ease forwards;
+    }
+
+    /* ver detalle link */
+    .ver-detalle-wrap {
+      width: 100%;
+      text-align: center;
+      margin-top: 14px;
+      padding-top: 0px;
+      border-top: 1px solid rgba(8, 145, 178, 0.15);
+    }
+
+    .ver-detalle-link {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: var(--font);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      transition: color .2s;
+    }
+
+    .ver-detalle-link:hover {
+      color: var(--accent2);
+      text-decoration: underline;
+    }
+
+    /* ── Graphical Funnel (New) ── */
+    .funnel-graph-card {
+      background: #0f172a;
+      border-radius: var(--radius);
+      padding: 60px 48px;
+      margin-top: 32px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+
+    .funnel-graph-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+    }
+
+    .funnel-container {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    @media(max-width: 950px) {
+      .funnel-graph-card {
+        padding: 40px 24px;
+      }
+
+      .funnel-container {
+        grid-template-columns: 1fr;
+        gap: 48px;
+        text-align: center;
+      }
+
+      .funnel-svg-container {
+        max-width: 500px;
+        margin: 0 auto;
+      }
+
+      .f-legend {
+        text-align: left;
+      }
+    }
+
+    /* ── COCKPIT DE TRÁFICO: 3 columnas · Propio | Campaña | Embudo (azul) ── */
+    /* Fila: [card Fuente de tráfico] | [panel Leads/embudo] */
+    .traffic-row {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    /* Dentro de la card: 2 columnas de fuentes (propio | campaña) */
+    .traffic-sources {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 6px;
+    }
+    /* Fuente apagada: visible pero grisada e inerte (mantiene la altura estable) */
+    .src-off {
+      opacity: 0.4;
+      filter: grayscale(0.7);
+      pointer-events: none;
+      transition: opacity .3s ease, filter .3s ease;
+    }
+
+    /* Panel Leads: embudo azul oscuro, ahora hermano de la card (fuera del cuadro) */
+    .cockpit-funnel {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      background: #0f172a;
+      border-radius: var(--radius);
+      padding: 30px 28px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    }
+    .cockpit-funnel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+    }
+    /* barras con aire: se distribuyen parejas cuando el panel queda alto */
+    .cockpit-funnel .bar-strategy-container { flex: 1; justify-content: center; margin-top: 18px; padding: 0; gap: 14px; }
+    /* Título arriba (toggle + nombre + número) y barra a todo el ancho debajo */
+    .cockpit-funnel .strategy-row { flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px 18px; }
+    .cockpit-funnel .strategy-toggle { order: 0; }
+    .cockpit-funnel .bar-label-group { order: 1; width: auto; }
+    .cockpit-funnel .bar-num-wrap { order: 2; margin-left: auto; }
+    .cockpit-funnel .bar-track { order: 3; flex: 0 0 100%; height: 26px; }
+    .cockpit-funnel .bar-label { font-size: 14px; }
+    .cockpit-funnel .bar-sub { font-size: 10px; }
+    .cockpit-funnel .bar-num { width: auto; font-size: 17px; }
+    @media(max-width: 1040px) {
+      .traffic-row { grid-template-columns: 1fr; }
+      .traffic-sources { grid-template-columns: 1fr; }
+    }
+
+    /* Link "Ximia Closing ↗" en la fila de Pre-venta del embudo → scrollea al recuadro */
+    .closing-link {
+      color: var(--green);
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(5,150,105,0.6);
+      transition: opacity .2s;
+    }
+    .closing-link:hover { opacity: 0.75; }
+    /* Flash al llegar desde el link */
+    @keyframes closingFlash {
+      0% { box-shadow: 0 0 0 0 rgba(5,150,105,0.0); }
+      25% { box-shadow: 0 0 0 4px rgba(5,150,105,0.45); }
+      100% { box-shadow: 0 0 0 0 rgba(5,150,105,0.0); }
+    }
+    .closing-flash { animation: closingFlash 1.1s ease; }
+
+    /* ── XIMIA CLOSING · feature destacado full-width ── */
+    .closing-feature {
+      margin-top: 22px;
+      background: var(--text);
+      border: none;
+      border-radius: var(--radius);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    .closing-feature::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+    }
+    .closing-badge {
+      display: inline-block;
+      font-family: var(--font-h);
+      font-weight: 800;
+      color: #fff;
+      font-size: 40px;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .closing-body {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      align-items: center;
+    }
+    .closing-body > :first-child { grid-column: span 2; } /* titular ocupa 2 tracks */
+    .closing-guarantee { grid-column: span 1; }           /* garantía en el track 3 (alinea con Premium/Leads) */
+    .closing-emph {
+      font-family: var(--font);
+      font-size: 18px;
+      font-weight: 400;
+      color: #fff;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .closing-title {
+      font-family: var(--font-h);
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      margin: 0 0 12px;
+    }
+    .closing-text {
+      font-family: var(--font);
+      font-size: 18px;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.6;
+      margin: 0;
+    }
+    .closing-text strong { color: #fff; }
+    .closing-guarantee {
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+    .closing-guarantee-head {
+      font-family: var(--font-h);
+      font-weight: 800;
+      color: #fff;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    @media(max-width: 780px) {
+      .closing-body { grid-template-columns: 1fr; gap: 18px; }
+      .closing-title { font-size: 21px; }
+    }
+
+    /* BAR STRATEGY CHART */
+    .bar-strategy-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 32px;
+      padding: 0 10px;
+    }
+
+    .st-subtotal {
+      font-size: 11px;
+      color: var(--muted2);
+      font-weight: 600;
+      margin-top: 2px;
+      text-align: right;
+    }
+
+    .help-icon {
+      cursor: help;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      margin-left: 4px;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    .help-icon:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      width: 200px;
+      line-height: 1.4;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      pointer-events: none;
+      text-align: left;
+      font-weight: 400;
+    }
+
+    .strategy-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .strategy-row:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .strategy-row.disabled {
+      opacity: 0.3;
+      filter: grayscale(1);
+      transform: scale(0.98);
+    }
+
+    .bar-label-group {
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bar-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .bar-sub {
+      font-size: 11px;
+      color: var(--muted2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      /* Dinámico */
+      transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 4px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar-num {
+      width: 100px;
+      text-align: right;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      font-family: var(--font-h);
+    }
+
+    /* Strategy Toggle Switch */
+    .strategy-toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .strategy-toggle input {
+      display: none;
+    }
+
+    .st-slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .st-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.st-slider {
+      background-color: var(--green);
+    }
+
+    input:checked+.st-slider:before {
+      transform: translateX(20px);
+    }
+
+  </style>
+  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+  <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <!-- HEADER -->
+    <div class="calc-header">
+      <div class="cobrand-band">
+        <img src="/ximia_logo.png" alt="Ximia AI" class="cobrand-ximia-logo">
+        <img src="/cf_logo_gris.png" alt="Construir Fácil" class="cobrand-cf">
+      </div>
+      <div class="calc-eyebrow">Beneficios que superan los costos.</div>
+      <h1>Combiná el poder de <br><span>Construir Fácil y Ximia.ai</span><br> en tu negocio.</h1>
+      <p class="calc-subtitle">Configurá los valores de tu negocio y obtené un estimado en tiempo real de las ventas que
+        vas a lograr y la inversión final de cada campaña. Los costos están 100% relacionados a tu tráfico, tu mercado y
+        la arquitectura que elijas.</p>
+    </div>
+
+    <!-- SETUP -->
+    <div class="setup-banner">
+      <div class="setup-left">
+        <span class="setup-tag">Fase 1 · Implementación de Arquitectura</span>
+        <div class="setup-title">Setup &amp; Onboarding</div>
+        <div class="setup-desc">El fee de implementación se personaliza tras una sesión de <strong>Onboarding &amp;
+            Discovery</strong>. Analizamos tu stack técnico, objetivos comerciales y procesos de venta para diseñar una
+          arquitectura a medida.</div>
+        <div class="setup-chips">
+          <span class="setup-chip">📍 Análisis de Mercado</span>
+          <span class="setup-chip">🗂️ Auditoría de Portfolio</span>
+          <span class="setup-chip">🔗 Integración de Stack</span>
+          <span class="setup-chip">🌐 Localización</span>
+        </div>
+      </div>
+      <div class="setup-action" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div class="setup-price"
+          style="font-size: 40px; font-weight: 700; color: #fff; line-height: 2; letter-spacing: -0.02em;">A cotizar</div>
+        <a href="#" onclick="return openCalendly()" class="btn-primary btn-glow"
+          style="white-space: nowrap;">Agendar Onboarding & Demo →</a>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+
+      <!-- LEFT: CONTROLS -->
+      <div class="controls-col">
+
+        <!-- CARD 1: Tu negocio -->
+        <div class="card">
+          <div class="card-title"><span class="step-dot">1</span> Tu negocio</div>
+
+          <div class="field">
+            <div class="field-label">Mercado</div>
+            <div class="market-grid">
+              <button class="mkt-btn active" data-mkt="latam" onclick="setMarket(this)">
+                <span class="mkt-flag">🌎</span><span class="mkt-name">Latam</span>
+              </button>
+              <button class="mkt-btn" data-mkt="usa" onclick="setMarket(this)">
+                <span class="mkt-flag">🇺🇸🇪🇺</span><span class="mkt-name">USA / Europa</span>
+              </button>
+              <button class="mkt-btn" data-mkt="eau" onclick="setMarket(this)">
+                <span class="mkt-flag">🇦🇪</span><span class="mkt-name">Dubai</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Cantidad (1 col) + Precio promedio (2 col) en la misma fila -->
+          <div class="grid3">
+            <div class="field" style="margin-bottom:0">
+              <div class="slider-head">
+                <span class="slider-name">Cantidad de Propiedades en tu cartera</span>
+                <span class="slider-val" id="units-out">100</span>
+              </div>
+              <input type="range" id="units" aria-label="Cantidad de propiedades en cartera" min="50" max="5000" step="1" value="100" oninput="onSlider()">
+              <div class="slider-range"><span>50</span><span>5.000</span></div>
+            </div>
+            <div class="field" style="margin-bottom:0; grid-column: span 2;">
+              <div class="slider-head">
+                <span class="slider-name">Precio promedio</span>
+                <span class="slider-val" id="ticket-out">USD 110.500</span>
+              </div>
+              <input type="range" class="range-field" id="ticket-slider" aria-label="Precio promedio de la propiedad" min="50000" max="2000000" step="5000" value="110500" oninput="onSlider()">
+              <div class="slider-range"><span>USD 50.000</span><span>USD 2.000.000</span></div>
+            </div>
+          </div>
+
+          <!-- Fila de 3 columnas: Vendedores · Ventas actuales · Idiomas -->
+          <div class="grid3">
+            <div class="field" style="margin-bottom:0">
+              <div class="slider-head">
+                <span class="slider-name">Vendedores</span>
+                <span class="slider-val" id="vendors-out">3</span>
+              </div>
+              <input type="range" id="vendors" aria-label="Cantidad de vendedores / ejecutivos comerciales" min="1" max="100" step="1" value="3" oninput="onSlider()">
+              <div class="slider-range"><span>1</span><span>100</span></div>
+            </div>
+
+            <div class="field" style="margin-bottom:0">
+              <div class="slider-head">
+                <span class="slider-name">Ventas / mes</span>
+                <span class="slider-val" id="basesales-out">2</span>
+              </div>
+              <input type="range" id="basesales" aria-label="Ventas que cerrás hoy por mes" min="1" max="50" step="1" value="2" oninput="onSlider()">
+              <div class="slider-range"><span>1</span><span>50</span></div>
+            </div>
+
+            <div class="field" style="margin-bottom:0">
+              <div class="field-label" style="font-size: 20px; margin-bottom: 12px; text-align: left;">Idiomas que atiende</div>
+              <div class="lang-row" style="margin-top: 0; padding: 12px 16px; justify-content: space-between;">
+                <button class="lang-btn" aria-label="Quitar un idioma" onclick="changeLang(-1)">−</button>
+                <span class="lang-num" id="lang-out">1</span>
+                <span class="lang-lbl" id="lang-lbl" style="flex: 1; text-align: center;">idioma</span>
+                <button class="lang-btn" aria-label="Agregar un idioma" onclick="changeLang(1)">+</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- END CARD 1: Tu negocio -->
+
+        <!-- SECCIÓN 2: Fuente de tráfico — grilla de 3 columnas (propio | campaña | Leads), mismos tracks que planes -->
+        <div class="card">
+          <div class="card-title"><span class="step-dot">2</span> Origen de los contactos</div>
+          <div class="field-label" style="margin-top:-14px; margin-bottom:14px;">De dónde provienen los contactos que Ximia califica <span class="field-note">— podés sumar tus canales propios y contratar nuestras campañas</span></div>
+
+          <div class="grid3 traffic-grid">
+
+            <!-- COLUMNA 1: Tu tráfico actual -->
+            <div style="display:flex; flex-direction:column;">
+              <div class="tier-btn active" id="card-own">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="tier-icon" style="margin:0;">🌐</span>
+                  <label class="ts-wrap">
+                    <input type="checkbox" id="sw-own" checked aria-label="Activar tu tráfico actual" onchange="toggleSource('own', this)">
+                    <div class="ts-track"><div class="ts-thumb"></div></div>
+                  </label>
+                </div>
+                <span class="tier-label">Tus canales propios</span>
+                <span class="tier-note">Web, tu portfolio de clientes, consultas por WhatsApp</span>
+              </div>
+              <div id="own-body" style="margin-top:40px; flex:1; display:flex; flex-direction:column;">
+                <div class="own-channels">
+                  <label class="own-ch">
+                    <span class="own-ch-top">💬 WhatsApp</span>
+                    <span class="own-ch-field"><input type="number" id="v-wa" class="own-ch-input" min="0" step="100" value="5000" oninput="onSlider()" aria-label="Contactos de WhatsApp por mes"><span class="own-ch-unit">contactos/mes</span></span>
+                    <span class="own-ch-note">Consultas y mensajes entrantes</span>
+                  </label>
+                  <label class="own-ch">
+                    <span class="own-ch-top">🌐 Web</span>
+                    <span class="own-ch-field"><input type="number" id="v-web" class="own-ch-input" min="0" step="100" value="3000" oninput="onSlider()" aria-label="Visitas web por mes"><span class="own-ch-unit">visitas/mes</span></span>
+                    <span class="own-ch-note">Visitas y formularios de tu sitio</span>
+                  </label>
+                  <label class="own-ch">
+                    <span class="own-ch-top">📞 Teléfono</span>
+                    <span class="own-ch-field"><input type="number" id="v-phone" class="own-ch-input" min="0" step="100" value="2000" oninput="onSlider()" aria-label="Llamadas por mes"><span class="own-ch-unit">llamadas/mes</span></span>
+                    <span class="own-ch-note">Llamadas y contactos telefónicos</span>
+                  </label>
+                </div>
+                <div class="own-total">Total <b id="visits-out">10.000</b> contactos/mes</div>
+              </div>
+            </div>
+
+            <!-- COLUMNA 2: Contratar campaña -->
+            <div style="display:flex; flex-direction:column;">
+              <div class="tier-btn" id="card-campaign">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="tier-icon" style="margin:0;">📣</span>
+                  <label class="ts-wrap">
+                    <input type="checkbox" id="sw-campaign" aria-label="Activar contratar campaña" onchange="toggleSource('campaign', this)">
+                    <div class="ts-track"><div class="ts-thumb"></div></div>
+                  </label>
+                </div>
+                <span class="tier-label">Contratar campaña</span>
+                <span class="tier-note">Impresiones según el plan contratado</span>
+              </div>
+              <div id="campaign-body" class="src-off" style="margin-top:40px; flex:1; display:flex; flex-direction:column;">
+                <div class="tier-grid" style="grid-template-columns: 1fr; gap:8px;">
+                  <button class="tier-btn" data-pkg="premium" onclick="setPkg(this)">
+                    <span class="tier-label">Main Partner Nacional</span>
+                    <span class="pkg-price">USD 2.500<span class="pkg-per">/mes (plan anual) + % ventas</span></span>
+                    <span class="tier-note">500.000 impresiones · alcance nacional</span>
+                    <span class="tier-note">Protagonista en todo el país · ~1.000 leads/mes</span>
+                  </button>
+                  <button class="tier-btn active" data-pkg="regional" onclick="setPkg(this)">
+                    <span class="tier-label">Socio Regional</span>
+                    <span class="pkg-price">USD 1.750<span class="pkg-per">/mes (plan anual) + % ventas</span></span>
+                    <span class="tier-note">250.000 impresiones · tu zona de influencia</span>
+                    <span class="tier-note">Protagonista en tu región · ~500 leads/mes</span>
+                  </button>
+                  <button class="tier-btn" data-pkg="basica" onclick="setPkg(this)">
+                    <span class="tier-label">Proveedor Estratégico</span>
+                    <span class="pkg-price">USD 800<span class="pkg-per">/mes (plan anual) + % ventas</span></span>
+                    <span class="tier-note">100.000 impresiones · páginas afines</span>
+                    <span class="tier-note">Materiales y servicios · ~100 leads/mes</span>
+                  </button>
+                </div>
+                <button type="button" class="pkg-help-link" style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border2); width:100%;" onclick="openPkgModal()">ⓘ ¿Qué incluye cada campaña?</button>
+              </div>
+            </div>
+            <!-- COLUMNA 3: Leads (embudo) — 3ª celda de la grilla, alinea con la columna Premium -->
+            <div class="cockpit-funnel na">
+              <div style="text-align:center; margin-bottom:4px;">
+                <div style="font-size:25px; font-weight:800; color:#fff; font-family:var(--font-h); letter-spacing:-0.02em;">Tu embudo de leads</div>
+                <div id="label-conv-est" style="font-size:20px; color:var(--accent); font-weight:800; margin-top:6px;">— conversaciones/mes</div>
+                <div id="traffic-split" style="font-weight:600; font-size:12px; color:var(--accent2); margin-top:3px; min-height:1.2em;"></div>
+                <div style="color:var(--muted2); font-size:12px; margin-top:6px; line-height:1.5;">De tus conversaciones, esto es lo que Ximia <strong style="color:#fff;">puede entregarte</strong> por mes.</div>
+              </div>
+
+              <div class="bar-strategy-container">
+            <!-- FRÍO (Base de nurturing · incluida) -->
+            <div class="strategy-row" id="row-frio">
+              <label class="strategy-toggle" style="cursor: not-allowed; opacity: 0.85;"
+                title="Base propietaria de nurturing: contactos con datos básicos (nombre/email), sin datos financieros, retargetables. Incluida sin costo por lead.">
+                <input type="checkbox" id="sw-frio" aria-label="Recibir leads Frío (base de nurturing, incluida)" checked disabled>
+                <span class="st-slider" style="background-color: var(--green) !important;"></span>
+              </label>
+              <div class="bar-label-group">
+                <span class="bar-label">Frío <span class="help-icon"
+                    data-tip="Contactos iniciales con datos básicos — sólo nombre, o nombre + email. Sin datos financieros aún. Base propietaria y retargetable — un activo tuyo, no un costo. En 6–12 meses una parte madura a lead calificado.">?</span></span>
+                <span class="bar-sub" style="color: var(--green);">Base de nurturing · incluida</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-frio" style="background: var(--accent);"></div>
+              </div>
+              <div class="bar-num-wrap"
+                style="display:flex; flex-direction:column; align-items:flex-end; min-width:60px;">
+                <div class="bar-num" id="bn-frio" style="font-weight:700;">0</div>
+                <div class="st-subtotal" id="st-frio">$0</div>
+              </div>
+            </div>
+
+            <!-- CALIFICADO -->
+            <div class="strategy-row" id="row-calificado">
+              <label class="strategy-toggle">
+                <input type="checkbox" id="sw-calificado" aria-label="Recibir leads Completo" checked onchange="toggleTier('calificado', this)">
+                <span class="st-slider"></span>
+              </label>
+              <div class="bar-label-group">
+                <span class="bar-label">Completo <span class="help-icon"
+                    data-tip="Perfil inicial completo (nombre + email) + perfil de búsqueda + datos financieros aún sin validación positiva (ingresos, deudas o ahorro por confirmar).">?</span></span>
+                <span class="bar-sub">Perfil + scoring</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-calificado" style="background: var(--amber);"></div>
+              </div>
+              <div class="bar-num-wrap"
+                style="display:flex; flex-direction:column; align-items:flex-end; min-width:60px;">
+                <div class="bar-num" id="bn-calificado" style="font-weight:700;">0</div>
+                <div class="st-subtotal" id="st-calificado">$0</div>
+              </div>
+            </div>
+
+            <!-- CALIFICADO APROBADO -->
+            <div class="strategy-row" id="row-aprobado">
+              <label class="strategy-toggle">
+                <input type="checkbox" id="sw-aprobado" aria-label="Recibir leads Calificado" checked onchange="toggleTier('aprobado', this)">
+                <span class="st-slider"></span>
+              </label>
+              <div class="bar-label-group">
+                <span class="bar-label">Calificado <span class="help-icon"
+                    data-tip="Datos de contacto + perfil de búsqueda + validación financiera positiva de Ximia y listo para cierre. No constituye una pre-aprobación crediticia de un prestamista.">?</span></span>
+                <span class="bar-sub">Financiación validada</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-aprobado" style="background: var(--accent2);"></div>
+              </div>
+              <div class="bar-num-wrap"
+                style="display:flex; flex-direction:column; align-items:flex-end; min-width:60px;">
+                <div class="bar-num" id="bn-aprobado" style="font-weight:700;">0</div>
+                <div class="st-subtotal" id="st-aprobado">$0</div>
+              </div>
+            </div>
+
+            <!-- PRE-VENTA -->
+            <div class="strategy-row" id="row-preventa">
+              <label class="strategy-toggle">
+                <input type="checkbox" id="sw-preventa" aria-label="Recibir leads Listo para cerrar" checked onchange="toggleTier('preventa', this)">
+                <span class="st-slider"></span>
+              </label>
+              <div class="bar-label-group">
+                <span class="bar-label">Listo para<br>cerrar <span class="help-icon"
+                    data-tip="Datos de contacto + perfil de búsqueda + validación financiera positiva + Reserva iniciada en el sistema. Válido si el cliente no define operación en 48hs.">?</span></span>
+                <span class="bar-sub">Reserva Iniciada</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-preventa" style="background: var(--green);"></div>
+              </div>
+              <div class="bar-num-wrap"
+                style="display:flex; flex-direction:column; align-items:flex-end; min-width:60px;">
+                <div class="bar-num" id="bn-preventa" style="font-weight:700;">0</div>
+                <div class="st-subtotal" id="st-preventa">$0</div>
+              </div>
+            </div>
+          </div>
+
+            </div><!-- /cockpit-funnel (Leads, col 3) -->
+          </div><!-- /grid3 traffic -->
+
+          <!-- Nota al pie: objetivos de leads referenciales -->
+          <div style="margin-top:24px; background:rgba(217,119,6,0.06); border-left:4px solid var(--amber); border-radius:12px; padding:18px 22px; font-family:var(--font); font-size:14px; color:var(--text2); line-height:1.6;">
+            Los objetivos de leads son <strong style="color:var(--amber);">referenciales</strong> y se ajustan por demanda, categoría, territorio y calidad de la oferta. En el Main Partner puede sumarse un fee variable sobre ventas atribuibles, acordado por categoría antes del inicio.
+          </div>
+        </div><!-- /card: Fuente de tráfico -->
+
+        <!-- XIMIA CLOSING · feature destacado, ancho completo -->
+        <div class="closing-feature" id="ximia-closing">
+          <div class="closing-badge">🤝 Ximia Closing</div>
+          <div class="closing-body">
+            <div>
+              <p class="closing-text">
+                El lead <strong>Listo para cerrar</strong> es el más valioso: ya validó su financiación y está listo para
+                reservar. Te lo entregamos con un <strong>tiempo de contacto acordado (24–48&nbsp;h)</strong>.
+                Si lo tomás y cerrás en tiempo, la operación es tuya. Si no lo contactás a tiempo,
+                <strong style="color:var(--green);">Ximia cierra la venta y cobra la comisión
+                (<span id="closing-comm">3.0%</span>)</strong>. Así ninguna oportunidad caliente se enfría y se
+                protege la experiencia del comprador.
+              </p>
+            </div>
+            <div class="closing-guarantee">
+              <p class="closing-emph">Porque la credibilidad de Ximia ante el usuario final depende de que a un lead listo
+                tenga respuesta y seguimiento inmediatos.</p>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- COMPARATIVA VS MERCADO (#26) -->
+        <div class="roi-section sep" style="margin-top:16px;">
+          <div style="background:#fff; border:1.5px solid var(--border); border-radius:var(--radius); padding:32px 36px; position:relative; overflow:hidden; box-shadow:var(--shadow);">
+            <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--green));"></div>
+            <div style="font-size:25px; font-weight:800; color:var(--text); letter-spacing:-.02em; font-family:var(--font-h);">El lead de Ximia vs. otros canales</div>
+            <div style="font-family:var(--font); font-size:14px; color:var(--text2); margin-top:6px; margin-bottom:24px; max-width:62ch; line-height:1.6;">
+              Facebook, Zonaprop y Google venden contactos <strong style="color:var(--text);">sin calificación financiera</strong>: hay que llamarlos, calificarlos y descartar la mayoría. El lead de Ximia llega con <strong style="color:var(--text);">perfil completo + scoring</strong> — y aún así, más barato que todos.
+            </div>
+
+            <div style="font-family:var(--font); font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:12px;">Costo por lead — mismo lead, distinto canal</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <span style="width:230px; font-size:14px; font-weight:700; color:var(--text); flex-shrink:0;">Ximia Completo <span style="color:var(--accent2);">· perfil + scoring</span></span>
+                <div style="flex:1; height:24px; background:rgba(8,145,178,0.1); border-radius:6px; overflow:hidden;"><div id="vsm-bar-cali" style="height:100%; width:0; background:var(--accent); border-radius:6px; transition:width .5s;"></div></div>
+                <span id="vsm-cali" style="width:70px; text-align:right; font-family:var(--font-h); font-weight:800; font-size:17px; color:var(--accent2);">$—</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <span style="width:230px; font-size:14px; color:var(--muted); flex-shrink:0;">Facebook Ads <span style="opacity:.7;">· sin calificar</span></span>
+                <div style="flex:1; height:24px; background:rgba(8,145,178,0.1); border-radius:6px; overflow:hidden;"><div id="vsm-bar-fb" style="height:100%; width:0; background:var(--muted2); border-radius:6px; transition:width .5s;"></div></div>
+                <span id="vsm-fb" style="width:70px; text-align:right; font-family:var(--font-h); font-weight:700; font-size:16px; color:var(--text2);">$—</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <span id="vsm-portal-label" style="width:230px; font-size:14px; color:var(--muted); flex-shrink:0;">Zonaprop <span style="opacity:.7;">· sin calificar</span></span>
+                <div style="flex:1; height:24px; background:rgba(8,145,178,0.1); border-radius:6px; overflow:hidden;"><div id="vsm-bar-portal" style="height:100%; width:0; background:var(--muted2); border-radius:6px; transition:width .5s;"></div></div>
+                <span id="vsm-portal" style="width:70px; text-align:right; font-family:var(--font-h); font-weight:700; font-size:16px; color:var(--text2);">$—</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <span style="width:230px; font-size:14px; color:var(--muted); flex-shrink:0;">Google Ads <span style="opacity:.7;">· sin calificar</span></span>
+                <div style="flex:1; height:24px; background:rgba(8,145,178,0.1); border-radius:6px; overflow:hidden;"><div id="vsm-bar-google" style="height:100%; width:0; background:var(--muted2); border-radius:6px; transition:width .5s;"></div></div>
+                <span id="vsm-google" style="width:70px; text-align:right; font-family:var(--font-h); font-weight:700; font-size:16px; color:var(--text2);">$—</span>
+              </div>
+            </div>
+            <!-- Nota al pie, dentro del cuadro -->
+            <div style="margin-top:18px; font-family:var(--font); font-size:13.5px; color:var(--text2); line-height:1.6;">
+              <strong style="color:var(--accent2);">Y hay más:</strong> incluso un lead <strong style="color:var(--text);">Calificado</strong> de Ximia (<span id="vsm-note-apro" style="font-weight:700; color:var(--text);">$32</span>) — con ingresos, deudas y ahorro validados — cuesta menos que un contacto <strong style="color:var(--text);">sin calificar</strong> de Google (<span id="vsm-note-google" style="font-weight:700; color:var(--text);">$35</span>).
+            </div>
+            <!-- Destacado: Garantía Ximia -->
+            <div style="margin:24px -36px -32px; padding:20px 36px; background:var(--accent); font-size:16.5px; color:#fff; line-height:1.6; font-weight:500;">
+              <span style="color:#4ade80; font-weight:800;">✓ Garantía Ximia:</span> nunca pagás más por un lead financieramente calificado que por un contacto <strong style="color:#fff; text-decoration:underline; text-underline-offset:2px;">sin calificar</strong> de las plataformas de ads.
+            </div>
+          </div>
+        </div>
+
+
+        <!-- CARD 2: Arquitectura -->
+        <div class="card">
+          <div class="card-title"><span class="step-dot">3</span> Elegí tu plan</div>
+
+          <!-- Soporte de Voz (add-on) — arriba, debajo del título, con aire -->
+          <div class="field" style="margin-top:8px; margin-bottom:30px; padding-bottom:22px; border-bottom:1px solid var(--border);">
+            <div class="toggle-row" style="justify-content:flex-start; gap:20px;">
+              <div class="toggle-info">
+                <span class="toggle-name">🎙️ Soporte de Voz (STT / TTS)</span>
+                <span class="toggle-sub">Conversaciones por voz con el agente</span>
+              </div>
+              <label class="ts-wrap">
+                <input type="checkbox" id="voice-toggle" aria-label="Activar soporte de voz" onchange="toggleVoice()">
+                <div class="ts-track"><div class="ts-thumb"></div></div>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="grid3 plan-grid">
+
+              <div class="plan-col">
+              <div class="plan-card" id="pc-standard" role="button" tabindex="0" onclick="setPlanKey('standard')">
+                <div class="price-badge">Elegido</div>
+                <div class="plan-name">⚡ Estándar</div>
+                <div class="plan-lines">
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🧠 Agente de IA a medida</span><b id="cagente-standard">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Modelo de Lenguaje (LLM) · <em>Gemini 3 Flash</em></li>
+                      <li>Base de Conocimiento a medida</li>
+                      <li>Entrenamiento continuo</li>
+                      <li>Memoria conversacional</li>
+                      <li>Guardrails y seguridad</li>
+                      <li>Multi-idioma</li>
+                    </ul>
+                  </div>
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🏗️ Plataforma y desarrollo</span><b id="cplataforma-standard">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Motor de scoring y calificación</li>
+                      <li>Perfilado y base de datos de leads · <em>hasta 50k</em></li>
+                      <li>Análisis y reportes</li>
+                      <li>Integraciones (WhatsApp / web / CRM)</li>
+                      <li>Infraestructura 24/7 · <em>backup semanal</em></li>
+                    </ul>
+                  </div>
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🤝 Soporte · Help Desk</span><b id="csoporte-standard">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Setup y puesta en marcha</li>
+                      <li>Resolución de incidentes y problemas técnicos</li>
+                      <li>Actualizaciones · <em>1 por mes</em></li>
+                      <li>Acuerdo de nivel de servicio (SLA) · <em>&lt; 48h</em></li>
+                    </ul>
+                  </div>
+                  <div class="plan-line pb-voice" id="pvoice-row-standard">
+                    <div class="plan-line-head"><span class="plan-line-cat">🎙️ Soporte de voz</span><b id="pvoice-standard">—</b></div>
+                  </div>
+                  <div class="plan-line pb-camp" id="pcamp-row-standard" style="display:none;">
+                    <div class="plan-line-head"><span class="plan-line-cat" id="pcamp-name-standard">Campaña</span><b id="pcamp-standard">$—</b></div>
+                  </div>
+                </div>
+                <div class="plan-total">
+                  <div class="plan-total-amount" id="pt-standard">$—</div>
+                  <div class="plan-total-per">/mes · USD</div>
+                </div>
+              </div>
+              <div class="plan-roi" id="roi-standard">—</div>
+              </div>
+
+              <div class="plan-col">
+              <div class="plan-card" id="pc-pro" role="button" tabindex="0" onclick="setPlanKey('pro')">
+                <div class="price-badge">Elegido</div>
+                <div class="plan-name">⚖️ Pro</div>
+                <div class="plan-lines">
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🧠 Agente de IA a medida</span><b id="cagente-pro">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Modelo de Lenguaje (LLM) · <em>Claude Sonnet 5</em></li>
+                      <li>Base de Conocimiento a medida</li>
+                      <li>Entrenamiento continuo</li>
+                      <li>Memoria conversacional</li>
+                      <li>Guardrails y seguridad</li>
+                      <li>Multi-idioma</li>
+                    </ul>
+                  </div>
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🏗️ Plataforma y desarrollo</span><b id="cplataforma-pro">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Motor de scoring y calificación</li>
+                      <li>Perfilado y base de datos de leads · <em>+500k registros</em></li>
+                      <li>Análisis y reportes</li>
+                      <li>Integraciones (WhatsApp / web / CRM)</li>
+                      <li>Infraestructura 24/7 · <em>backup diario</em></li>
+                    </ul>
+                  </div>
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🤝 Soporte · Help Desk</span><b id="csoporte-pro">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Setup y puesta en marcha</li>
+                      <li>Resolución de incidentes y problemas técnicos</li>
+                      <li>Actualizaciones · <em>2 por mes</em></li>
+                      <li>Acuerdo de nivel de servicio (SLA) · <em>&lt; 24h</em></li>
+                    </ul>
+                  </div>
+                  <div class="plan-line pb-voice" id="pvoice-row-pro">
+                    <div class="plan-line-head"><span class="plan-line-cat">🎙️ Soporte de voz</span><b id="pvoice-pro">—</b></div>
+                  </div>
+                  <div class="plan-line pb-camp" id="pcamp-row-pro" style="display:none;">
+                    <div class="plan-line-head"><span class="plan-line-cat" id="pcamp-name-pro">Campaña</span><b id="pcamp-pro">$—</b></div>
+                  </div>
+                </div>
+                <div class="plan-total">
+                  <div class="plan-total-amount" id="pt-pro">$—</div>
+                  <div class="plan-total-per">/mes · USD</div>
+                </div>
+              </div>
+              <div class="plan-roi" id="roi-pro">—</div>
+              </div>
+
+              <div class="plan-col">
+              <div class="plan-card" id="pc-premium" role="button" tabindex="0" onclick="setPlanKey('premium')">
+                <div class="price-badge">Elegido</div>
+                <div class="plan-name">🔥 Premium</div>
+                <div class="plan-lines">
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🧠 Agente de IA a medida</span><b id="cagente-premium">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Modelo de Lenguaje (LLM) · <em>Claude Opus 5</em></li>
+                      <li>Base de Conocimiento a medida</li>
+                      <li>Entrenamiento continuo</li>
+                      <li>Memoria conversacional</li>
+                      <li>Guardrails y seguridad</li>
+                      <li>Multi-idioma</li>
+                    </ul>
+                  </div>
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🏗️ Plataforma y desarrollo</span><b id="cplataforma-premium">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Motor de scoring y calificación</li>
+                      <li>Perfilado y base de datos de leads · <em>registros ilimitados</em></li>
+                      <li>Análisis y reportes</li>
+                      <li>Integraciones (WhatsApp / web / CRM)</li>
+                      <li>Infraestructura 24/7 · <em>replicado 99.9%</em></li>
+                    </ul>
+                  </div>
+                  <div class="plan-line">
+                    <div class="plan-line-head"><span class="plan-line-cat">🤝 Soporte · Help Desk</span><b id="csoporte-premium">$—</b></div>
+                    <ul class="plan-incl">
+                      <li>Setup y puesta en marcha</li>
+                      <li>Resolución de incidentes y problemas técnicos</li>
+                      <li>Actualizaciones · <em>ilimitadas</em></li>
+                      <li>Acuerdo de nivel de servicio (SLA) · <em>&lt; 6h</em></li>
+                    </ul>
+                  </div>
+                  <div class="plan-line pb-voice" id="pvoice-row-premium">
+                    <div class="plan-line-head"><span class="plan-line-cat">🎙️ Soporte de voz</span><b id="pvoice-premium">—</b></div>
+                  </div>
+                  <div class="plan-line pb-camp" id="pcamp-row-premium" style="display:none;">
+                    <div class="plan-line-head"><span class="plan-line-cat" id="pcamp-name-premium">Campaña</span><b id="pcamp-premium">$—</b></div>
+                  </div>
+                </div>
+                <div class="plan-total">
+                  <div class="plan-total-amount" id="pt-premium">$—</div>
+                  <div class="plan-total-per">/mes · USD</div>
+                </div>
+              </div>
+              <div class="plan-roi" id="roi-premium">—</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+
+      </div>
+      <!-- END LEFT -->
+
+      <!-- (Valor de mercado por lead eliminado — el ROI ahora va por plan, dentro de cada tarjeta) -->
+
+      <!-- CONTACTO — al final: Agenda una reunión (2 col) + Guardá tu cotización (1 col derecha) -->
+      <div class="grid3" style="margin-top:20px; align-items:stretch;">
+
+        <div class="final-cta" style="margin-top:0; grid-column: span 2; border: 1.5px solid var(--accent); background: linear-gradient(to right, #ffffff, var(--accent-l)); padding: 38px; border-radius: var(--radius); display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+          <div>
+            <div class="cta-label" style="font-size: 27px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Agenda una reunión</div>
+            <div class="cta-sub" style="font-size: 17px; color: var(--muted); max-width: 500px; line-height: 1.5;">Hablemos para resolver las dudas finales y comienza a disfrutar un mundo en que vender es más fácil.</div>
+          </div>
+          <a href="#" onclick="return openCalendly()" class="btn-primary btn-glow" style="padding: 21px 40px; font-size: 19px;">Agendar Demo →</a>
+        </div>
+
+        <div style="grid-column: span 1; background: var(--text); border-radius: var(--radius); padding: 30px 28px; position: relative; overflow: hidden; display:flex; flex-direction:column; justify-content:center;">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--green));"></div>
+          <div style="font-family:var(--font-h); font-size:22px; font-weight:800; color:#fff; letter-spacing:-.02em;">Guardá tu cotización</div>
+          <div style="font-family:var(--font); font-size:14px; color:var(--muted2); margin:6px 0 16px; line-height:1.6;">Copiá el link exacto para retomarla o compartirla con tu equipo — y te la enviamos por email.</div>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="email" id="capture-email" aria-label="Tu email" placeholder="tu@email.com" style="flex:1; min-width:0; padding:13px 16px; border-radius:40px; border:1.5px solid var(--border2); background:#fff; color:var(--text); font-family:var(--font); font-size:15px; outline:none;">
+            <button class="btn-primary" onclick="submitEmail()" style="white-space:nowrap;">Recibir →</button>
+          </div>
+          <button id="copy-link-btn" onclick="copyPermalink()" style="background:transparent; border:1.5px solid var(--muted); color:#cbd5e1; font-family:var(--font); font-size:13px; font-weight:600; padding:10px 18px; border-radius:40px; cursor:pointer; transition:all .2s;">🔗 Copiar link para compartir</button>
+          <div id="capture-msg" style="font-family:var(--font); font-size:12.5px; color:var(--muted2); min-height:16px; text-align:center; margin-top:8px;"></div>
+        </div>
+
+      </div>
+
+    </div> <!-- main-grid -->
+
+    <!-- MODAL: qué incluye cada campaña (fuente: doc "Costos y Condiciones Construir Fácil + Ximia") -->
+    <div class="modal-overlay" id="pkg-modal" onclick="if(event.target===this)closePkgModal()">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pkg-modal-title">
+        <button class="modal-close" aria-label="Cerrar" onclick="closePkgModal()">×</button>
+        <h3 class="modal-title" id="pkg-modal-title">Campañas de difusión de ConstruirFácil</h3>
+        <p style="font-family:var(--font); font-size:13.5px; color:var(--muted); margin:-6px 0 18px; line-height:1.6;">Tres maneras de participar y destacarte dentro del ecosistema. Cada plan suma tráfico segmentado por Ximia hacia tu espacio, más medios y presencia de marca.</p>
+
+        <div class="pkg-row">
+          <h4>Main Partner Nacional <span class="imp">· USD 2.500/mes (plan anual) + % sobre ventas · ~1.000 leads/mes</span></h4>
+          <p>Para quienes quieren ser protagonistas en todo el país.</p>
+          <ul>
+            <li>Banner Principal en la Home y en todas las páginas de ConstruirFacil.com</li>
+            <li>500.000 impresiones en campañas y Medios Asociados (alcance nacional)</li>
+            <li>Tráfico segmentado por Ximia dirigido a tu espacio</li>
+            <li>Mención de marca en 12 notas de prensa (DIB + Medios Federales)</li>
+            <li>Oferta directa B2B a desarrolladores y constructores del ecosistema</li>
+            <li>Presencia destacada en eventos presenciales (stands y workshops)</li>
+            <li>Social Media de ConstruirFácil con contenido de tu marca</li>
+            <li>Ximia.AI 24/7 + condiciones para sumarla a tu propia web</li>
+          </ul>
+        </div>
+
+        <div class="pkg-row">
+          <h4>Socio Regional <span class="imp">· USD 1.750/mes (plan anual) + % sobre ventas · ~500 leads/mes</span></h4>
+          <p>Para quienes quieren ser protagonistas en su zona y crecer sin esfuerzo.</p>
+          <ul>
+            <li>Banner Principal en la Home de tu zona + Banner Rotativo en tu región</li>
+            <li>250.000 impresiones en campañas y Medios Asociados</li>
+            <li>Tráfico segmentado por Ximia dirigido a tu espacio</li>
+            <li>Contenido de marca en 12 notas de prensa (DIB + Medios Federales)</li>
+            <li>Oferta directa B2B a desarrolladores y constructores</li>
+            <li>Presencia en eventos, ferias y exposiciones de tu zona</li>
+            <li>Social Media de ConstruirFácil con contenido de tu marca</li>
+            <li>Ximia.AI 24/7 + condiciones para sumarla a tu web</li>
+          </ul>
+        </div>
+
+        <div class="pkg-row">
+          <h4>Proveedor Estratégico <span class="imp">· USD 800/mes (plan anual) + % sobre ventas · ~100 leads/mes</span></h4>
+          <p>Para empresas de materiales, accesorios y servicios para construir.</p>
+          <ul>
+            <li>Banner Rotativo en páginas específicas afines</li>
+            <li>100.000 impresiones en campañas y Medios Asociados</li>
+            <li>Tráfico segmentado por Ximia dirigido a tu espacio</li>
+            <li>Oferta directa de tus productos a desarrolladores y constructores</li>
+            <li>Mailing directo a cada nuevo lead precalificado listo para comprar</li>
+            <li>Presencia asociada en eventos y acciones presenciales</li>
+            <li>Social Media de ConstruirFácil con contenido de tu marca</li>
+            <li>Recomendaciones de Ximia.AI ofreciendo tus productos 24/7</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+
+    <script>
+      // ════════════════════════════════════════════
+      // CONFIGURACIÓN DE PRECIOS REALES (USD)
+      // ════════════════════════════════════════════
+
+      // ════════════════════════════════════════════
+      // MOTOR DE PRICING POR LEAD (Modelo "Lead Pricing 2026" — comisión amortizada)
+      // precio_lead = min(techo_mercado, (ticket × comisión / close_rate) × factor_captura)
+      // ════════════════════════════════════════════
+
+      // Factor de captura de Ximia por mercado (doc §2.3). % de la comisión amortizada que cobra Ximia.
+      // Multiplicador de valor de lead por mercado. ANCLA en USA (=1.0, donde tenemos referencias/estadísticas).
+      // Latam = 0.7× USA (base $3/$12/$32/$115, calibrada vs competidores Latam) · Dubai = 2.0× USA.
+      // Se expresa RELATIVO A LATAM (INCIDENCIA es Latam): USA/Europa = 1/0.7 ≈ 1.43 · Dubai = 2.0/0.7 ≈ 2.86. [DEV: ajustable]
+      const MKT_FACTOR = { latam: 1.0, usa: 1 / 0.7, europa: 1 / 0.7, eau: 2.0 / 0.7 };
+
+      // Techo por lead = benchmark de un lead SIN calificar del mercado (Zillow/portales). Garantiza "nunca más que Zillow".
+      const LEAD_CEILING_MKT = { latam: 80, usa: 200, europa: 200, eau: 250 };
+
+      // close_rate = leads de ese tier necesarios para cerrar 1 venta. Menor close_rate ⇒ lead más valioso.
+      const CLOSE_RATE = { frio: 150, cali: 30, apro: 8, prev: 2 };
+
+      // Productividad de un vendedor humano: leads calificados que genera por mes.
+      // Base citable: doc §4.2 (5 vendedores → 60 leads calificados/mes = 12 c/u).
+      const LEADS_PER_REP = 12;
+
+      // Costo de carrying mensual sobre el stock inmovilizado (capital + impuestos + mantenimiento).
+      const CARRYING_RATE = 0.01; // 1% / mes (~12% anual)
+
+      // Webhook de captura de cotización (Supabase → HubSpot vía n8n). ← REEMPLAZAR por la URL real.
+      const CAPTURE_WEBHOOK = 'https://construirfacil.app.n8n.cloud/webhook/simulador-cotizacion';  // n8n → Resend (envía al lead + BCC interno)
+      const LEAD_NOTIFY_EMAIL = 'hola@construirfacil.com';   // destino interno del lead/cotización (versión Construir Fácil)
+
+      // Pre-Venta = reserva iniciada (near-sale). Se cobra como % del ticket, no como lead. Queda sobre el techo Zillow.
+      const PREV_COMMISSION = 0.01;
+
+      // Qué tiers se facturan como lead premium. Frío y Calificado van INCLUIDOS (base de nurturing):
+      // Ximia no vende contactos que ya eran del cliente; monetiza cuando el lead madura a Aprobado.
+      // (Pre-Venta se cobra aparte como success-fee 1%.) Flipeá a true para facturar un tier.
+
+      // ── Embudo ANIDADO alineado a la TABLA DE MERCADO (Image 30 / mayo). Frío = etapa con datos
+      //    capturados (activo retargetable), NO el remanente. El resto de conversaciones = rebote sin datos.
+      //    Cada tier es subconjunto del anterior: Pre-Venta ⊂ Financiero ⊂ Calificado ⊂ Frío ⊂ conversaciones.
+      // Tasas del FUNNEL REAL DE MERCADO — Sector Construcción/Vivienda LatAm (tabla de Guillermo/mercado, Image 35):
+      // Conv → Deja datos 12% · Deja datos → Precalificados 15% · Precalificados → Listos 5%.
+      const FRIO_RATE  = 0.12; // conversación → deja datos básicos (Frío / "Leads" — captación web real 8-15%)
+      const CALIF_RATE = 0.50; // Frío → perfil completo (Calificado, paso intermedio)
+      const APRO_RATE  = 0.30; // Calificado → validación financiera (Financiero); Frío→Fin = 0.50×0.30 = 15% ✓ ("precalificados")
+      const PREV_RATE  = 0.05; // Financiero → reserva iniciada (Pre-Venta / "listos para comprar" 5-7%)
+      // Paquetes de campaña (difusión ConstruirFácil) = leads objetivo/mes del documento [DEV].
+      // Inyectan TRÁFICO = leads / (ENGAGE_RATE × CALIF_RATE), para que el embudo rinda ~esos leads calificados.
+      const CAMPAIGN_PACKAGES = { basica: 100, regional: 500, premium: 1000 };
+      // Costo mensual de cada campaña = PLAN ANUAL / 12 (para que no sume tanto al mensual):
+      // Main Partner 30.000/12=2.500 · Socio Regional 21.000/12=1.750 · Proveedor 9.600/12=800 USD/mes + % sobre ventas.
+      // Se SUMA a la inversión cuando la campaña está activa, como línea DIFERENCIADA (no es fee de Ximia).
+      const CAMPAIGN_INFO = {
+        premium:  { cost: 2500, label: 'Main Partner Nacional' },   // 30.000 anual / 12
+        regional: { cost: 1750, label: 'Socio Regional' },          // 21.000 anual / 12
+        basica:   { cost: 800,  label: 'Proveedor Estratégico' },   // 9.600 anual / 12
+      };
+
+      // ── Fee mensual (modelo por tramos: "por eso cobramos fee") ──
+      const LICENCIA_BASE = 700;
+      const SLA_BASE = { standard: 500, priority: 800, enterprise: 1500 }; // piso mensual (doc §2.4)
+      const LEADS_PER_SEAT = 30; // leads calificados que un vendedor trabaja por mes (perilla load-bearing, rango 20-40)
+      const ASIENTO_PRECIO = 40; // US$/vendedor/mes — valor por usuario (tipo CRM/HubSpot: soporte/DB por asiento, NO atado a comisión). [DEV]
+      const TARIFA_CONV = 0.022; // costo real por conversación (blend de tramos del embudo real). [DEV, rango 0.005-0.06]
+      const INFRA_MARKUP = 1.4;  // markup de infra (hosting, DB, voz, orquestación). El costo es por-modelo y se actualiza con el precio del modelo
+      const LLM_MARKUP = 2.5;    // markup SEPARADO y más alto para el motor de IA — el costo LLM es el más volátil (tokens/cache/largo de respuesta). Blindaje. [DEV]
+      // MARKUP DE SOPORTE / SERVICIO GESTIONADO (pivote a precio-por-valor, 2026-07-28): el cost-plus subvalúa un
+      // servicio donde Andrea hace setup, soporte, resolución y desarrollo continuo. El cliente NO puede saber los
+      // volúmenes de tokens → se cobra por VALOR, no por costo. Calibrado para que el default (Latam Estándar) ≈ $1.800. [DEV]
+      const SUPPORT_MARKUP = 1.86;
+      // Reparto POR VALOR del total en las 3 tarjetas visibles (NO por costo — el "Agente a medida" es la línea premium,
+      // no la factura de tokens). Suman 1.0; el remanente va a Soporte para que el total cierre exacto. [DEV]
+      const VALUE_SPLIT = { agente: 0.39, plataforma: 0.36 /* soporte = resto */ };
+      // Management fee por contactos/mes (× mktWeight). Tramos de la memoria 2026-05-14.
+      const MGMT_TRAMOS = [
+        { max: 10000, fee: 400 }, { max: 30000, fee: 700 }, { max: 75000, fee: 1000 },
+        { max: 150000, fee: 1700 }, { max: Infinity, fee: 2800 }
+      ];
+      // Comisión de Ximia Closing (si el cliente no toma/cierra el lead listo, Ximia cierra y cobra).
+      const CLOSING_COMMISSION = { latam: 0.03, usa: 0.025, europa: 0.03, eau: 0.02 };
+      const SLA_INFO = {
+        standard: "Mantenimiento mensual · Soporte por ticket (<48h respuesta).",
+        priority: "Mantenimiento quincenal · WhatsApp/Slack dedicado (<12h respuesta).",
+        enterprise: "Mantenimiento bajo demanda · Account Manager 24/7 · Soporte Crítico."
+      };
+
+      // portal / benchFb / benchGoogle = benchmarks del lead SIN calificar por mercado (Zillow es solo USA).
+      const MARKET = {
+        latam: { label: 'Latam', flag: '🌎', mktWeight: 0.75, refM2: 1700, refArea: 65, commission: 0.030, humanLeadCost: 50, portal: 'Zonaprop', benchFb: 14, benchPortal: 18, benchGoogle: 35 },
+        europa: { label: 'Europa', flag: '🇪🇺', mktWeight: 1.30, refM2: 3200, refArea: 85, commission: 0.030, humanLeadCost: 100, portal: 'Idealista', benchFb: 18, benchPortal: 25, benchGoogle: 80 },
+        usa: { label: 'USA / Europa', flag: '🇺🇸🇪🇺', mktWeight: 1.00, refM2: 3500, refArea: 140, commission: 0.025, humanLeadCost: 133, portal: 'Zillow / Idealista', benchFb: 20, benchPortal: 45, benchGoogle: 80 },
+        eau: { label: 'Dubai', flag: '🇦🇪', mktWeight: 2.20, refM2: 5500, refArea: 120, commission: 0.020, humanLeadCost: 223, portal: 'Bayut / Property Finder', benchFb: 35, benchPortal: 45, benchGoogle: 150 },
+      };
+
+      // Modelos y precios oficiales de Anthropic (por 1M tokens, jul 2026).
+      const AI_TIERS = {
+        economic: {
+          // Motor real del tier Estándar: Gemini Flash barato (lista jul-2026, $0.50 in / $3 out).
+          // NO migrar a 3.6 Flash ($1.50/$7.50): triplica el costo real de API y el Flash barato
+          // funciona perfecto para este tier (decisión de Andrea, 2026-07-28).
+          // OJO: la salida de Gemini incluye thinking tokens -> el costo real puede ser
+          // varias veces turnOutput. Validar contra la facturación de AI Studio / GCP.
+          label: 'Gemini 3 Flash',     // $0.50 in / $3 out
+          in: 0.50 / 1e6, out: 3.00 / 1e6, plat: 0.005
+        },
+        balanced: {
+          label: 'Claude Sonnet 5',    // $3 in / $15 out
+          in: 3.00 / 1e6, out: 15.00 / 1e6, plat: 0.01
+        },
+        premium: {
+          // Claude Opus 5 — $5 in / $25 out. VERIFICADO oficial (auditoría 2026-07-28): Opus 5 salió como
+          // "drop-in al precio de Opus 4.8", así que 4.8 y 5 cuestan lo MISMO — elegir uno u otro es calidad, no costo.
+          // Es el output más caro del mercado; el thinking (razona por default) pega justo acá. [DEV] pendiente:
+          // A/B Opus vs Sonnet en conversación real para decidir si el salto de calidad justifica $25 vs $15 de output.
+          label: 'Claude Opus 5',
+          in: 5.00 / 1e6, out: 25.00 / 1e6, plat: 0.02
+        },
+      };
+
+      const DB_TIERS = { standard: { raw: 25 }, scalable: { raw: 75 }, enterprise: { raw: 200 } };
+
+      // ── VOZ: modelo honesto (auditoría 2026-07-28) ──────────────────────────────────────────────
+      // STT se factura por MINUTO de audio del USUARIO; TTS por CARÁCTER de la respuesta del AGENTE.
+      // Así se factura de verdad — el modelo viejo (0.5 min × precio plano) sub-contaba ~10× la voz.
+      // Rebotes (la mayoría del volumen) corren TTS BARATO — misma lógica que el triage del LLM: no
+      // gastamos voz cara en gente que se fue. ElevenLabs ($50/1M) descartado por caro.
+      // Precios reales verificados (por 1M caracteres TTS / por minuto STT):
+      const VOICE_STACKS = {
+        none:     { sttMin: 0,      ttsChar: 0 },
+        standard: { sttMin: 0.006,  ttsChar: 16 / 1e6 }, // Whisper/Deepgram + Google Neural2 ($16/1M)
+        premium:  { sttMin: 0.0077, ttsChar: 30 / 1e6 }, // Deepgram Nova streaming + Deepgram Aura-2 / Google Chirp3 HD ($30/1M)
+      };
+      const TTS_BOUNCE_CHAR = 4 / 1e6;         // rebotes → TTS barato (Google Standard $4/1M), vía tipo triage
+      const VOICE_USER_MIN_PER_TURN  = 0.4;    // [DEV] min de habla del USUARIO por turno (a la gente le encanta hablar → STT pesa)
+      const VOICE_AGENT_CHARS_PER_TURN = 250;  // [DEV] largo de la respuesta HABLADA del agente — corta a propósito (controla TTS)
+
+      // Configuración de Tokens (Estructura Ximia)
+      // [DEV] PAR A CALIBRAR CON FACTURACIÓN REAL (auditoría 2026-07-28): turnOutput NO modela los "thinking tokens"
+      // (razonamiento), que se facturan como output y pueden ser varias veces el visible — sube el costo. PERO
+      // weightedTurns es compartido entre los 3 planes, así que Opus tampoco recibe crédito por calificar en MENOS
+      // turnos — baja el costo. Los dos efectos se COMPENSAN. No inventar un multiplicador ahora (sería adivinar en
+      // la dirección opuesta, el mismo error que la tarifa plana); calibrar ambos contra la primera factura real.
+      const TOKENS = {
+        fixedInput: 11180,  // System + KB + Profile (Cachable) — [DEV] medir con tiktoken/count-tokens del prompt real
+        turnInput: 200,    // User text + some hist
+        turnOutput: 300,   // sólo output VISIBLE — ver nota [DEV] de thinking arriba
+        weightedTurns: {
+          rebote: 2.5,   // < 3 turns
+          frio: 8.0,     // partial data
+          caliente: 15.0, // full process
+          ready: 25.0    // qualified closing
+        },
+        cacheFactor: 0.10   // Lectura de caché Anthropic ≈ 0.10× del input (stack todo-Claude)
+      };
+
+
+      // ════════════════════════════════════════════
+      // STATE
+      // ════════════════════════════════════════════
+      const S = {
+        market: 'latam',
+        m2Value: 1700,
+        ticket: 110500,
+        units: 100,
+        vendors: 3,
+        baseSales: 2,
+        languages: 1,
+        sla: 'standard',
+        visitsWa: 5000, visitsWeb: 3000, visitsPhone: 2000, visits: 10000,
+        trafficOwn: true,       // fuente: tráfico propio del cliente (activo por defecto)
+        trafficCampaign: false, // fuente: tráfico que trae la campaña de ConstruirFácil
+        campaignPkg: 'regional',
+        commission: 0.03,
+        plan: 'standard',   // selector único de plan → setea aiTier + dbTier + sla juntos
+        aiTier: 'economic',
+        dbTier: 'standard',
+        voiceEnabled: false,
+        voiceStack: 'standard',
+        selectedTiers: {
+          frio: true,
+          calificado: true,
+          aprobado: true,
+          preventa: true
+        }
+      };
+
+      // ════════════════════════════════════════════
+      // SETTERS
+      // ════════════════════════════════════════════
+      function activateBtn(sel, btn) { document.querySelectorAll(sel).forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); }); btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true'); }
+      function setMarket(btn) {
+        activateBtn('.mkt-btn', btn);
+        const mkey = btn.dataset.mkt;
+        S.market = mkey;
+        // Auto-update ticket to the market's reference average property price (client can re-adjust)
+        const refTicket = Math.round(MARKET[mkey].refM2 * MARKET[mkey].refArea);
+        S.ticket = refTicket;
+        const tsld = document.getElementById('ticket-slider');
+        if (tsld) tsld.value = refTicket;
+        // Reset commission to the market default (client can re-adjust)
+        S.commission = MARKET[mkey].commission;
+        const csld = document.getElementById('commission');
+        if (csld) csld.value = (S.commission * 100).toFixed(1);
+        onSlider(); // Update state and UI
+      }
+      // Un plan setea los 3 componentes (motor + base de datos + plataforma) de una.
+      const PLAN_MAP = {
+        standard: { ai: 'economic', db: 'standard',   sla: 'standard' },
+        pro:      { ai: 'balanced', db: 'scalable',   sla: 'priority' },
+        premium:  { ai: 'premium',  db: 'enterprise', sla: 'enterprise' },
+      };
+      function applyPlan(planKey) {
+        const m = PLAN_MAP[planKey] || PLAN_MAP.standard;
+        S.plan = planKey; S.aiTier = m.ai; S.dbTier = m.db; S.sla = m.sla;
+      }
+      function setPlan(btn) { activateBtn('.tier-btn[data-plan]', btn); applyPlan(btn.dataset.plan); calc(); }
+      // Elegir plan desde la comparativa de precios → aplica plan + sincroniza los botones de la sección 3 + recalcula.
+      function setPlanKey(key) {
+        applyPlan(key);
+        document.querySelectorAll('.tier-btn[data-plan]').forEach(b => {
+          const on = b.dataset.plan === key; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        calc();
+      }
+      // Fuente de tráfico: switches MULTI (ambas pueden estar activas y suman). Muestra/oculta cada body y marca el cuadro.
+      function toggleSource(key, el) {
+        const on = el.checked;
+        if (key === 'own') S.trafficOwn = on; else S.trafficCampaign = on;
+        const body = document.getElementById(key === 'own' ? 'own-body' : 'campaign-body');
+        if (body) body.classList.toggle('src-off', !on);
+        const card = document.getElementById(key === 'own' ? 'card-own' : 'card-campaign');
+        if (card) card.classList.toggle('active', on);
+        calc();
+      }
+      function setPkg(btn) { activateBtn('.tier-btn[data-pkg]', btn); S.campaignPkg = btn.dataset.pkg; calc(); }
+      function openPkgModal() { document.getElementById('pkg-modal').classList.add('open'); }
+      function closePkgModal() { document.getElementById('pkg-modal').classList.remove('open'); }
+      function scrollToClosing() {
+        const el = document.getElementById('ximia-closing');
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('closing-flash'); void el.offsetWidth; el.classList.add('closing-flash');
+      }
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePkgModal(); });
+
+      function toggleTier(tier, el) {
+        S.selectedTiers[tier] = el.checked;
+        const row = document.getElementById('row-' + (tier === 'calificado' ? 'calificado' : (tier === 'aprobado' ? 'aprobado' : (tier === 'preventa' ? 'preventa' : 'frio'))));
+        if (row) {
+          if (el.checked) row.classList.remove('disabled');
+          else row.classList.add('disabled');
+        }
+        calc();
+      }
+
+      function changeLang(d) {
+        S.languages = Math.max(1, Math.min(5, S.languages + d));
+        s('lang-out', S.languages.toString());
+        s('lang-lbl', S.languages === 1 ? 'idioma' : 'idiomas');
+        calc();
+      }
+
+      function toggleVoice() {
+        S.voiceEnabled = document.getElementById('voice-toggle').checked;
+        calc();
+      }
+
+      function onSlider() {
+        S.ticket = +document.getElementById('ticket-slider').value;
+        // m² is now a derived readout: ticket ÷ superficie promedio del mercado. Keep S.m2Value in sync for legacy uses.
+        S.m2Value = Math.round(S.ticket / MARKET[S.market].refArea);
+        S.units = +document.getElementById('units').value;
+        S.vendors = +document.getElementById('vendors').value;
+        const bsEl = document.getElementById('basesales');
+        if (bsEl) { S.baseSales = Math.max(1, +bsEl.value); s('basesales-out', S.baseSales.toString()); }
+        // Tráfico propio = suma de los 3 canales (WhatsApp + Web + Teléfono)
+        const vWa = +((document.getElementById('v-wa') || {}).value) || 0;
+        const vWeb = +((document.getElementById('v-web') || {}).value) || 0;
+        const vPhone = +((document.getElementById('v-phone') || {}).value) || 0;
+        S.visitsWa = vWa; S.visitsWeb = vWeb; S.visitsPhone = vPhone;
+        S.visits = vWa + vWeb + vPhone;
+        const commEl = document.getElementById('commission');
+        if (commEl) { S.commission = (+commEl.value) / 100; s('commission-out', (+commEl.value).toFixed(1) + '%'); }
+        s('ticket-out', 'USD ' + fmt0(S.ticket));
+        s('units-out', fmt0(S.units));
+        s('vendors-out', S.vendors.toString());
+        s('visits-out', fmt0(S.visits));
+        calc();
+      }
+
+
+      // ════════════════════════════════════════════
+      // FORMAT
+      // ════════════════════════════════════════════
+      // Idioma / locale de números. Se lee de ?lang=en o del <html lang>; default es.
+      // (Un anglófono lee "$1.700" como "1,70" — el formato debe seguir el idioma del visitante.)
+      const LANG = (() => {
+        try {
+          const q = new URLSearchParams(location.search).get('lang');
+          return (q || (document.documentElement && document.documentElement.lang) || 'es').slice(0, 2).toLowerCase();
+        } catch (e) { return 'es'; }
+      })();
+      const NUM_LOCALE = LANG === 'en' ? 'en-US' : 'es-AR';
+      const loc = n => Math.round(n).toLocaleString(NUM_LOCALE);
+      const fmt0 = n => n.toLocaleString(NUM_LOCALE);
+      function fmtUSD(n) {
+        if (n === 0) return '$0';
+        if (n >= 1000) return '$' + loc(n);
+        if (n >= 10) return '$' + Math.round(n);
+        return '$' + n.toFixed(2);
+      }
+      function fmtLead(n) {
+        if (n < 0.01) return '<$0.01';
+        if (n < 100) return '$' + n.toFixed(2);
+        return '$' + Math.round(n);
+      }
+      function s(id, val) {
+        const el = document.getElementById(id); if (!el) return;
+        if (el.innerHTML === String(val)) return; // sin cambio: evita reflow y re-animación
+        el.innerHTML = val; el.classList.remove('na'); void el.offsetWidth; el.classList.add('na');
+      }
+
+      // ════════════════════════════════════════════
+      // CALCULATE
+      // ════════════════════════════════════════════
+      function calc() {
+        // ── CONFIGURACIÓN DE MERCADO Y TIER ──
+        const mkt = MARKET[S.market];
+        const ai = AI_TIERS[S.aiTier];
+        const db = DB_TIERS[S.dbTier];
+        const vs = VOICE_STACKS[S.voiceEnabled ? S.voiceStack : 'none'];
+
+        // 1. Ticket = input directo del cliente. El m² es una lectura derivada informativa.
+        const ticketEst = S.ticket;
+        const m2Equiv = Math.round(ticketEst / mkt.refArea);
+        s('m2-est', 'USD ' + loc(m2Equiv) + ' / m²');
+
+        // 2. Embudo ANIDADO alineado a la tabla de mercado. Frío = etapa con datos; el resto = rebote sin datos.
+        const ENGAGE_RATE = 0.74; // % de contactos PROPIOS (warm, ya te escribieron) que sostienen conversación real. Calibrado con Guillermo: pre-venta ≈ 1/1500 contactos. (Clicks fríos de campaña convierten ~35%.)
+        // aiBonus: el LLM NO inventa gente — mejora la tasa de calificación/retención (restaurado de mayo).
+        const aiBonus = S.aiTier === 'premium' ? 1.30 : (S.aiTier === 'balanced' ? 1.10 : 1.0);
+        // TRÁFICO TOTAL = propio (si activo) + campaña (si activa). El paquete inyecta el tráfico que rinde
+        // ~sus leads objetivo, corriendo por el mismo embudo (opción A confirmada por Andrea).
+        const ownTraffic = S.trafficOwn ? S.visits : 0;
+        const campaignLeadsGoal = CAMPAIGN_PACKAGES[S.campaignPkg] || 0;
+        const campaignTraffic = S.trafficCampaign ? Math.round(campaignLeadsGoal / (ENGAGE_RATE * FRIO_RATE * CALIF_RATE)) : 0;
+        const effVisits = ownTraffic + campaignTraffic;
+        const conversations = Math.round(effVisits * ENGAGE_RATE);
+        s('label-conv-est', loc(conversations) + ' conversaciones/mes');
+        // Desglose del tráfico — SIEMPRE visible (reserva la línea para que el embudo no salte al prender/quitar campaña).
+        const splitEl = document.getElementById('traffic-split');
+        if (splitEl) {
+          if (S.trafficCampaign) {
+            splitEl.textContent = '≈ ' + loc(ownTraffic) + ' propios + ' + loc(campaignTraffic) + ' de campaña ('
+              + loc(campaignLeadsGoal) + ' leads objetivo)';
+          } else {
+            splitEl.textContent = '≈ ' + loc(ownTraffic) + ' contactos propios';
+          }
+        }
+
+        // Embudo anidado: Frío = etapa con datos capturados (no el remanente). aiBonus mejora calificación.
+        const nFrio = Math.round(conversations * FRIO_RATE);              // dejaron datos básicos (activo retargetable)
+        const nCali = Math.round(nFrio * CALIF_RATE * aiBonus);           // completaron perfil
+        const nApro = Math.round(nCali * APRO_RATE * aiBonus);            // pre-calificación financiera OK
+        const nPreV = Math.round(nApro * PREV_RATE);                     // listos para reservar
+        // Buckets EXCLUSIVOS — cada lead se cuenta UNA vez, en su tier FINAL (para el cobro por lead):
+        const leafFrio = Math.max(0, nFrio - nCali);    // datos básicos, sin perfil completo (nurturing, incluido)
+        const leafCali = Math.max(0, nCali - nApro);    // perfil completo, sin pre-calificación
+        const leafApro = Math.max(0, nApro - nPreV);    // financiero, sin reserva
+        const leafPreV = nPreV;                          // listo para reservar
+
+        // 3. VALOR por lead → se calcula MÁS ABAJO (sección 7), porque ahora sale de la INVERSIÓN real
+        //    (grandTotal) repartida por un índice de tipo de lead × ajuste por mercado. NO de la comisión.
+
+        // 4. Conteo por toggles (buckets exclusivos).
+        const cFrio = S.selectedTiers.frio ? leafFrio : 0;
+        const cCali = S.selectedTiers.calificado ? leafCali : 0;
+        const cApro = S.selectedTiers.aprobado ? leafApro : 0;
+        const cPreV = S.selectedTiers.preventa ? leafPreV : 0;
+
+        // 5. SERVICIO MENSUAL = PISO predecible (Licencia + SLA) + VARIABLE (modelo del doc, escala con el negocio).
+        const extraLangs = Math.max(0, S.languages - 1);
+        const langFixedFee = extraLangs * 150;
+        // SERVICIO = base_SLA + CAPACIDAD DE ABSORCIÓN del equipo (asientos comerciales). El driver es el EQUIPO,
+        // no el inventario ni el tráfico: Ximia puede generar leads casi infinitos, pero el cliente sólo puede
+        // trabajar los que su fuerza de ventas absorbe. Se factura el asiento comprometido (committed-use, tipo SaaS).
+        const seats = Math.max(1, S.vendors);
+        const capacidadLeads = seats * LEADS_PER_SEAT;   // leads que Ximia se compromete a entregar (SLA de supply)
+        const precioAsiento = ASIENTO_PRECIO;            // valor plano por usuario (como HubSpot: por soporte/DB, NO por comisión)
+        const variableFee = seats * precioAsiento;
+        const servicioMensual = Math.round(SLA_BASE[S.sla] + variableFee + langFixedFee);
+        // Chequeo de supply (NO factura): con el tráfico actual, ¿Ximia satura la capacidad del equipo?
+        const supplyQualified = nApro;
+        const supplyOk = supplyQualified >= capacidadLeads;
+
+        // 6. INFRAESTRUCTURA — costo que el cliente PAGA (aparte del servicio). Deriva del CONSUMO REAL por
+        //    conversación (tarifa medida por-modelo) × markup que nos cubre, NO el doble. Se actualiza cuando
+        //    cambia el precio del modelo. Atado a la cantidad de conversaciones gestionadas (consumo estimado).
+        const hostBase = S.aiTier === 'premium' ? 450 : (S.aiTier === 'balanced' ? 280 : 120);
+        const hostDynamic = hostBase + (Math.floor(conversations / 10000) * 40);
+        const wT = TOKENS.weightedTurns;
+        // Turnos de audio: rebotes (la mayoría) + las que progresan. Mapeo consistente con el LLM (Frío=8, Cali=15, Apro/PreV=25).
+        const bounceTurns = Math.max(0, conversations - nFrio) * wT.rebote;
+        const progTurns   = leafFrio * wT.frio + leafCali * wT.caliente + leafApro * wT.ready + leafPreV * wT.ready;
+        // STT sobre TODO el audio (el usuario habla en rebotes y progresadas); TTS: rebotes por la vía barata, progresadas por la del stack.
+        const voiceRaw = S.voiceEnabled
+          ? (bounceTurns + progTurns) * VOICE_USER_MIN_PER_TURN * vs.sttMin
+            + bounceTurns * VOICE_AGENT_CHARS_PER_TURN * TTS_BOUNCE_CHAR
+            + progTurns   * VOICE_AGENT_CHARS_PER_TURN * vs.ttsChar
+          : 0;
+        // ⭐ MODELO DE COSTO LLM — documentado en MOTOR_COSTOS_LLM.md (leer antes de tocar).
+        //    NUNCA volver a una tarifa plana por conversación: el costo DEBE salir de tokens × precio del motor.
+        // Motor IA: COSTO REAL por tokens × precio del motor, con DOS optimizaciones de arquitectura:
+        //  1) TRIAGE: las conversaciones que rebotan (no dejan datos) corren en un modelo barato (Flash-Lite) con
+        //     prompt lean de ruteo — NO cargan los 11k de KB ni el modelo caro del plan. Sólo escalan al motor
+        //     del plan las que progresan. Esto evita pagar Opus/Sonnet sobre las ~23k que rebotan.
+        //  2) CACHE del system+KB: NO garantizado entre conversaciones — depende de densidad de tráfico vs TTL
+        //     (Anthropic: 5 min / 1 h extendido). DENTRO de una charla los turnos van segundos aparte → del
+        //     turno 2 en adelante SIEMPRE lee cacheado (0.10×). ⭐ ESTO ES VÁLIDO PORQUE XIMIA CORRE EN WIDGET WEB
+        //     SINCRÓNICO: el lead se sienta y responde seguido, dentro del TTL de 5 min. (Auditoría 2026-07-28: el
+        //     único escenario que rompe este 0.10× es un canal ASÍNCRONO tipo WhatsApp, donde el lead contesta a
+        //     las horas/días y el cache vence entre turnos. REVISAR este supuesto sólo si se agrega WhatsApp/async —
+        //     para entonces habrá facturación real para medirlo.) El turno 1 depende de si otra conversación calentó
+        //     el prefijo dentro del TTL: hit → read 0.10× · miss → WRITE 1.25× (peor que no cachear). Con las ~3k
+        //     que progresan a ~4/h, el warmeo cruzado es raro → cacheHitRate conservador. [DEV] A MEDIR antes de prometer.
+        const convBounce = Math.max(0, conversations - nFrio);   // conversó pero rebotó sin dejar datos
+        const CACHE_READ  = TOKENS.cacheFactor;  // 0.10× lectura de prefijo cacheado
+        const CACHE_WRITE = 1.25;                // 1.25× escritura (TTL 5 min; 1 h ≈ 2×)
+        const cacheHitRate = 0.20;               // [DEV] fracción de 1eros-turno que pegan el cache — MEDIR con tráfico real
+        const firstTurnMult = cacheHitRate * CACHE_READ + (1 - cacheHitRate) * CACHE_WRITE;
+
+        // 1) Triage de rebotes — modelo barato, contexto lean (sin KB de 11k). [DEV: precio y contexto ajustables]
+        //    ⚠️ SUPUESTO OPTIMISTA (escalationRate = 0): asume que NINGÚN rebote toca la KB ni el modelo caro del plan.
+        //    Un router real no sabe que una charla va a rebotar hasta engancharla, así que algo se filtra. Auditoría
+        //    2026-07-28: 10% de fuga → Motor Premium +$137, Pro +$81; 20% → +$274/+$161. Es el único riesgo LLM que
+        //    sigue vivo. [DEV] medir la tasa real de escalación con el primer cliente antes de comprometer Pro/Premium.
+        const TRIAGE = { in: 0.30 / 1e6, out: 2.50 / 1e6 };  // Gemini 3.5 Flash-Lite (lista jul-2026)
+        const TRIAGE_INPUT = 1500;                            // prompt de ruteo, sin KB/perfil completo
+        const bounceInTok  = convBounce * (TRIAGE_INPUT + TOKENS.turnInput * wT.rebote);
+        const bounceOutTok = convBounce * (TOKENS.turnOutput * wT.rebote);
+        const triageRaw = bounceInTok * TRIAGE.in + bounceOutTok * TRIAGE.out;
+
+        // 2) Conversaciones que progresan — motor del plan, KB cacheada entre conversaciones
+        const progBuckets = [
+          [leafFrio, wT.frio],      // dejó datos básicos
+          [leafCali, wT.caliente],  // perfil completo
+          [leafApro, wT.ready],     // validación financiera
+          [leafPreV, wT.ready],     // reserva iniciada
+        ];
+        let progInTok = 0, progOutTok = 0;
+        for (const [n, t] of progBuckets) {
+          // KB de 11k: turno 1 incierto (hit 0.10× / miss 1.25×), turnos 2..t cacheados dentro de la charla (0.10×)
+          const fixedEff = TOKENS.fixedInput * (firstTurnMult + CACHE_READ * Math.max(0, t - 1));
+          const convIn = fixedEff + TOKENS.turnInput * t;
+          progInTok  += n * convIn;
+          progOutTok += n * TOKENS.turnOutput * t;
+        }
+        const planRaw = progInTok * ai.in + progOutTok * ai.out;
+
+        const llmRaw = triageRaw + planRaw; // costo real: triage barato (rebotes) + motor del plan (progresan)
+        const platRaw = conversations * ai.plat;
+        // El LLM lleva markup propio (más alto) por ser el costo más volátil; el resto de infra usa INFRA_MARKUP.
+        const infraTotalFinal = Math.round(llmRaw * LLM_MARKUP + (hostDynamic + platRaw + db.raw + voiceRaw) * INFRA_MARKUP); // #4 lo que paga el cliente
+        const grandTotal = servicioMensual + infraTotalFinal;                  // #1 Inversión mensual = Plataforma & Gestión + Infraestructura
+
+        // Valores de mercado por lead (para el ROI de cada plan) — Latam base × ajuste por mercado.
+        const INCIDENCIA = { frio: 3, cali: 12, apro: 32, prev: 115 }; // valor USD por tipo de lead — BASE = LATAM (calibrado vs competidores Latam)
+        const BASE_LEAD_VALUE = 1.0; // multiplicador global — el "número que cierra"
+        const mktFactor = MKT_FACTOR[S.market] || 1; // ajuste por mercado (ancla USA — ver MKT_FACTOR)
+
+        // ── COMPARATIVA DE PLANES (3 a la vez) — costo + ROI. Sólo cambia lo dependiente del plan:
+        //    aiBonus→embudo, motor (ai.in/out/plat), host, db, SLA. Lo compartido (conversaciones, asientos,
+        //    idiomas, triage) se reusa. Cierra sobre los locales de calc().
+        function costForPlan(planKey) {
+          const m = PLAN_MAP[planKey];
+          const pai = AI_TIERS[m.ai], pdb = DB_TIERS[m.db];
+          const pBonus = m.ai === 'premium' ? 1.30 : (m.ai === 'balanced' ? 1.10 : 1.0);
+          const pCali = Math.round(nFrio * CALIF_RATE * pBonus);   // nFrio es independiente del plan
+          const pApro = Math.round(pCali * APRO_RATE * pBonus);
+          const pPreV = Math.round(pApro * PREV_RATE);
+          const lF = Math.max(0, nFrio - pCali), lC = Math.max(0, pCali - pApro), lA = Math.max(0, pApro - pPreV), lP = pPreV;
+          const pServ = Math.round(SLA_BASE[m.sla] + seats * ASIENTO_PRECIO + langFixedFee);
+          const pHost = (m.ai === 'premium' ? 450 : (m.ai === 'balanced' ? 280 : 120)) + Math.floor(conversations / 10000) * 40;
+          // Voz: rebotes (compartidos, vía TTS barata) + progresadas del plan (vía TTS del stack). STT sobre todo el audio.
+          const pBounceTurns = Math.max(0, conversations - nFrio) * wT.rebote;
+          const pProgTurns = lF * wT.frio + lC * wT.caliente + lA * wT.ready + lP * wT.ready;
+          const pVoice = S.voiceEnabled
+            ? (pBounceTurns + pProgTurns) * VOICE_USER_MIN_PER_TURN * vs.sttMin
+              + pBounceTurns * VOICE_AGENT_CHARS_PER_TURN * TTS_BOUNCE_CHAR
+              + pProgTurns   * VOICE_AGENT_CHARS_PER_TURN * vs.ttsChar
+            : 0;
+          let pIn = 0, pOut = 0;
+          for (const [n, t] of [[lF, wT.frio], [lC, wT.caliente], [lA, wT.ready], [lP, wT.ready]]) {
+            const fx = TOKENS.fixedInput * (firstTurnMult + CACHE_READ * Math.max(0, t - 1));
+            pIn += n * (fx + TOKENS.turnInput * t); pOut += n * TOKENS.turnOutput * t;
+          }
+          const pLlm = triageRaw + (pIn * pai.in + pOut * pai.out);
+          // 3 ITEMS FACTURABLES. La INFRA no escala por mercado (cuesta lo mismo en todos lados). El FEE DE SERVICIO
+          // (SLA + asientos + orquestación) SÍ escala por mercado × mktFactor — un asiento/fee/soporte cuesta más donde el mercado es más caro.
+          const catMotor = Math.round(pLlm * LLM_MARKUP);                                                        // Motor de IA (LLM, NO escala por mercado)
+          const catBase  = Math.round((pHost + pdb.raw) * INFRA_MARKUP);                                         // Infra + DB (voz va en línea propia, NO acá)
+          const catPlat  = Math.round((pServ + conversations * pai.plat * INFRA_MARKUP) * mktFactor);            // Servicio (SLA + asientos + orquestación) — SÍ escala por mercado
+          const costTotal = catMotor + catBase + catPlat;                                                        // costo real + markups de costo (piso interno) — SIN voz
+          // MARKUP DE SOPORTE → precio por VALOR (servicio gestionado: setup, soporte, resolución, desarrollo continuo).
+          const valueTotal = Math.round(costTotal * SUPPORT_MARKUP);
+          // Subtotales de las 3 tarjetas repartidos POR VALOR (no por costo): el Agente a medida es la línea premium.
+          const cAgente     = Math.round(valueTotal * VALUE_SPLIT.agente);
+          const cPlataforma = Math.round(valueTotal * VALUE_SPLIT.plataforma);
+          const cSoporte    = valueTotal - cAgente - cPlataforma;                                                // remanente → los 3 suman EXACTO el subtotal
+          // Voz: LÍNEA PROPIA. Lleva SOLO el markup de infra (1,4×), NO el de soporte — es casi un pass-through de APIs
+          // (STT/TTS), no da trabajo de servicio gestionado como el agente. Cobrarle el markup de soporte encima era de más.
+          const cVoice = S.voiceEnabled ? Math.round(pVoice * INFRA_MARKUP) : 0;
+          // Costo de campaña (si está activa) — línea DIFERENCIADA, NO lleva markup de soporte (difusión ConstruirFácil, no fee de Ximia).
+          const campCost = S.trafficCampaign ? (CAMPAIGN_INFO[S.campaignPkg]?.cost || 0) : 0;
+          const pTotal = valueTotal + cVoice + campCost;
+          // Valor de mercado de los leads que ESTE plan genera (su propio embudo) → ROI = valor / costo
+          const valueGen = (lF * INCIDENCIA.frio + lC * INCIDENCIA.cali + lA * INCIDENCIA.apro + lP * INCIDENCIA.prev) * BASE_LEAD_VALUE * mktFactor;
+          const roi = pTotal > 0 ? valueGen / pTotal : 0;
+          return { cAgente, cPlataforma, cSoporte, voice: cVoice, campania: campCost, total: pTotal, motor: pai.label, valueGen, roi, listos: lP };
+        }
+        const campActive = S.trafficCampaign;
+        const campLabel = CAMPAIGN_INFO[S.campaignPkg]?.label || '';
+        ['standard', 'pro', 'premium'].forEach(k => {
+          const c = costForPlan(k);
+          s('pt-' + k, fmtUSD(c.total));
+          s('cagente-' + k, fmtUSD(c.cAgente)); s('cplataforma-' + k, fmtUSD(c.cPlataforma)); s('csoporte-' + k, fmtUSD(c.cSoporte));
+          // MULTIPLICADOR de ventas = leads "Listo para cerrar" que entrega el plan ÷ ventas actuales del equipo (input).
+          const mult = c.listos / Math.max(1, S.baseSales);
+          const multStr = mult >= 10 ? Math.round(mult).toString() : (Math.round(mult * 10) / 10).toString().replace(/\.0$/, '');
+          s('roi-' + k, '<b>ROI ' + multStr + '×</b>Ximia multiplica por ' + multStr + ' tus oportunidades de venta actuales.');
+          // Línea de voz: siempre visible, gris/apagada; se prende (accent) + muestra su valor con el switch general.
+          const voiceRow = document.getElementById('pvoice-row-' + k);
+          if (voiceRow) {
+            voiceRow.classList.toggle('on', S.voiceEnabled);
+            s('pvoice-' + k, S.voiceEnabled ? fmtUSD(c.voice) : '—');
+          }
+          // Línea de campaña (diferenciada) — se muestra sólo si la campaña está activa
+          const campRow = document.getElementById('pcamp-row-' + k);
+          if (campRow) {
+            campRow.style.display = campActive ? '' : 'none';
+            if (campActive) { s('pcamp-name-' + k, 'Campaña · ' + campLabel); s('pcamp-' + k, fmtUSD(c.campania)); }
+          }
+          const col = document.getElementById('pc-' + k); if (col) col.classList.toggle('selected', k === S.plan);
+        });
+
+        // 7. VALOR por lead (para el embudo) — usa INCIDENCIA/BASE/mktFactor ya definidos arriba (comparativa de planes).
+        const leadValue = (tier) => BASE_LEAD_VALUE * INCIDENCIA[tier] * mktFactor;
+        const vFrio = leadValue('frio'), vCali = leadValue('cali'), vApro = leadValue('apro'), vPrev = leadValue('prev');
+
+        // ── DISPLAY ──
+        s('r-total', fmtUSD(grandTotal));
+        s('r-svc', fmtUSD(servicioMensual));
+        s('r-maint', fmtUSD(servicioMensual));
+        s('r-infra', fmtUSD(infraTotalFinal));   // #2 la infra se muestra y se suma (ya no "incluida")
+        s('r-infra2', fmtUSD(infraTotalFinal));
+
+        // Barras del embudo: counts ANIDADOS sobre una ESCALA FIJA con raíz cuadrada, para que TODAS las barras
+        // (incluida la Pre-venta, que es diminuta: ~1/1500) CREZCAN de forma visible con el volumen (tráfico + campaña),
+        // conservando la forma del embudo (Frío > Cali > Fin > Prev). El sqrt comprime: levanta las barras chicas para
+        // que se muevan, sin que Frío las aplaste. BAR_FULL_FRIO = Frío que llena al 100% → Frío/Cali recién saturan
+        // ~50k contactos (límite realista). Subirlo corre el tope más arriba pero achica las barras chicas. [DEV] ajustable.
+        const BAR_FULL_FRIO = 4500;
+        const updateRow = (id, count, subtotal) => {
+          const num = document.getElementById('bn-' + id); if (num) num.textContent = loc(count);
+          const st = document.getElementById('st-' + id); if (st) st.innerHTML = subtotal;
+          const bar = document.getElementById('bar-' + id);
+          if (bar) bar.style.width = Math.min(100, Math.max(2, Math.sqrt(count / BAR_FULL_FRIO) * 100)) + '%';
+        };
+        updateRow('frio', S.selectedTiers.frio ? nFrio : 0, S.selectedTiers.frio ? (fmtLead(vFrio) + ' c/u') : '$0');
+        updateRow('calificado', S.selectedTiers.calificado ? nCali : 0, S.selectedTiers.calificado ? (fmtLead(vCali) + ' c/u') : '$0');
+        updateRow('aprobado', S.selectedTiers.aprobado ? nApro : 0, S.selectedTiers.aprobado ? (fmtLead(vApro) + ' c/u') : '$0');
+        updateRow('preventa', S.selectedTiers.preventa ? nPreV : 0, S.selectedTiers.preventa ? '<span class="closing-link" onclick="scrollToClosing()">Ximia Closing ↗</span>' : '$0');
+
+        // Sidebar "Precios por Lead" — VALOR de mercado de cada lead (lente de ROI, no el costo).
+        s('r-lead-frio-sb', S.selectedTiers.frio ? fmtLead(vFrio) : '$0');
+        s('r-lead-p', S.selectedTiers.calificado ? fmtLead(vCali) : '$0');
+        s('r-lead-q', S.selectedTiers.aprobado ? fmtLead(vApro) : '$0');
+        s('r-lead-preventa', S.selectedTiers.preventa ? fmtLead(vPrev) : '$0');
+        // Ximia Closing: si el cliente no toma el pre-venta a tiempo, Ximia cierra y cobra ESTA comisión (el slider).
+        s('closing-comm', (S.commission * 100).toFixed(1) + '%');
+
+        // Comparativa vs mercado (#26): EL MISMO lead (Ximia perfil completo + scoring = Calificado) vs contactos SIN
+        // calificar de Facebook / portal (Zonaprop/Zillow/...) / Google. Valores por mercado (benchmarks 2026, verificados).
+        const vsBench = { fb: mkt.benchFb, portal: mkt.benchPortal, google: mkt.benchGoogle };
+        const vsMax = Math.max(vCali, vsBench.fb, vsBench.portal, vsBench.google);
+        const setVs = (id, val) => {
+          s('vsm-' + id, fmtLead(val));
+          const bar = document.getElementById('vsm-bar-' + id);
+          if (bar) bar.style.width = Math.max(4, (val / vsMax) * 100) + '%';
+        };
+        setVs('cali', vCali); setVs('fb', vsBench.fb); setVs('portal', vsBench.portal); setVs('google', vsBench.google);
+        s('vsm-portal-label', mkt.portal + ' <span style="opacity:.7;">· sin calificar</span>');
+        s('vsm-note-apro', fmtLead(vApro));      // Financiero de Ximia ($32 Latam) — para la nota
+        s('vsm-note-google', fmtLead(vsBench.google)); // Google sin calificar ($35 Latam) — para la nota
+
+
+        // Sidebar chips (infra incluida)
+        const icAi = document.getElementById('ic-ai');
+        if (icAi) s('ic-ai', 'IA + Orq: ' + fmtUSD(llmRaw + conversations * ai.plat + hostDynamic));
+        const icDb = document.getElementById('ic-db');
+        if (icDb) s('ic-db', 'DB: ' + fmtUSD(db.raw));
+        const icVoice = document.getElementById('ic-voice');
+        if (icVoice) { icVoice.style.display = S.voiceEnabled ? '' : 'none'; if (S.voiceEnabled) s('ic-voice', 'Voz: ' + fmtUSD(voiceRaw)); }
+        const rPlatformTotal = document.getElementById('r-platform-total');
+        if (rPlatformTotal) s('r-platform-total', fmtUSD(SLA_BASE[S.sla]) + ' base + ' + fmtUSD(variableFee) + ' equipo')
+      }
+
+      // ════════════════════════════════════════════
+      // PERMALINK + CAPTURA DE EMAIL (#25)
+      // ════════════════════════════════════════════
+      function serializeState() {
+        const t = S.selectedTiers;
+        return new URLSearchParams({
+          mkt: S.market, ticket: S.ticket, comm: (S.commission * 100).toFixed(1),
+          units: S.units, vendors: S.vendors, bsales: S.baseSales, vwa: S.visitsWa, vweb: S.visitsWeb, vph: S.visitsPhone,
+          plan: S.plan, voice: S.voiceEnabled ? 1 : 0,
+          own: S.trafficOwn ? 1 : 0, camp: S.trafficCampaign ? 1 : 0, pkg: S.campaignPkg,
+          tiers: (t.frio ? 1 : 0) + '' + (t.calificado ? 1 : 0) + (t.aprobado ? 1 : 0) + (t.preventa ? 1 : 0),
+          lang: LANG
+        }).toString();
+      }
+      function permalink() { return location.origin + location.pathname + '?' + serializeState(); }
+
+      function hydrateFromURL() {
+        try {
+          const p = new URLSearchParams(location.search);
+          if (![...p.keys()].length) return;
+          const sv = (id, k) => { const v = p.get(k), el = document.getElementById(id); if (v != null && el) el.value = v; };
+          const act = (sel, val, prop) => document.querySelectorAll(sel).forEach(b => { const on = b.dataset[prop] === val; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+          if (p.get('mkt') && MARKET[p.get('mkt')]) { S.market = p.get('mkt'); act('.mkt-btn', S.market, 'mkt'); }
+          sv('ticket-slider', 'ticket'); sv('commission', 'comm'); sv('units', 'units'); sv('vendors', 'vendors'); sv('basesales', 'bsales');
+          sv('v-wa', 'vwa'); sv('v-web', 'vweb'); sv('v-phone', 'vph');
+          if (p.get('plan') && PLAN_MAP[p.get('plan')]) { applyPlan(p.get('plan')); act('.tier-btn[data-plan]', S.plan, 'plan'); }
+          if (p.get('voice') === '1') { S.voiceEnabled = true; const vt = document.getElementById('voice-toggle'); if (vt) vt.checked = true; }
+          // Fuente de tráfico: restaurar switches, cards y paquete
+          const restoreSource = (key, on) => {
+            if (key === 'own') S.trafficOwn = on; else S.trafficCampaign = on;
+            const sw = document.getElementById(key === 'own' ? 'sw-own' : 'sw-campaign'); if (sw) sw.checked = on;
+            const body = document.getElementById(key === 'own' ? 'own-body' : 'campaign-body'); if (body) body.classList.toggle('src-off', !on);
+            const card = document.getElementById(key === 'own' ? 'card-own' : 'card-campaign'); if (card) card.classList.toggle('active', on);
+          };
+          if (p.get('own') != null) restoreSource('own', p.get('own') === '1');
+          if (p.get('camp') != null) restoreSource('campaign', p.get('camp') === '1');
+          if (p.get('pkg') && CAMPAIGN_PACKAGES[p.get('pkg')] != null) { S.campaignPkg = p.get('pkg'); act('.tier-btn[data-pkg]', S.campaignPkg, 'pkg'); }
+          const tiers = p.get('tiers');
+          if (tiers && tiers.length === 4) {
+            const keys = ['frio', 'calificado', 'aprobado', 'preventa'];
+            keys.forEach((k, i) => { S.selectedTiers[k] = tiers[i] === '1'; });
+            ['calificado', 'aprobado', 'preventa'].forEach(k => {
+              const sw = document.getElementById('sw-' + k); if (sw) sw.checked = S.selectedTiers[k];
+              const row = document.getElementById('row-' + k); if (row) row.classList.toggle('disabled', !S.selectedTiers[k]);
+            });
+          }
+        } catch (e) { }
+      }
+
+      function copyPermalink() {
+        const link = permalink();
+        const done = () => { const b = document.getElementById('copy-link-btn'); if (b) { const o = b.textContent; b.textContent = '✓ Link copiado'; setTimeout(() => b.textContent = o, 2000); } };
+        if (navigator.clipboard) navigator.clipboard.writeText(link).then(done).catch(() => prompt('Copiá tu link:', link));
+        else prompt('Copiá tu link:', link);
+      }
+
+      // Calendly en modal (popup widget), no en página aparte. Fallback a nueva pestaña si el widget no cargó.
+      const CALENDLY_URL = 'https://calendly.com/hola-ximia-ectr/ximia-demo';
+      function openCalendly() {
+        if (window.Calendly && typeof Calendly.initPopupWidget === 'function') { Calendly.initPopupWidget({ url: CALENDLY_URL }); }
+        else { window.open(CALENDLY_URL, '_blank'); }
+        return false;
+      }
+
+      function submitEmail() {
+        const el = document.getElementById('capture-email'), msg = document.getElementById('capture-msg');
+        const email = (el.value || '').trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = 'Ingresá un email válido.'; msg.style.color = 'var(--amber)'; return; }
+        const payload = {
+          email, market: S.market, ticket: S.ticket,
+          totales: {
+            standard: document.getElementById('pt-standard')?.textContent || null,
+            pro:      document.getElementById('pt-pro')?.textContent || null,
+            premium:  document.getElementById('pt-premium')?.textContent || null
+          },
+          quote: serializeState(), permalink: permalink(),
+          brand: 'construirfacil', notify: LEAD_NOTIFY_EMAIL
+        };
+        // Fallback SIEMPRE bueno: copiamos el link (funciona sin backend). El email sale sólo si el webhook real está configurado — nunca mostramos error.
+        const linkOk = () => {
+          try { if (navigator.clipboard) navigator.clipboard.writeText(permalink()); } catch (e) {}
+          msg.textContent = '✓ ¡Listo! Copiamos el link de tu cotización — guardalo o compartilo con tu equipo.';
+          msg.style.color = 'var(--green)'; el.value = '';
+        };
+        if (CAPTURE_WEBHOOK.includes('REEMPLAZAR')) { linkOk(); return; }
+        msg.textContent = 'Enviando…'; msg.style.color = 'var(--muted)';
+        fetch(CAPTURE_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          .then(() => { msg.textContent = '✓ ¡Listo! Te enviamos la cotización a ' + email + '.'; msg.style.color = 'var(--green)'; el.value = ''; })
+          .catch(linkOk);
+      }
+
+      // INIT
+      hydrateFromURL();
+      onSlider();
+    </script>
+</body>
+
+</html>
