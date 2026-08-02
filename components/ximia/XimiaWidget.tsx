@@ -8,6 +8,7 @@
  *   body: {
  *     chatInput, sessionId,
  *     user_id, email, name, phone,     ← identidad (JOIN vs public.users en n8n)
+ *     identity_token,                  ← HMAC server-side; lo ÚNICO que la PRUEBA
  *     context: {                        ← contexto del catálogo (NUEVO)
  *       path,                           ← window.location.pathname vigente
  *       provincia_id, provincia_name,
@@ -27,6 +28,13 @@
  * + sesión Supabase. n8n hace el JOIN a public.users con `user_id || email`
  * → enriquece name/phone solo.
  *
+ * ⚠️ X-01 (auditoría 2026-08-01): el webhook de n8n es PÚBLICO, así que `user_id`/`email`
+ * sueltos en el body no prueban nada — cualquiera POSTeaba un mail ajeno y recibía el perfil
+ * de esa persona. Ahora `/api/ximia/identity` devuelve además `token` (HMAC firmado
+ * server-side, `lib/auth/ximia-token.ts`) y n8n verifica esa firma antes de tocar la base,
+ * descartando los campos crudos. Sin token válido → visitante ANÓNIMO, que puede conversar
+ * igual. Por eso también se eliminó el "lab mode" que fabricaba un email de prueba acá.
+ *
  * Globalmente montado en `app/layout.tsx`. Se auto-oculta en `/admin/*`.
  */
 
@@ -44,7 +52,10 @@ const WEBHOOK_URL =
 
 const STORAGE_KEY = 'cf_ximia_session_id'
 
-type Identity = { user_id: string | null; email: string | null }
+// `token` = HMAC de la identidad, firmado server-side por /api/ximia/identity.
+// Es lo ÚNICO que le prueba a n8n quién es el visitante (X-01, auditoría 2026-08-01):
+// el webhook es público, así que user_id/email sueltos en el body no prueban nada.
+type Identity = { user_id: string | null; email: string | null; token: string | null }
 type Msg = { role: 'user' | 'assistant'; text: string }
 type AuthStep = 'idle' | 'request' | 'verify'
 
@@ -150,7 +161,7 @@ export default function XimiaWidget() {
   const pathname = usePathname()
   const { provinciaId, provincias } = useProvincia()
   const [open, setOpen] = useState(false)
-  const [identity, setIdentity] = useState<Identity>({ user_id: null, email: null })
+  const [identity, setIdentity] = useState<Identity>({ user_id: null, email: null, token: null })
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Msg[]>([])
   const [typing, setTyping] = useState(false)
@@ -188,7 +199,11 @@ export default function XimiaWidget() {
     try {
       const r = await fetch('/api/ximia/identity', { cache: 'no-store' })
       const data = await r.json()
-      const next: Identity = { user_id: data?.user_id ?? null, email: data?.email ?? null }
+      const next: Identity = {
+        user_id: data?.user_id ?? null,
+        email: data?.email ?? null,
+        token: data?.token ?? null,
+      }
       setIdentity(next)
       return next
     } catch {
@@ -245,18 +260,14 @@ export default function XimiaWidget() {
     async (text: string, opts?: { isStart?: boolean; identityOverride?: Identity }) => {
       if (!sessionId) return
       const isStart = opts?.isStart === true
-      let id = opts?.identityOverride ?? identity
-      // Lab mode: en /ximia-lab el equipo prueba múltiples casos sin verificar mail
-      // cada vez. Si no hay identidad real, pasamos un email único por sessionId →
-      // el Compliance lint del agente lo trata como verified y nunca pide OTP.
-      // "Empezar de nuevo" en la page limpia el sessionId → nuevo email fake.
-      const isLab = pathname?.startsWith('/ximia-lab') ?? false
-      if (isLab && !id.user_id && !id.email) {
-        id = {
-          user_id: null,
-          email: `test+${sessionId.slice(0, 8)}@construirfacil.com`,
-        }
-      }
+      const id = opts?.identityOverride ?? identity
+      // ⚠️ Acá vivía el "lab mode": en /ximia-lab se fabricaba un
+      // `test+<sessionId>@construirfacil.com` para que el equipo probara sin verificar mail,
+      // porque el Compliance lint trataba como verified a cualquiera que mandara un email.
+      // ESO ERA EL AGUJERO DE X-01 usado como feature. Se eliminó por decisión de Andrea
+      // (D-X01-1, 2026-08-01): el lab pasa por el mismo OTP que un usuario real, porque el
+      // proceso que hay que probar antes de lanzar es el que viven los usuarios.
+      // La identidad ahora la firma el servidor; el navegador ya no puede inventarla.
       setTyping(true)
       const t0 = performance.now()
       try {
@@ -271,6 +282,9 @@ export default function XimiaWidget() {
           sessionId,
           user_id: id.user_id,
           email: id.email,
+          // Lo único que PRUEBA la identidad. n8n verifica la firma y descarta user_id/email
+          // crudos; sin token válido el visitante es anónimo (y puede conversar igual).
+          identity_token: id.token,
           name: null,
           phone: null,
           context,
@@ -309,7 +323,7 @@ export default function XimiaWidget() {
         setTyping(false)
       }
     },
-    [sessionId, identity, pathname, provinciaId, provincias],
+    [sessionId, identity, provinciaId, provincias],
   )
 
   // __START__ la primera vez que se abre el chat en esta sesión (no en cada reload).
@@ -456,7 +470,7 @@ export default function XimiaWidget() {
                 <form className={styles.authCard} onSubmit={handleRequestOTP}>
                   <div className={styles.authTitle}>Verifiquemos tu email</div>
                   <div className={styles.authHint}>
-                    Te llega un código de 4 dígitos para que sigamos con los números reales.
+                    Te llega un código de 4 dígitos y seguimos al toque.
                   </div>
                   <input
                     ref={authEmailRef}
