@@ -24,7 +24,7 @@ import {
   type EffectiveHomeSlide,
 } from '@/lib/content/home-defaults'
 import { ensureHtml } from '@/lib/content/rich'
-import AdSlot from '@/components/ads/AdSlot'
+import AdSlot, { useAdSlotVisible } from '@/components/ads/AdSlot'
 import { AD_SLOTS } from '@/lib/ads/slots'
 
 interface HomeRowProps {
@@ -144,6 +144,7 @@ export default function HomeRow({
   variant,
   onVerCatalogo,
 }: HomeRowProps) {
+  const adsVisible = useAdSlotVisible()
   const trackRef = useRef<HTMLDivElement>(null)
   const [paused, setPaused] = useState(false)
   const pausedRef = useRef(paused)
@@ -239,18 +240,18 @@ export default function HomeRow({
                 onVerCatalogo={onVerCatalogo}
               />
             )}
-            {s.slide_key === 'home-3' && (
+            {adsVisible && s.slide_key === 'home-3' && (
               <div key="a-ad-half" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack">
                 <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
                 <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
               </div>
             )}
-            {s.slide_key === 'home-4' && (
+            {adsVisible && s.slide_key === 'home-4' && (
               <div key="a-ad-secondary" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary">
                 <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
               </div>
             )}
-            {s.slide_key === 'home-5' && (
+            {adsVisible && s.slide_key === 'home-5' && (
               <div key="a-ad-main" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--main">
                 <AdSlot slotId={AD_SLOTS.hero_scroll_main.id} sizes={AD_SLOTS.hero_scroll_main.sizes} />
               </div>
@@ -267,18 +268,18 @@ export default function HomeRow({
                 onVerCatalogo={onVerCatalogo}
               />
             )}
-            {s.slide_key === 'home-3' && (
+            {adsVisible && s.slide_key === 'home-3' && (
               <div key="b-ad-half" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack">
                 <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
                 <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
               </div>
             )}
-            {s.slide_key === 'home-4' && (
+            {adsVisible && s.slide_key === 'home-4' && (
               <div key="b-ad-secondary" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary">
                 <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
               </div>
             )}
-            {s.slide_key === 'home-5' && (
+            {adsVisible && s.slide_key === 'home-5' && (
               <div key="b-ad-main" className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--main">
                 <AdSlot slotId={AD_SLOTS.hero_scroll_main.id} sizes={AD_SLOTS.hero_scroll_main.sizes} />
               </div>

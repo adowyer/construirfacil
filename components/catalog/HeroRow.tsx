@@ -16,7 +16,7 @@ import type {
 } from '@/lib/supabase/queries/header_content'
 import { HEADER_DEFAULTS } from '@/lib/content/header-defaults'
 import { useInViewport } from '@/lib/hooks/useInViewport'
-import AdSlot from '@/components/ads/AdSlot'
+import AdSlot, { useAdSlotVisible } from '@/components/ads/AdSlot'
 import { AD_SLOTS } from '@/lib/ads/slots'
 
 type HeroBullet = { name: string; body: string }
@@ -695,6 +695,7 @@ export default function HeroRow({
   modelosByLineaName = {},
   onVerCatalogo,
 }: HeroRowProps) {
+  const adsVisible = useAdSlotVisible()
   // Resolver el "sub" (tagline) de cada línea contra el admin (lineas.tagline).
   // Si la DB tiene tagline, override el hardcoded de LINEAS; sino, fallback.
   const lineasResolved = useMemo(() => {
@@ -977,6 +978,7 @@ export default function HeroRow({
       </div>
       {/* AD: hero_scroll_half — ½ altura después del CTA rojo. Rompe ritmo
           alto/alto sin ocupar toda la altura del track. */}
+      {adsVisible && (
       <div
         key={`${keyPrefix}-ad-half`}
         className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack"
@@ -984,17 +986,20 @@ export default function HeroRow({
         <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
         <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
       </div>
+      )}
       <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
         <SlideFlex s={sFlex} onOpenModal={() => { if (flexSection) setModalSection(flexSection) }} onVerCatalogo={onVerCatalogo} />
       </div>
       {/* AD: hero_scroll_secondary — skyscraper delgado (112×420) después
           del Flex, antes de la sección de líneas. */}
+      {adsVisible && (
       <div
         key={`${keyPrefix}-ad-secondary`}
         className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary"
       >
         <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
       </div>
+      )}
       <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
         <SlideLineasIntro s={sLineasIntro} />
       </div>
@@ -1044,6 +1049,7 @@ export default function HeroRow({
           de las líneas y banners. Es el más grande visualmente, cierra el
           scroll con presencia. Los otros 2 skyscrapers ya están intercalados
           arriba (half después del CTA rojo, secondary después de Flex). */}
+      {adsVisible && (
       <div
         key={`${keyPrefix}-ad-main`}
         className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--main"
@@ -1053,6 +1059,7 @@ export default function HeroRow({
           sizes={AD_SLOTS.hero_scroll_main.sizes}
         />
       </div>
+      )}
     </>
     )
   }

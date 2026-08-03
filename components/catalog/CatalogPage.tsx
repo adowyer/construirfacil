@@ -48,7 +48,7 @@ import {
 } from '@/lib/supabase/queries/catalog_panels'
 import CatalogFooter from './CatalogFooter'
 import { useRouter } from 'next/navigation'
-import AdSlot from '@/components/ads/AdSlot'
+import AdSlot, { useAdSlotVisible } from '@/components/ads/AdSlot'
 import AdPageTargeting from '@/components/ads/AdPageTargeting'
 import { AD_SLOTS } from '@/lib/ads/slots'
 import HomeRow from './HomeRow'
@@ -192,6 +192,7 @@ export default function CatalogPage({
   promos = [],
 }: PageProps) {
   const router = useRouter()
+  const adsVisible = useAdSlotVisible()
   // Máquina de estados de transición home ↔ catálogo.
   //
   //   home    → HomeSlider visible. Catálogo desmontado.
@@ -910,7 +911,7 @@ export default function CatalogPage({
           arriba, HomeRow abajo), sólo en phase=home. El shell del catálogo
           está en el medio pero colapsado a 0 height cuando phase=home, así
           que visualmente queda pegado entre los dos rows. ── */}
-      {phase === 'home' && (
+      {phase === 'home' && adsVisible && (
         <div className="cf-ad-wrap cf-ad-wrap--home-top">
           <AdSlot slotId={AD_SLOTS.home_top.id} sizes={AD_SLOTS.home_top.sizes} />
         </div>
@@ -937,9 +938,11 @@ export default function CatalogPage({
             }`}
           >
           {/* ── AD SLOT: catalog_top (970×90) — arriba de los filtros. ── */}
-          <div className="cf-ad-wrap cf-ad-wrap--catalog-top">
-            <AdSlot slotId={AD_SLOTS.catalog_top.id} sizes={AD_SLOTS.catalog_top.sizes} />
-          </div>
+          {adsVisible && (
+            <div className="cf-ad-wrap cf-ad-wrap--catalog-top">
+              <AdSlot slotId={AD_SLOTS.catalog_top.id} sizes={AD_SLOTS.catalog_top.sizes} />
+            </div>
+          )}
 
           <StickyFilters
             bedFilters={bedFilters}
@@ -1146,7 +1149,7 @@ export default function CatalogPage({
             {/* AD SLOT: content_inline (728×90 desktop, 300×250 mobile) —
                 cada 3 líneas del catálogo, después del último modelo del grupo.
                 gi es el índice del grupo (0-based). */}
-            {(gi + 1) % 3 === 0 && (
+            {adsVisible && (gi + 1) % 3 === 0 && (
               <div className="cf-ad-wrap cf-ad-wrap--content-inline">
                 <AdSlot
                   slotId={AD_SLOTS.content_inline.id}
@@ -1331,9 +1334,11 @@ export default function CatalogPage({
       {/* ── AD SLOT: mobile_sticky (300×50) — persistente en el borde inferior
           del viewport, MOBILE-ONLY (oculto en desktop vía CSS). Debe estar
           fuera del shell del catálogo para sobrevivir cambios de fase. ── */}
-      <div className="cf-ad-mobile-sticky">
-        <AdSlot slotId={AD_SLOTS.mobile_sticky.id} sizes={AD_SLOTS.mobile_sticky.sizes} />
-      </div>
+      {adsVisible && (
+        <div className="cf-ad-mobile-sticky">
+          <AdSlot slotId={AD_SLOTS.mobile_sticky.id} sizes={AD_SLOTS.mobile_sticky.sizes} />
+        </div>
+      )}
     </>
   )
 }

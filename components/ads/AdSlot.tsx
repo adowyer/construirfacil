@@ -49,6 +49,23 @@ function useAdsPreviewMode(): boolean {
   return preview
 }
 
+/**
+ * ¿Debe renderearse el wrapper de un ad slot? Mismo criterio que aplica el
+ * propio `<AdSlot>` internamente. Se exporta para que los contenedores
+ * (slides del carrusel, cf-ad-wrap, sticky mobile) puedan gatear su propio
+ * `<div>` y no reservar ancho/alto vacío cuando el slot va a devolver null.
+ * SSR-safe: en el primer render devuelve `GAM_ENABLED || inDev` — así en
+ * prod sin Network ID nunca hay flash del wrapper; el preview mode se
+ * resuelve client-side y activa el wrapper con un segundo render si hace
+ * falta.
+ */
+export function useAdSlotVisible(): boolean {
+  const previewMode = useAdsPreviewMode()
+  if (GAM_ENABLED) return true
+  if (process.env.NODE_ENV !== 'production') return true
+  return previewMode
+}
+
 type Props = {
   /** Slot ID de GAM (ad unit path). Ver lib/ads/slots.ts para la lista
    *  canónica. Debe matchear el ad unit trafficked en GAM. */
