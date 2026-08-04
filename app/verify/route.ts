@@ -26,8 +26,10 @@ type LeadRow = {
   unsubscribed: boolean | null
 }
 
+type VerifiedChannel = 'email' | 'whatsapp'
+
 /** Marca verificado + dispara bienvenida (una sola vez). Devuelve si todo OK. */
-async function verifyLead(leadId: string): Promise<boolean> {
+async function verifyLead(leadId: string, channel: VerifiedChannel): Promise<boolean> {
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -44,13 +46,19 @@ async function verifyLead(leadId: string): Promise<boolean> {
   // El evento se emite DENTRO del if: re-clickear el link no vuelve a disparar
   // n8n (n8n se paga por ejecución — ver CLAUDE.md, regla de créditos).
   if (!lead.email_verified_at) {
-    await admin.from('leads').update({ email_verified_at: now }).eq('id', leadId)
+    // `verified_channel` se fija en el MISMO update que el timestamp: los dos
+    // describen el mismo hecho y no pueden quedar desfasados (migración 0109).
+    await admin
+      .from('leads')
+      .update({ email_verified_at: now, verified_channel: channel })
+      .eq('id', leadId)
     await emitEngagementEvent({
       event: 'lead_verified',
       lead_id: leadId,
       email: lead.email,
       source: lead.source ?? 'unknown',
       verified_at: now,
+      channel,
     })
   }
 
@@ -85,7 +93,12 @@ function page(ok: boolean): string {
 
 export async function GET(request: NextRequest) {
   const leadId = verifyVerificationToken(request.nextUrl.searchParams.get('u'))
-  const ok = leadId ? await verifyLead(leadId) : false
+  // ?c=wa lo pone el botón de la plantilla de WhatsApp. Va ANTES de ?u= porque
+  // Meta exige que la variable del botón quede al final de la URL.
+  // Cualquier otro valor (o ninguno) = el link del mail, que es el caso histórico.
+  const channel: VerifiedChannel =
+    request.nextUrl.searchParams.get('c') === 'wa' ? 'whatsapp' : 'email'
+  const ok = leadId ? await verifyLead(leadId, channel) : false
   return new NextResponse(page(ok), {
     status: ok ? 200 : 400,
     headers: { 'content-type': 'text/html; charset=utf-8' },

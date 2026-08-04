@@ -51,6 +51,9 @@ export type EngagementEvent =
       email: string | null
       source: string
       verified_at: string
+      /** Por dónde confirmó: 'email' (link del mail) | 'whatsapp' (botón de la
+       *  plantilla). Campo aditivo — el router de n8n lo ignora si no lo usa. */
+      channel: 'email' | 'whatsapp'
     }
 
 const TIMEOUT_MS = 3000
