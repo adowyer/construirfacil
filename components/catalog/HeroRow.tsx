@@ -983,8 +983,8 @@ export default function HeroRow({
         key={`${keyPrefix}-ad-half`}
         className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--half-stack"
       >
-        <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
-        <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} />
+        <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} iabSize={AD_SLOTS.hero_scroll_half.iab} />
+        <AdSlot slotId={AD_SLOTS.hero_scroll_half.id} sizes={AD_SLOTS.hero_scroll_half.sizes} iabSize={AD_SLOTS.hero_scroll_half.iab} />
       </div>
       )}
       <div key={`${keyPrefix}-flex`} className="cf-hero-row-slide cf-hero-row-slide-split">
@@ -997,7 +997,7 @@ export default function HeroRow({
         key={`${keyPrefix}-ad-secondary`}
         className="cf-hero-row-slide cf-hero-row-slide-ad cf-hero-row-slide-ad--secondary"
       >
-        <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} />
+        <AdSlot slotId={AD_SLOTS.hero_scroll_secondary.id} sizes={AD_SLOTS.hero_scroll_secondary.sizes} iabSize={AD_SLOTS.hero_scroll_secondary.iab} />
       </div>
       )}
       <div key={`${keyPrefix}-lineas-intro`} className="cf-hero-row-slide cf-hero-row-slide-lineas-intro">
@@ -1057,6 +1057,7 @@ export default function HeroRow({
         <AdSlot
           slotId={AD_SLOTS.hero_scroll_main.id}
           sizes={AD_SLOTS.hero_scroll_main.sizes}
+          iabSize={AD_SLOTS.hero_scroll_main.iab}
         />
       </div>
       )}

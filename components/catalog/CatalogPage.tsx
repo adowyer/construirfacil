@@ -913,7 +913,7 @@ export default function CatalogPage({
           que visualmente queda pegado entre los dos rows. ── */}
       {phase === 'home' && adsVisible && (
         <div className="cf-ad-wrap cf-ad-wrap--home-top">
-          <AdSlot slotId={AD_SLOTS.home_top.id} sizes={AD_SLOTS.home_top.sizes} />
+          <AdSlot slotId={AD_SLOTS.home_top.id} sizes={AD_SLOTS.home_top.sizes} iabSize={AD_SLOTS.home_top.iab} />
         </div>
       )}
 
@@ -940,7 +940,7 @@ export default function CatalogPage({
           {/* ── AD SLOT: catalog_top (970×90) — arriba de los filtros. ── */}
           {adsVisible && (
             <div className="cf-ad-wrap cf-ad-wrap--catalog-top">
-              <AdSlot slotId={AD_SLOTS.catalog_top.id} sizes={AD_SLOTS.catalog_top.sizes} />
+              <AdSlot slotId={AD_SLOTS.catalog_top.id} sizes={AD_SLOTS.catalog_top.sizes} iabSize={AD_SLOTS.catalog_top.iab} />
             </div>
           )}
 
@@ -1154,6 +1154,7 @@ export default function CatalogPage({
                 <AdSlot
                   slotId={AD_SLOTS.content_inline.id}
                   sizes={AD_SLOTS.content_inline.sizes}
+                  iabSize={AD_SLOTS.content_inline.iab}
                   targeting={{ position: `after_group_${gi + 1}` }}
                 />
               </div>
@@ -1336,7 +1337,7 @@ export default function CatalogPage({
           fuera del shell del catálogo para sobrevivir cambios de fase. ── */}
       {adsVisible && (
         <div className="cf-ad-mobile-sticky">
-          <AdSlot slotId={AD_SLOTS.mobile_sticky.id} sizes={AD_SLOTS.mobile_sticky.sizes} />
+          <AdSlot slotId={AD_SLOTS.mobile_sticky.id} sizes={AD_SLOTS.mobile_sticky.sizes} iabSize={AD_SLOTS.mobile_sticky.iab} />
         </div>
       )}
     </>

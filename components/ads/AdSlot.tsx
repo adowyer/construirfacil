@@ -70,8 +70,13 @@ type Props = {
   /** Slot ID de GAM (ad unit path). Ver lib/ads/slots.ts para la lista
    *  canónica. Debe matchear el ad unit trafficked en GAM. */
   slotId: string
-  /** Tamaños IAB aceptados. El más alto se usa para reservar espacio. */
+  /** Tamaños REALES del slot en el sitio (los que GAM sirve y reserva). */
   sizes: AdSize[]
+  /** Tamaño IAB estándar que se le pide al anunciante (ej. `"970×250"`).
+   *  Se muestra en el placeholder de dev/preview en vez de las medidas
+   *  reales — así el anunciante ve el formato IAB que va a entregar, no
+   *  el escalado interno del layout. */
+  iabSize?: string
   /** Key-values extra específicos de este slot (además del targeting de
    *  página seteado con `setPageTargeting`). */
   targeting?: Record<string, string | string[]>
@@ -79,7 +84,7 @@ type Props = {
   className?: string
 }
 
-export default function AdSlot({ slotId, sizes, targeting, className }: Props) {
+export default function AdSlot({ slotId, sizes, iabSize, targeting, className }: Props) {
   // useId genera un ID estable server/client — evita hydration warnings.
   // Sanitizamos porque useId puede devolver ":r0:" que rompe getElementById.
   const uid = useId().replace(/[^a-z0-9]/gi, '')
@@ -141,7 +146,7 @@ export default function AdSlot({ slotId, sizes, targeting, className }: Props) {
       >
         <strong>AD SLOT (dev)</strong>
         <span>{slotId}</span>
-        <span>{sizes.map((s) => `${s[0]}×${s[1]}`).join(' / ')}</span>
+        <span>{iabSize ?? sizes.map((s) => `${s[0]}×${s[1]}`).join(' / ')}</span>
       </div>
     )
   }
