@@ -257,6 +257,22 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
     El nombre en el escalón del DNI **no es adorno**: el DNI de Supabase puede estar desactualizado y
     coincidir con el DNI correcto de otra persona (caso Ramirez/García) → sincronizaría la ficha
     equivocada sin que nadie se entere.
+  - 🔇 **El sync decía "sincronizado" y NUNCA bajó un teléfono (2026-07-20 → 2026-08-05).**
+    `sync_hubspot_to_supabase.py` tenía `if col == "phone": continue  # la llave; no la pisamos
+    con ella misma`. El razonamiento vale para las filas que matchearon POR teléfono — que son
+    **2 de 315**; las otras 313 matchean por `synced_hubspot_id`, donde el teléfono no es llave
+    de nada. **El guard se comió 49 correcciones humanas.**
+    - **Cómo se probó** (los dos campos pasaron por la MISMA corrida, mismas filas): de los mails
+      corregidos a mano en HubSpot antes del 21-jul quedaban **0** sin bajar; de los teléfonos
+      corregidos antes de esa misma fecha quedaban **49**. Origen verificado con
+      `propertiesWithHistory` de HubSpot: `sourceType: CRM_UI`, o sea edición manual —
+      típicamente la asesora que llamó y el número no era.
+    - ⚠️ **La lección no es el bug, es el comentario.** "No pisamos la llave con ella misma" suena
+      correcto, así que nadie lo iba a cuestionar leyendo el código; y el reporte del script no
+      decía "salteé 49 teléfonos", simplemente no los nombraba. **Un guard que saltea filas tiene
+      que CONTAR lo que saltea** — si no, la falla es muda y sobrevive a todas las revisiones.
+    - **Por qué importó:** el sender de WhatsApp lee `leads.phone`. Sin esas 51 correcciones,
+      el primer envío del canal salía a números que ya se sabía que estaban mal.
   - **Arbitraje por dígito verificador del CUIL** cuando los dos lados discrepan en identidad: por
     defecto manda HubSpot (acertó 25/25 en la muestra verificada), y solo se frena si el CUIL lo
     **desmiente aritméticamente**. Aplicar D-008 a ciegas en el grupo que nadie tocó a mano pisaría
