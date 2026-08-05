@@ -302,8 +302,21 @@ def main():
 
         # --- campos numéricos + situación: inequívocos, auto ---
         for col, prop, typ in IDENTITY + SITUACION:
-            if col == "phone":
-                continue  # la llave; no la pisamos con ella misma
+            if col == "phone" and como == "teléfono":
+                # Sólo cuando el match SE HIZO por teléfono: ahí HubSpot y Supabase
+                # coinciden por construcción y pisarlo es pisarlo con sí mismo.
+                #
+                # Hasta el 2026-08-05 esto salteaba el teléfono SIEMPRE, con ese mismo
+                # comentario. Pero el match por teléfono son 2 filas: las otras 313
+                # matchean por `synced_hubspot_id`, y ahí el teléfono no es llave de
+                # nada. El guard tapaba 43 discrepancias reales — medido: dos lecturas
+                # OCR distintas de la misma ficha manuscrita, que difieren en uno o dos
+                # dígitos. Ninguno de los dos lados gana siempre (se verificaron 5
+                # contra la ficha: 3 acertó HubSpot, 1 Supabase, 1 ninguno).
+                #
+                # Por eso el cambio se PROPONE y sale en el CSV como cualquier otro:
+                # el dry-run es el que decide, no este guard.
+                continue
             if salta_identidad and col in ("dni", "cuil"):
                 continue  # el CUIL desmiente a HubSpot: no se pisa el dato bueno
             hv = p.get(prop)
