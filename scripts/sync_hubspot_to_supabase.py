@@ -309,13 +309,22 @@ def main():
                 # Hasta el 2026-08-05 esto salteaba el teléfono SIEMPRE, con ese mismo
                 # comentario. Pero el match por teléfono son 2 filas: las otras 313
                 # matchean por `synced_hubspot_id`, y ahí el teléfono no es llave de
-                # nada. El guard tapaba 43 discrepancias reales — medido: dos lecturas
-                # OCR distintas de la misma ficha manuscrita, que difieren en uno o dos
-                # dígitos. Ninguno de los dos lados gana siempre (se verificaron 5
-                # contra la ficha: 3 acertó HubSpot, 1 Supabase, 1 ninguno).
+                # nada. El guard tapaba 51 correcciones reales.
                 #
-                # Por eso el cambio se PROPONE y sale en el CSV como cualquier otro:
-                # el dry-run es el que decide, no este guard.
+                # Qué son esas 51, verificado contra el historial de propiedades de
+                # HubSpot (`propertiesWithHistory`): las 51 tienen como último cambio
+                # una edición MANUAL (`sourceType: CRM_UI`) hecha entre el 2026-07-08 y
+                # el 2026-08-03. El patrón se repite: nuestra integración empujó el
+                # valor de Supabase el 2026-07-02, y días después una persona lo
+                # corrigió a mano —típicamente porque llamó y el número no era.
+                #
+                # O sea: NO es "dos OCR que difieren". Es el OCR viejo contra la
+                # corrección humana, y la corrección humana gana. Es exactamente el
+                # reparto de propiedad ya decidido (HubSpot manda en `phone`), que
+                # este guard venía incumpliendo en silencio.
+                #
+                # Igual el cambio se PROPONE y sale en el CSV: escribir sigue siendo
+                # una decisión con dry-run delante, no un efecto de este guard.
                 continue
             if salta_identidad and col in ("dni", "cuil"):
                 continue  # el CUIL desmiente a HubSpot: no se pisa el dato bueno
