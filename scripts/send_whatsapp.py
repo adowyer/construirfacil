@@ -115,7 +115,8 @@ def first_name(raw):
 
 
 # ── destinatarios ──────────────────────────────────────────────────────────
-FIELDS = "id,name,phone,source,consent_captured_at,unsubscribed,whatsapp_sent_at,engagement_sent_at,email_verified_at"
+FIELDS = ("id,name,phone,source,consent_captured_at,unsubscribed,"
+          "whatsapp_sent_at,engagement_sent_at,email_verified_at,synced_hubspot_id")
 
 
 def select_targets(env, source):
@@ -157,6 +158,79 @@ def guard_template(tpl, commit):
                "   no publicidad. Mandar Marketing a esta lista excede lo firmado.\n"
                "   Apelar la categorización o reescribir la plantilla.")
         sys.exit(msg) if commit else print(msg + "\n   (dry-run sigue igual)")
+
+
+# ── candado: el teléfono de Supabase tiene que coincidir con el de HubSpot ─
+def guard_telefonos(env, lote, commit):
+    """
+    HubSpot es el dueño del teléfono (ownership acordado: las asesoras corrigen
+    ahí, por teléfono, y esa es la info viva). Supabase lo recibe por el pull de
+    `sync_hubspot_to_supabase.py`.
+
+    Ese pull estuvo MUDO del 2026-07-20 al 2026-08-05: un guard salteaba SIEMPRE
+    la columna `phone` y no contaba lo que salteaba, así que 49 correcciones
+    humanas nunca bajaron y nadie lo vio. El sync está arreglado, pero el que
+    corra este script no tiene por qué acordarse de haberlo corrido — y un envío
+    a un número viejo no se puede deshacer.
+
+    Por eso no chequeamos "¿corrió el sync?" (un proxy) sino el hecho: para los
+    leads de ESTE lote, ¿el teléfono de Supabase es el mismo que el de HubSpot?
+    Se comparan normalizados, así que un formato distinto no cuenta como
+    discrepancia — sólo un número distinto.
+    """
+    con_id = [r for r in lote if r.get("synced_hubspot_id")]
+    if not con_id:
+        print("⚠️ Ningún lead del lote tiene synced_hubspot_id — no se puede "
+              "contrastar contra HubSpot. Corré el sync antes de mandar.")
+        if commit:
+            sys.exit(1)
+        return lote
+
+    tok = env.get("HUBSPOT_TOKEN")
+    if not tok:
+        msg = "⛔ Falta HUBSPOT_TOKEN: no se puede verificar el teléfono contra HubSpot."
+        sys.exit(msg) if commit else print(msg + "  (dry-run sigue)")
+        return lote
+
+    h = {"Authorization": f"Bearer {tok}", "Content-Type": "application/json"}
+    hs = {}
+    for i in range(0, len(con_id), 100):
+        chunk = con_id[i:i + 100]
+        st, body = http("https://api.hubapi.com/crm/v3/objects/contacts/batch/read",
+                        h, "POST",
+                        {"properties": ["phone"],
+                         "inputs": [{"id": str(r["synced_hubspot_id"])} for r in chunk]})
+        if st != 200:
+            msg = f"⛔ No se pudo leer HubSpot ({st}): {json.dumps(body, ensure_ascii=False)[:200]}"
+            sys.exit(msg) if commit else print(msg + "  (dry-run sigue)")
+            return lote
+        for c in body.get("results", []):
+            hs[c["id"]] = (c.get("properties") or {}).get("phone")
+
+    desfasados = []
+    for r in con_id:
+        h_tel = hs.get(str(r["synced_hubspot_id"]))
+        if not h_tel:
+            continue                      # sin teléfono en HubSpot: no contradice nada
+        if wa_number(h_tel) != wa_number(r.get("phone")):
+            desfasados.append((r, h_tel))
+
+    if not desfasados:
+        print(f"✓ Teléfonos al día: los {len(con_id)} del lote coinciden con HubSpot.")
+        return lote
+
+    print(f"\n⛔ {len(desfasados)} teléfonos de Supabase NO coinciden con HubSpot.")
+    print("   HubSpot manda: son correcciones de las asesoras que todavía no bajaron.")
+    for r, h_tel in desfasados[:10]:
+        print(f"    {(r.get('name') or '')[:28]:<30} supabase={r.get('phone')!r:<18} hubspot={h_tel!r}")
+    if len(desfasados) > 10:
+        print(f"    … y {len(desfasados) - 10} más")
+    print("\n   Bajalos primero:  python3 scripts/sync_hubspot_to_supabase.py --write")
+    if commit:
+        sys.exit(1)
+    print("   (dry-run: se excluyen del lote para que el conteo no mienta)")
+    ids = {r["id"] for r, _ in desfasados}
+    return [r for r in lote if r["id"] not in ids]
 
 
 # ── envío ──────────────────────────────────────────────────────────────────
@@ -287,6 +361,7 @@ def main():
             print(f"    {r['id']}  {r.get('phone')!r}")
 
     lote = [r for r in lote if wa_number(r.get("phone"))]
+    lote = guard_telefonos(env, lote, args.commit)
 
     if not args.commit:
         print(f"\n[dry-run] se mandaría a {len(lote)}. Muestra:")
