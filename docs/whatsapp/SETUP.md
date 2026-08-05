@@ -128,18 +128,29 @@ Estado medido contra la API, no supuesto:
 el `Legal business name`, puede decir "no registra impuestos activos", y sobre todo **no trae
 domicilio fiscal** — Meta exige nombre legal y dirección en el MISMO documento.
 
-## Lo que falta
+## Estado del alta (2026-08-05)
 
-1. **Método de pago** (lo carga Andrea; sin tarjeta Meta no habilita mensajes iniciados por la
-   empresa — que es exactamente lo que necesitamos para los leads). No bloquea el registro del
-   número, sí el envío.
-2. **Plantillas** — borradores en `PLANTILLAS.md`, a presentar en WhatsApp Manager.
-4. **Webhook** hacia n8n (callback URL + verify token). ⚠️ Meta solo entrega datos de producción
-   **si la app está publicada**; mientras esté unpublished llegan solo webhooks de prueba.
-5. **Confirmar el texto de consentimiento de la ficha del sindicato**: Meta acepta opt-in
-   general, pero exige que el texto **nombre a la empresa** y que se pueda evidenciar
-   (timestamp + canal + texto exacto + teléfono). Si la ficha nombra solo al sindicato, hay que
-   resolverlo ANTES del primer envío.
+✅ **Hecho:**
+1. **Método de pago** cargado. Sin tarjeta Meta no habilita mensajes iniciados por la empresa,
+   que es exactamente lo que necesitamos para los leads.
+2. **Webhook** en producción: `app/api/whatsapp/webhook/route.ts` en Vercel, **no en n8n** —
+   n8n se paga por ejecución y los eventos de entrega vienen de a cuatro por mensaje. La app
+   quedó **publicada**, que era el requisito real para recibir eventos de producción.
+   Probado punta a punta: un mensaje deja filas `sent` / `delivered` / `read` en
+   `whatsapp_events`, y la respuesta del destinatario entra como `inbound`.
+3. **Consentimiento verificado** — texto literal y su límite de propósito en `PLANTILLAS.md`.
+   La ficha del sindicato **nombra a WhatsApp explícitamente**, que es más fuerte que el opt-in
+   general que Meta acepta como mínimo. Es un consentimiento CON PROPÓSITO: cubre la evaluación
+   de financiación, **no** la promoción del catálogo.
+
+⏳ **Pendiente:**
+4. **Aprobación de `confirmacion_registro`** (presentada el 2026-08-04, `PENDING`). El sender
+   se niega a mandar mientras no esté `APPROVED` **y** en categoría `UTILITY` — el guard está
+   en `guard_template()`, no en la memoria del que corre el script.
+5. **Correr `0111_leads_whatsapp_sent_at.sql`** (la corre Andrea a mano, como toda la DDL).
+   Sin esa columna el sender no tiene guard de idempotencia y puede escribirle dos veces a la
+   misma persona.
+6. **Verificación de negocio** — espera el CUIT de la SA. Ver arriba qué bloquea y qué no.
 
 ## Gotcha de nombres
 
