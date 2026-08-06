@@ -218,6 +218,19 @@ El **corazón de la atención al cliente CF + Ximia**. CF **emite eventos crudos
   - **Estado:** 2 duplicados con doble legajo eliminados (Bolañuk, Espina). **Quedan 7 leads de
     `web_form` que son personas ya presentes en la tanda del sindicato** — no tienen legajo, pero
     **siguen entrando a la lista de llamadas**. Listado completo en el handoff del 21-jul.
+  - 🧨 **Duplicados en HUBSPOT: un lead reclamado por DOS contactos, y gana el último en silencio**
+    (2026-08-05). El duplicado no tiene `synced_hubspot_id`, así que `buscar()` baja al escalón del
+    teléfono —que es el mismo— y **pisa** lo que había puesto el match por id. La escalera se protege
+    de dos LEADS con el mismo teléfono (`teléfono-ambiguo`), pero **no** de dos CONTACTOS apuntando al
+    mismo lead. Eran 2 sobre 318 (Ruben Royo/Rojas, Mauricio Perez/Parra), ya eliminados a mano.
+    Detector: para cada lead, juntar los contactos que matchean por id **y** por teléfono normalizado;
+    si son >1, no escribir y avisar.
+  - **El dígito verificador del CUIL decide cuál duplicado es el bueno.** `20-86608080-9` da inválido
+    y `20-41609040-9` válido → el DNI real es el segundo. Sirvió también para detectar que un contacto
+    tenía el `dni` en conflicto con su propio `cuil`. ⚠️ Asume prefijo `20`: si el real fuera 23/24/27
+    el cálculo cambia, así que **orienta cuál ficha mirar, no reemplaza mirarla**.
+  - **Los mails delatan al duplicado mejor que el nombre:** `elchinitorojas2904@` y
+    `elektinitoroyo2908@` son la misma cadena leída dos veces por el OCR.
   - **Falta el candado:** índice único por email normalizado + `duplicado_de uuid` que se llene solo al
     insertar (teléfono+fecha de nacimiento, CUIL, `user_id`) + regla de que un duplicado no recibe
     legajo ni entra a listas. **Es la GOLDEN RULE: la garantía va en la base por la que pasan todos los
@@ -364,3 +377,34 @@ a la marca ya salió. Si `useClientIdentified().source === 'verified'` saltea el
 - Migraciones: `NNNN_nombre.sql`, secuencial. Nunca renumerar las existentes.
 - Next.js: ver el bloque importado de `AGENTS.md` (versión con breaking changes; leer
   `node_modules/next/dist/docs/`).
+
+## 📲 Canal WhatsApp a leads — `scripts/send_whatsapp.py` (2026-08-05)
+Hermano de `send_engagement.py`, otro canal, **mismas garantías y dos más**. Alta de Cloud API,
+webhook de entregas en **Vercel** (no n8n: se paga por ejecución) y ledger `whatsapp_events`.
+- **El reporte se arma contra el ledger, no contra Meta.** Un `200` es ACEPTADO, no ENTREGADO.
+- **Candado de plantilla:** se niega a mandar si no está `APPROVED` **y** `UTILITY`. La categoría
+  que devuelve el POST de creación es una INTENCIÓN; la real se lee después de `message_templates`.
+  Marketing a esta lista excede el consentimiento firmado ("evaluar acceso a financiación").
+  ⚠️ **Editar una plantilla aprobada la manda de vuelta a la cola** → crear una nueva (`_v2`) y
+  dejar la vieja como respaldo. La estructura es fija: HEADER → BODY → FOOTER → BOTONES; **no se
+  puede intercalar texto después del botón**. Topes: BODY 1024, FOOTER 60, texto de botón 25.
+- **Candado de teléfono (`guard_hubspot`):** compara, para el lote, `leads.phone` contra el de
+  HubSpot **normalizado**, y aborta si difiere. No pregunta "¿corrió el sync?" —un proxy que puede
+  mentir— sino el hecho. Nació porque el pull estuvo mudo un mes (ver arriba) y frenó 42 de 250.
+- **Candado de "No volver a contactar":** `estado_del_contacto` lo cargan las asesoras y **vive sólo
+  en HubSpot**, así que el filtro de elegibles (Supabase) no lo veía: había 9 adentro del lote.
+  `unsubscribed` cubre a quien contestó BAJA; esto cubre a quien lo dijo por teléfono. **La misma
+  voluntad por dos canales.** El resto de los estados SÍ recibe — en particular los 129 de
+  "Primer Contacto - Datos verificados", a quienes la asesora ya les avisó que les llegaría el link.
+- **`wa_number()` ancla en la LONGITUD, no en el patrón "15".** El número nacional argentino son
+  SIEMPRE 10 dígitos; el `15` se saca sólo cuando sobran exactamente 2. La versión anterior mutilaba
+  `11-3155-1775` porque "3155" contiene "15". Chequear el constructo, no la palabra.
+- **`whatsapp_sent_at`** (migración `0111`) es columna propia: reusar `engagement_sent_at` excluiría
+  a los 40 que ya recibieron el mail, que son justo a quienes va el WhatsApp.
+- **`/verify?c=wa&u=<token>`** — mismo HMAC que el mailer (dominio `verify:`), `c=wa` guarda
+  `verified_channel='whatsapp'` (mig. `0109`). Idempotente: re-clickear no reenvía la bienvenida.
+  ⚠️ Meta exige que la variable del botón quede **al final** de la URL, por eso `?c=wa` va antes.
+- **Nombres:** decisión 2026-08-05 → **se corrigen en HubSpot y bajan por el sync**. Se descarta
+  separar nombre/apellido en Supabase con `split_names.py` (dos verdades compitiendo). Hoy 60 de 250
+  saludarían con el apellido y 19 no tienen nombre de pila en la ficha.
+- **TIER_250** hasta que haya verificación de negocio (espera el CUIT de la SA).
