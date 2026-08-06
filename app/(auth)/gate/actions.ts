@@ -70,39 +70,62 @@ export async function requestOTP(args: {
   // Marca intención (warm) — igual que antes.
   await sb.from('users').update({ lead_status: 'warm' }).eq('email', email)
 
-  // Rate-limit por email: si ya hay un código activo (< 30s) para este
-  // email, no generamos otro — devolvemos ok:true. Blindaje contra loops
-  // client-side (re-renders que disparan onSuccess en cadena) que ya
-  // ocurrieron y llenaron email_verifications con 20 filas en 15s.
-  // TTL del código = 10 min, así que reusar el reciente no expone al user.
-  const RATE_LIMIT_S = 30
-  const cutoff = new Date(Date.now() - RATE_LIMIT_S * 1000).toISOString()
-  const { data: recent } = await sb
-    .from('email_verifications')
-    .select('id')
-    .eq('email', email)
-    .is('used_at', null)
-    .gte('created_at', cutoff)
-    .limit(1)
-  if (recent && recent.length > 0) {
-    console.warn(`[requestOTP] rate-limit hit for ${email} (<${RATE_LIMIT_S}s)`)
-    return { ok: true }
-  }
-
-  // 2) Generar código + guardar en email_verifications con TTL.
+  // 2) UN SOLO CÓDIGO VIVO POR MAIL (migración 0112 + este bloque).
+  //
+  // El rate-limit anterior era un SELECT seguido de un INSERT, sin atomicidad: tres requests
+  // concurrentes leían «no hay código activo» y las tres insertaban. Y como `verifyOTP` compara
+  // contra UNA sola fila —la más nueva—, quien abría el mail del PRIMER código NO PODÍA ENTRAR.
+  // No es teórico: `ricardoulisesgonzalez15@gmail.com` (17-jul) pidió tres códigos en dos minutos,
+  // falló dos intentos, se fue, y volvió 3 h 20 min después a entrar con uno nuevo.
+  //
+  // ⚠️ EL ORDEN IMPORTA Y ES CONTRAINTUITIVO. «Invalidar lo anterior y después insertar» NO
+  // arregla la carrera: el segundo request mataría el código del primero y volveríamos al mismo
+  // lugar, con la persona teniendo en la mano un código ya muerto.
+  // Se INSERTA PRIMERO y se deja que la base arbitre: el índice único parcial
+  // `(email) where used_at is null` hace que sólo uno gane. El que pierde NO pisa nada.
   const code = generateCode()
   const expiresAt = new Date(Date.now() + OTP_TTL_MIN * 60 * 1000).toISOString()
   const h = await headers()
   const ip = h.get('x-forwarded-for') || h.get('x-real-ip') || null
   const ua = h.get('user-agent') || null
+  const fila = { email, code, expires_at: expiresAt, ip, user_agent: ua }
 
-  const { error: insErr } = await sb.from('email_verifications').insert({
-    email,
-    code,
-    expires_at: expiresAt,
-    ip,
-    user_agent: ua,
-  })
+  const RATE_LIMIT_S = 30
+  const UNIQUE_VIOLATION = '23505'
+
+  let { error: insErr } = await sb.from('email_verifications').insert(fila)
+
+  if (insErr?.code === UNIQUE_VIOLATION) {
+    // Ya hay un código vivo para este mail. Dos situaciones muy distintas:
+    const { data: vivo } = await sb
+      .from('email_verifications')
+      .select('id, created_at, expires_at')
+      .eq('email', email)
+      .is('used_at', null)
+      .limit(1)
+      .maybeSingle()
+
+    const nacio = vivo ? new Date(vivo.created_at).getTime() : 0
+    const fresco = Date.now() - nacio < RATE_LIMIT_S * 1000
+
+    if (vivo && fresco) {
+      // (a) Una ráfaga: otro request de estos mismos segundos ya generó el código y ya mandó el
+      //     mail. Mandar otro dejaría a la persona con dos y uno solo válido — el bug entero.
+      console.warn(`[requestOTP] ya hay un código fresco para ${email} (<${RATE_LIMIT_S}s)`)
+      return { ok: true }
+    }
+
+    // (b) El código vivo es VIEJO o está vencido. Recién acá se invalida —y hay que hacerlo,
+    //     porque el índice no puede mirar `expires_at > now()` (no es inmutable): sin esta
+    //     invalidación una fila vencida bloquearía el mail para siempre.
+    if (vivo) {
+      await sb.from('email_verifications')
+        .update({ used_at: new Date().toISOString() })
+        .eq('id', vivo.id)
+    }
+    ;({ error: insErr } = await sb.from('email_verifications').insert(fila))
+  }
+
   if (insErr) {
     console.error('[requestOTP] insert email_verifications:', insErr.message)
     return { ok: false, error: 'No pudimos generar tu código. Probá de nuevo.' }
