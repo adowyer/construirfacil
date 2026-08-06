@@ -160,12 +160,17 @@ def guard_template(tpl, commit):
         sys.exit(msg) if commit else print(msg + "\n   (dry-run sigue igual)")
 
 
-# ── candado: el teléfono de Supabase tiene que coincidir con el de HubSpot ─
-def guard_telefonos(env, lote, commit):
+# ── candado: contrastar el lote contra HubSpot antes de mandar ────────────
+NO_CONTACTAR = "No volver a contactar"
+
+
+def guard_hubspot(env, lote, commit):
     """
-    HubSpot es el dueño del teléfono (ownership acordado: las asesoras corrigen
-    ahí, por teléfono, y esa es la info viva). Supabase lo recibe por el pull de
-    `sync_hubspot_to_supabase.py`.
+    Dos cosas que sólo sabe HubSpot y que hay que mirar ANTES de mandar.
+
+    1. EL TELÉFONO. HubSpot es su dueño (ownership acordado: las asesoras lo
+    corrigen ahí, llamando, y esa es la info viva). Supabase lo recibe por el
+    pull de `sync_hubspot_to_supabase.py`.
 
     Ese pull estuvo MUDO del 2026-07-20 al 2026-08-05: un guard salteaba SIEMPRE
     la columna `phone` y no contaba lo que salteaba, así que 49 correcciones
@@ -177,6 +182,18 @@ def guard_telefonos(env, lote, commit):
     leads de ESTE lote, ¿el teléfono de Supabase es el mismo que el de HubSpot?
     Se comparan normalizados, así que un formato distinto no cuenta como
     discrepancia — sólo un número distinto.
+
+    2. QUIÉN PIDIÓ NO SER CONTACTADO. `estado_del_contacto` lo cargan las
+    asesoras al llamar, y "No volver a contactar" es lo que dijo la persona.
+    No vive en Supabase, así que el filtro de elegibles no lo ve: el 2026-08-05
+    había 11 de esos adentro del lote. La exclusión NO es opcional ni depende de
+    --commit; `unsubscribed` cubre a quien contestó BAJA, esto cubre a quien lo
+    dijo por teléfono, y son la misma voluntad por dos canales distintos.
+
+    El resto de los estados SÍ recibe. En particular los 129 de "Primer Contacto
+    - Datos verificados": la asesora ya les avisó que les iba a llegar un link
+    para verificar, así que son los que más lo esperan. Lo mismo los que tienen
+    la reserva en curso — de los 23, 22 son de ese grupo.
     """
     con_id = [r for r in lote if r.get("synced_hubspot_id")]
     if not con_id:
@@ -198,18 +215,37 @@ def guard_telefonos(env, lote, commit):
         chunk = con_id[i:i + 100]
         st, body = http("https://api.hubapi.com/crm/v3/objects/contacts/batch/read",
                         h, "POST",
-                        {"properties": ["phone"],
+                        {"properties": ["phone", "estado_del_contacto"],
                          "inputs": [{"id": str(r["synced_hubspot_id"])} for r in chunk]})
         if st != 200:
             msg = f"⛔ No se pudo leer HubSpot ({st}): {json.dumps(body, ensure_ascii=False)[:200]}"
             sys.exit(msg) if commit else print(msg + "  (dry-run sigue)")
             return lote
         for c in body.get("results", []):
-            hs[c["id"]] = (c.get("properties") or {}).get("phone")
+            hs[c["id"]] = c.get("properties") or {}
 
+    # --- 2. los que pidieron no ser contactados salen SIEMPRE ---
+    vetados = [r for r in con_id
+               if (hs.get(str(r["synced_hubspot_id"])) or {}).get("estado_del_contacto") == NO_CONTACTAR]
+    if vetados:
+        print(f"🛑 {len(vetados)} marcados '{NO_CONTACTAR}' en HubSpot — se excluyen:")
+        for r in vetados[:5]:
+            print(f"    {(r.get('name') or '')[:34]}")
+        if len(vetados) > 5:
+            print(f"    … y {len(vetados) - 5} más")
+        ids = {r["id"] for r in vetados}
+        lote = [r for r in lote if r["id"] not in ids]
+        con_id = [r for r in con_id if r["id"] not in ids]
+
+    sin_ficha = len([r for r in lote if not r.get("synced_hubspot_id")])
+    if sin_ficha:
+        print(f"⚠️ {sin_ficha} sin contacto en HubSpot: no se les pudo verificar "
+              f"ni el teléfono ni el estado.")
+
+    # --- 1. el teléfono de Supabase contra el de HubSpot ---
     desfasados = []
     for r in con_id:
-        h_tel = hs.get(str(r["synced_hubspot_id"]))
+        h_tel = (hs.get(str(r["synced_hubspot_id"])) or {}).get("phone")
         if not h_tel:
             continue                      # sin teléfono en HubSpot: no contradice nada
         if wa_number(h_tel) != wa_number(r.get("phone")):
@@ -361,7 +397,7 @@ def main():
             print(f"    {r['id']}  {r.get('phone')!r}")
 
     lote = [r for r in lote if wa_number(r.get("phone"))]
-    lote = guard_telefonos(env, lote, args.commit)
+    lote = guard_hubspot(env, lote, args.commit)
 
     if not args.commit:
         print(f"\n[dry-run] se mandaría a {len(lote)}. Muestra:")
