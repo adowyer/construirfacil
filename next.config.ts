@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
       { source: '/ximia-demo.html', destination: '/ximia-demo' },
       // Simulador de costos (Construir Fácil + Ximia) — HTML estático en /public/simulador.html.
       { source: '/simulador', destination: '/simulador.html' },
+      // Brochure de alianzas/sponsorship — HTML estático en /public/alianzas/.
+      { source: '/alianzas', destination: '/alianzas/index.html' },
     ]
   },
 }
